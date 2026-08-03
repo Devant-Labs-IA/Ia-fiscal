@@ -50,7 +50,8 @@ Estado atual: nenhum projeto Vercel foi comprovado no time conectado; o gate per
 ## 4. Validação Supabase
 
 1. Confirmar o project ref antes de qualquer ação.
-2. Validar os 33 arquivos canônicos contra `supabase/baseline/remote-manifest.json`.
+2. Validar as 33 migrações aplicadas contra `supabase/baseline/remote-manifest.json` e a 34ª
+   migração pendente contra a evidência de rollback versionada.
 3. Executar `supabase/tests/authorization_regression.sql` somente com rollback ou em banco
    descartável.
 4. Auditar individualmente as 19 funções `SECURITY DEFINER` na matriz completa de papéis.

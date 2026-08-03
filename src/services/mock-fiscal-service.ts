@@ -11,6 +11,7 @@ import {
 } from "@/data/mocks";
 import type { FiscalService } from "@/services/fiscal-service";
 import type {
+  CaseMessageReadModel,
   DebtPeriod,
   DivergenceReadModel,
   FiscalCaseReadModel,
@@ -107,10 +108,11 @@ const divergences: DivergenceReadModel[] = fiscalCases.map((item, index) => ({
   hasCaseFinding: true,
 }));
 
-const caseRows: FiscalCaseReadModel[] = fiscalCases.map((item) => ({
+const caseRows: FiscalCaseReadModel[] = fiscalCases.map((item, index) => ({
   municipalityId: "demo-cordeiropolis",
   caseId: item.id,
   caseNumber: `HML-${item.id.toUpperCase()}`,
+  divergenceId: `demo-divergence-${index + 1}`,
   taxpayerId: item.taxpayer.id,
   taxpayerName: item.taxpayer.name,
   status: item.status,
@@ -199,7 +201,8 @@ function report(): OperationalReport {
 export const mockFiscalService: FiscalService = {
   getDashboardSummary: () => resolve(dashboardSummary),
   listFiscalCases: () => resolve(fiscalCases),
-  listChatQueue: () => resolve(chatQueue),
+  listChatQueue: (municipalityId) =>
+    resolve(chatQueue.filter((item) => item.municipalityId === municipalityId)),
   listNotificationCandidates: () => resolve(notificationCandidates),
   listProcessingHealth: () => resolve(processingHealth),
   listProductionBlockers: () => resolve(productionBlockers),
@@ -219,7 +222,31 @@ export const mockFiscalService: FiscalService = {
   listNotificationRecipients: () => resolve(recipientRows),
   listKnowledgeArticles: () => resolve(knowledgeRows),
   listPortalCases: () => resolve(portalRows),
+  listCaseMessages: (municipalityId, caseId) => {
+    const item = chatQueue.find(
+      (question) => question.municipalityId === municipalityId && question.caseId === caseId,
+    );
+    const messages: CaseMessageReadModel[] = item
+      ? [
+          {
+            id: `demo-message:${item.id}`,
+            caseId,
+            body: item.lastMessage,
+            senderType: "taxpayer",
+            sourceType: "portal",
+            status: "published",
+            visibility: "participants",
+            createdAt: item.waitingSince,
+            publishedAt: item.waitingSince,
+          },
+        ]
+      : [];
+    return resolve(messages);
+  },
   getOperationalReport: () => resolve(report()),
+  async claimCaseQuestion() {
+    throw new Error("demo_write_disabled");
+  },
   async submitCaseQuestion() {
     throw new Error("demo_write_disabled");
   },

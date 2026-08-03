@@ -126,7 +126,7 @@ Não registrar JWT, credenciais, conteúdo integral de documentos fiscais ou dad
 
 ## Pendências arquiteturais que bloqueiam produção
 
-- reproduzir as 33 migrações canônicas em banco vazio e comparar o catálogo;
+- reproduzir as 34 migrações versionadas (33 aplicadas + 1 pendente) em banco vazio e comparar o catálogo;
 - auditar as 19 funções `SECURITY DEFINER` expostas a `authenticated`;
 - criar usuários de teste e comprovar RLS para todos os papéis;
 - executar E2E web/banco/Edge com evidência;

@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "system": "IA Fiscal",
+  "environment": "Supabase homologation",
+  "project_id": "qvgenxcrdrqyiyozxtdt",
+  "executed_at_utc": "2026-08-03T02:31:32Z",
+  "execution_mode": "single_transaction_with_final_rollback",
+  "result": "pass",
+  "migration": {
+    "path": "supabase/migrations/20260803014627_enforce_aal2_and_idempotent_question_claim.sql",
+    "sha256": "18126bce373b8202bef8887bec14c14c4ff9f77c8b92925034e3c4d2f05c0fa9",
+    "deployment_status": "validated_not_applied"
+  },
+  "regression_suite": {
+    "path": "supabase/tests/authorization_regression.sql",
+    "sha256": "09eaceba819b4bf9bafe69605795119afe12344324a0cf952de38bb799e11456"
+  },
+  "validated_controls": [
+    "AAL1 denied at municipal-role and case-access boundaries",
+    "platform administrator denied inherited municipal fiscal authority",
+    "cross-municipality and stale-membership claim contexts denied before writes",
+    "server-side queue window prioritizes overdue SLA before waiting and claimed items",
+    "legitimate AAL2 municipal, taxpayer and accountant access preserved",
+    "question claim replay returns without duplicate event, assignment or last_activity update",
+    "answered or closed question cannot be reclaimed",
+    "portal question idempotency preserves one message for an exact replay"
+  ],
+  "post_rollback": {
+    "synthetic_users": 0,
+    "synthetic_memberships": 0,
+    "legacy_claim_preserved": true,
+    "pending_migration_persisted": false,
+    "pending_claim_definition_persisted": false,
+    "pending_queue_priority_persisted": false
+  },
+  "limitations": [
+    "This proves the pending migration against the current homologation catalog but does not deploy it.",
+    "Browser E2E with real synthetic users remains blocked and is tracked separately."
+  ]
+}

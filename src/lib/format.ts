@@ -41,6 +41,7 @@ export function formatCnpj(cnpj: string): string {
 
 /** Máscara parcial para exibição pública: 12.345.***\/**01-90 */
 export function maskCnpj(cnpj: string): string {
-  const digits = cnpj.replace(/\D/g, "").padStart(14, "0");
+  const digits = cnpj.replace(/\D/g, "");
+  if (digits.length !== 14) return cnpj || "Identificador protegido";
   return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.***/**${digits.slice(10, 12)}-${digits.slice(12)}`;
 }

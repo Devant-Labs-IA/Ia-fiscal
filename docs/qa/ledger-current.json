@@ -1,0 +1,265 @@
+{
+  "schema_version": 1,
+  "system": {
+    "name": "IA Fiscal",
+    "environment": "local_homologation",
+    "version": "working-tree 2026-08-02; Supabase baseline 33 migrations + 1 migration validated and pending",
+    "base_url": "http://localhost:3000"
+  },
+  "run": {
+    "inventory_complete": false,
+    "clean_critical_passes": 0,
+    "full_regression_after_last_change": false
+  },
+  "scope": {
+    "roles": [
+      "maintainer",
+      "unauthenticated",
+      "authenticated_unlinked",
+      "platform_admin",
+      "municipal_admin",
+      "supervisor",
+      "fiscal_auditor",
+      "legal_reviewer",
+      "taxpayer",
+      "accountant"
+    ],
+    "viewports": ["mobile", "tablet", "desktop"],
+    "areas": [
+      "route_inventory",
+      "responsive",
+      "accessibility",
+      "auth",
+      "role_navigation",
+      "portal_write",
+      "real_data",
+      "error_states"
+    ]
+  },
+  "items": [
+    {
+      "id": "UI-ROUTE-INVENTORY-CURRENT-001",
+      "layer": "ui",
+      "area": "route_inventory",
+      "name": "Inventário atual das onze rotas",
+      "required": true,
+      "critical": false,
+      "status": "pass",
+      "expected_roles": ["maintainer"],
+      "tested_roles": ["maintainer"],
+      "expected_viewports": [],
+      "tested_viewports": [],
+      "evidence": [
+        "test:src/qa/coverage-contract.test.ts",
+        "matrix:docs/qa/coverage-matrix-current.json — 11 route templates including /contribuintes/$taxpayerId"
+      ],
+      "defects": [],
+      "notes": "Prova inventário estático, não execução das páginas."
+    },
+    {
+      "id": "UI-RESPONSIVE-CONTRACT-001",
+      "layer": "ux",
+      "area": "responsive",
+      "name": "Contrato de breakpoints mobile, tablet e desktop",
+      "required": true,
+      "critical": false,
+      "status": "pass",
+      "expected_roles": ["maintainer"],
+      "tested_roles": ["maintainer"],
+      "expected_viewports": [],
+      "tested_viewports": [],
+      "evidence": [
+        "test:src/qa/coverage-contract.test.ts validates 390, 767, 768 and 1440 px against MOBILE_BREAKPOINT"
+      ],
+      "defects": [],
+      "notes": "PASS significa que a matriz está coerente; renderização nos viewports continua NOT_RUN."
+    },
+    {
+      "id": "A11Y-SOURCE-CONTRACT-001",
+      "layer": "accessibility",
+      "area": "accessibility",
+      "name": "Contratos mínimos de acessibilidade verificáveis por fonte",
+      "required": true,
+      "critical": false,
+      "status": "pass",
+      "expected_roles": ["maintainer"],
+      "tested_roles": ["maintainer"],
+      "expected_viewports": [],
+      "tested_viewports": [],
+      "evidence": [
+        "test:src/qa/coverage-contract.test.ts — main landmark único, lang pt-BR, foco visível e close mobile"
+      ],
+      "defects": [],
+      "notes": "Não substitui axe, teclado, contraste ou leitor de tela."
+    },
+    {
+      "id": "SECURITY-BOUNDARY-STATIC-001",
+      "layer": "security",
+      "area": "role_navigation",
+      "name": "AAL2, separação do administrador técnico e claim idempotente",
+      "required": true,
+      "critical": true,
+      "status": "pass",
+      "expected_roles": ["maintainer"],
+      "tested_roles": ["maintainer"],
+      "expected_viewports": [],
+      "tested_viewports": [],
+      "evidence": [
+        "test:src/qa/security-boundary-contract.test.ts",
+        "docs/qa/evidence/supabase-authorization-regression-2026-08-03.json"
+      ],
+      "defects": [],
+      "notes": "Prova a migração pendente e seu rollback; não afirma que a DDL ou a nova Edge Function já foram implantadas."
+    },
+    {
+      "id": "UI-MOCK-SMOKE-001",
+      "layer": "ui",
+      "area": "responsive",
+      "name": "Smoke navegável das onze rotas em quatro viewports",
+      "required": true,
+      "critical": true,
+      "status": "not_run",
+      "expected_roles": ["fiscal_auditor", "taxpayer", "municipal_admin"],
+      "tested_roles": [],
+      "expected_viewports": ["mobile", "tablet", "desktop"],
+      "tested_viewports": [],
+      "evidence": [
+        "attempt: local agent-browser blocked from binding its control socket; cloud browser returned ERR_BLOCKED_BY_CLIENT for 127.0.0.1"
+      ],
+      "defects": [],
+      "notes": "Matriz pronta; navegador remoto não foi usado nesta etapa. O smoke histórico cobriu 10 rotas e dois viewports."
+    },
+    {
+      "id": "A11Y-BROWSER-001",
+      "layer": "accessibility",
+      "area": "accessibility",
+      "name": "Teclado, foco, nomes, contraste, zoom e reflow",
+      "required": true,
+      "critical": true,
+      "status": "not_run",
+      "expected_roles": ["unauthenticated", "fiscal_auditor", "taxpayer", "accountant"],
+      "tested_roles": [],
+      "expected_viewports": ["mobile", "tablet", "desktop"],
+      "tested_viewports": [],
+      "evidence": [],
+      "defects": [],
+      "notes": "Exige navegador e auditoria automatizada/manual."
+    },
+    {
+      "id": "AUTH-E2E-CURRENT-001",
+      "layer": "auth",
+      "area": "auth",
+      "name": "Login, MFA, recuperação, expiração e usuário sem vínculo",
+      "required": true,
+      "critical": true,
+      "status": "blocked",
+      "expected_roles": ["unauthenticated", "authenticated_unlinked", "fiscal_auditor"],
+      "tested_roles": [],
+      "expected_viewports": ["mobile", "desktop"],
+      "tested_viewports": [],
+      "evidence": [
+        "README.md: nenhum usuário ou vínculo real disponível para homologação E2E",
+        "docs/qa/release-readiness-2026-08-02.md: autenticação e recuperação E2E permanecem BLOCKED"
+      ],
+      "defects": [],
+      "notes": "Testes Vitest existentes usam mocks do Supabase Auth."
+    },
+    {
+      "id": "ROLE-NAV-E2E-001",
+      "layer": "security",
+      "area": "role_navigation",
+      "name": "Rotas permitidas e negadas por papel e acesso direto",
+      "required": true,
+      "critical": true,
+      "status": "blocked",
+      "expected_roles": [
+        "authenticated_unlinked",
+        "platform_admin",
+        "municipal_admin",
+        "supervisor",
+        "fiscal_auditor",
+        "legal_reviewer",
+        "taxpayer",
+        "accountant"
+      ],
+      "tested_roles": [],
+      "expected_viewports": ["mobile", "tablet", "desktop"],
+      "tested_viewports": [],
+      "evidence": [
+        "docs/runbooks/homologation.md: matriz exige usuários sintéticos de dois municípios",
+        "docs/qa/evidence/browser-smoke-2026-08-02.json: no authenticated Supabase user"
+      ],
+      "defects": [],
+      "notes": "A matriz atual não reduz os cinco papéis internos a fiscal_staff."
+    },
+    {
+      "id": "PORTAL-WRITE-E2E-001",
+      "layer": "integration",
+      "area": "portal_write",
+      "name": "Pergunta do portal confirmada no RPC, banco e auditoria",
+      "required": true,
+      "critical": true,
+      "status": "blocked",
+      "expected_roles": ["taxpayer", "accountant"],
+      "tested_roles": [],
+      "expected_viewports": ["mobile", "tablet", "desktop"],
+      "tested_viewports": [],
+      "evidence": [
+        "src/routes/-portal.integration.test.tsx mocks fiscalService.submitCaseQuestion",
+        "docs/qa/evidence/supabase-authorization-regression-2026-08-02.json: no browser E2E user existed"
+      ],
+      "defects": [],
+      "notes": "Idempotência unitária passa; efeito ponta a ponta ainda não foi observado."
+    },
+    {
+      "id": "UI-REAL-DATA-001",
+      "layer": "integration",
+      "area": "real_data",
+      "name": "Onze rotas com Supabase real e isolamento por tenant",
+      "required": true,
+      "critical": true,
+      "status": "blocked",
+      "expected_roles": [
+        "municipal_admin",
+        "supervisor",
+        "fiscal_auditor",
+        "legal_reviewer",
+        "taxpayer",
+        "accountant"
+      ],
+      "tested_roles": [],
+      "expected_viewports": ["mobile", "desktop"],
+      "tested_viewports": [],
+      "evidence": [
+        "docs/qa/evidence/browser-smoke-2026-08-02.json: data_mode mock, supabase_requests 0",
+        "docs/qa/release-readiness-2026-08-02.md: matriz multi-tenant por papel BLOCKED"
+      ],
+      "defects": [],
+      "notes": "Não usar dados possivelmente reais como fixture de navegador."
+    },
+    {
+      "id": "UI-ERROR-STATES-001",
+      "layer": "ux",
+      "area": "error_states",
+      "name": "Loading, vazio, erro, offline e recuperação em todas as rotas",
+      "required": true,
+      "critical": true,
+      "status": "not_run",
+      "expected_roles": [
+        "municipal_admin",
+        "supervisor",
+        "fiscal_auditor",
+        "legal_reviewer",
+        "taxpayer",
+        "accountant"
+      ],
+      "tested_roles": [],
+      "expected_viewports": ["mobile", "tablet", "desktop"],
+      "tested_viewports": [],
+      "evidence": [],
+      "defects": [],
+      "notes": "O dashboard possui teste de falhas independentes; offline, recuperação e as demais rotas ainda exigem execução em navegador."
+    }
+  ],
+  "defects": []
+}

@@ -85,7 +85,7 @@ export const portalNav: NavItem[] = [
   },
 ];
 
-/** Perfis previstos. O perfil Contribuinte será implementado em etapa futura. */
+/** Perfis principais expostos pela navegação autenticada. */
 export const profiles = [
   { id: "fiscal", label: "Fiscal", basePath: "/" },
   { id: "contribuinte", label: "Contribuinte", basePath: "/portal" },

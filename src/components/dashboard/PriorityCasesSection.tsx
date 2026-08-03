@@ -1,7 +1,12 @@
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 
-import { EmptyState, SectionCard, SectionSkeleton } from "@/components/common/SectionCard";
+import {
+  EmptyState,
+  ErrorState,
+  SectionCard,
+  SectionSkeleton,
+} from "@/components/common/SectionCard";
 import { RiskBadge, StatusBadge } from "@/components/common/StatusBadges";
 import { CaseDrawer } from "@/components/dashboard/CaseDrawer";
 import { Button } from "@/components/ui/button";
@@ -27,32 +32,42 @@ import type { FiscalCase, RiskLevel } from "@/types/fiscal";
 interface PriorityCasesSectionProps {
   cases: FiscalCase[] | undefined;
   isLoading: boolean;
+  isError: boolean;
 }
 
-export function PriorityCasesSection({ cases, isLoading }: PriorityCasesSectionProps) {
+const PRIORITY_RANK: Record<RiskLevel, number> = {
+  baixo: 1,
+  medio: 2,
+  alto: 3,
+  critico: 4,
+};
+
+export function PriorityCasesSection({ cases, isLoading, isError }: PriorityCasesSectionProps) {
   const [query, setQuery] = useState("");
   const [risk, setRisk] = useState<RiskLevel | "todos">("todos");
   const [selected, setSelected] = useState<FiscalCase | null>(null);
 
   const filtered = useMemo(() => {
     const term = query.trim().toLowerCase();
-    return (cases ?? []).filter((item) => {
-      const matchesRisk = risk === "todos" || item.risk === risk;
-      const matchesTerm =
-        term.length === 0 ||
-        item.taxpayer.name.toLowerCase().includes(term) ||
-        item.divergenceType.toLowerCase().includes(term) ||
-        item.taxpayer.cnpj.includes(term.replace(/\D/g, "")) ||
-        item.assignee.toLowerCase().includes(term);
-      return matchesRisk && matchesTerm;
-    });
+    return (cases ?? [])
+      .filter((item) => {
+        const matchesRisk = risk === "todos" || item.risk === risk;
+        const matchesTerm =
+          term.length === 0 ||
+          item.taxpayer.name.toLowerCase().includes(term) ||
+          item.divergenceType.toLowerCase().includes(term) ||
+          item.taxpayer.cnpj.includes(term.replace(/\D/g, "")) ||
+          item.assignee.toLowerCase().includes(term);
+        return matchesRisk && matchesTerm;
+      })
+      .sort((a, b) => PRIORITY_RANK[b.risk] - PRIORITY_RANK[a.risk]);
   }, [cases, query, risk]);
 
   return (
     <>
       <SectionCard
         title="Prioridades de fiscalização"
-        description="Casos com maior impacto de arrecadação apurados na malha de homologação."
+        description="Casos visíveis priorizados por estado operacional; a ordem não representa conclusão fiscal ou jurídica."
         action={
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative">
@@ -69,11 +84,11 @@ export function PriorityCasesSection({ cases, isLoading }: PriorityCasesSectionP
               />
             </div>
             <Select value={risk} onValueChange={(value) => setRisk(value as RiskLevel | "todos")}>
-              <SelectTrigger className="h-9 w-36" aria-label="Filtrar por risco">
-                <SelectValue placeholder="Risco" />
+              <SelectTrigger className="h-9 w-36" aria-label="Filtrar por prioridade">
+                <SelectValue placeholder="Prioridade" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="todos">Todos os riscos</SelectItem>
+                <SelectItem value="todos">Todas</SelectItem>
                 <SelectItem value="critico">Crítico</SelectItem>
                 <SelectItem value="alto">Alto</SelectItem>
                 <SelectItem value="medio">Médio</SelectItem>
@@ -83,7 +98,9 @@ export function PriorityCasesSection({ cases, isLoading }: PriorityCasesSectionP
           </div>
         }
       >
-        {isLoading ? (
+        {isError ? (
+          <ErrorState message="Não foi possível carregar os casos prioritários." />
+        ) : isLoading ? (
           <SectionSkeleton rows={5} />
         ) : filtered.length === 0 ? (
           <EmptyState message="Nenhum caso corresponde aos filtros aplicados." />
@@ -96,7 +113,7 @@ export function PriorityCasesSection({ cases, isLoading }: PriorityCasesSectionP
                   <TableHead>Divergência</TableHead>
                   <TableHead className="text-right">Valor</TableHead>
                   <TableHead>Competências</TableHead>
-                  <TableHead>Risco</TableHead>
+                  <TableHead>Prioridade</TableHead>
                   <TableHead>Responsável</TableHead>
                   <TableHead>Situação</TableHead>
                   <TableHead className="text-right">Ação</TableHead>
@@ -113,7 +130,7 @@ export function PriorityCasesSection({ cases, isLoading }: PriorityCasesSectionP
                     </TableCell>
                     <TableCell className="min-w-44 text-sm">{item.divergenceType}</TableCell>
                     <TableCell className="text-right font-medium tabular-nums">
-                      {formatCurrency(item.amount)}
+                      {item.competences.length ? formatCurrency(item.amount) : "Não vinculado"}
                     </TableCell>
                     <TableCell className="text-xs tabular-nums text-muted-foreground">
                       {item.competences.join(", ")}
@@ -127,7 +144,7 @@ export function PriorityCasesSection({ cases, isLoading }: PriorityCasesSectionP
                     </TableCell>
                     <TableCell className="text-right">
                       <Button size="sm" variant="outline" onClick={() => setSelected(item)}>
-                        Analisar caso
+                        Consultar caso
                       </Button>
                     </TableCell>
                   </TableRow>

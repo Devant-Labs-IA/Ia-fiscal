@@ -43,6 +43,7 @@ export function Topbar() {
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
   const isPortal = auth.access?.role === "taxpayer" || auth.access?.role === "accountant";
+  const canSearch = !isPortal && auth.access?.role !== "platform_admin";
   const identity = String(auth.user?.user_metadata?.["full_name"] ?? auth.user?.email ?? "Usuário");
   const roleLabel = auth.access ? ROLE_LABELS[auth.access.role] : "Acesso restrito";
 
@@ -71,7 +72,7 @@ export function Topbar() {
       <div className="flex items-center gap-3 px-3 py-2.5 sm:px-6">
         <SidebarTrigger aria-label="Recolher ou expandir o menu" />
 
-        {!isPortal ? (
+        {canSearch ? (
           <form className="relative min-w-0 flex-1" role="search" onSubmit={submitSearch}>
             <label className="sr-only" htmlFor="busca-global">
               Buscar contribuinte, CNPJ ou processo

@@ -51,6 +51,7 @@ function queryBuilder() {
     select: vi.fn(),
     eq: vi.fn(),
     not: vi.fn(),
+    is: vi.fn(),
     lte: vi.fn(),
     or: vi.fn(),
     limit: vi.fn(),
@@ -59,6 +60,7 @@ function queryBuilder() {
   builder.select.mockReturnValue(builder);
   builder.eq.mockReturnValue(builder);
   builder.not.mockReturnValue(builder);
+  builder.is.mockReturnValue(builder);
   builder.lte.mockReturnValue(builder);
   builder.or.mockReturnValue(builder);
   builder.limit.mockReturnValue(builder);

@@ -1,6 +1,6 @@
 import { Check } from "lucide-react";
 
-import { SectionCard, SectionSkeleton } from "@/components/common/SectionCard";
+import { ErrorState, SectionCard, SectionSkeleton } from "@/components/common/SectionCard";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { ProductionBlocker } from "@/types/fiscal";
@@ -8,9 +8,10 @@ import type { ProductionBlocker } from "@/types/fiscal";
 interface BlockersSectionProps {
   items: ProductionBlocker[] | undefined;
   isLoading: boolean;
+  isError: boolean;
 }
 
-export function BlockersSection({ items, isLoading }: BlockersSectionProps) {
+export function BlockersSection({ items, isLoading, isError }: BlockersSectionProps) {
   const concluded = (items ?? []).filter((item) => item.done).length;
 
   return (
@@ -19,11 +20,17 @@ export function BlockersSection({ items, isLoading }: BlockersSectionProps) {
       description="Itens obrigatórios antes de qualquer liberação de envio."
       action={
         <Badge variant="secondary" className="tabular-nums">
-          {concluded} de {(items ?? []).length} concluídos
+          {isLoading
+            ? "carregando…"
+            : isError
+              ? "contagem indisponível"
+              : `${concluded} de ${(items ?? []).length} concluídos`}
         </Badge>
       }
     >
-      {isLoading ? (
+      {isError ? (
+        <ErrorState message="Não foi possível carregar os bloqueios de produção." />
+      ) : isLoading ? (
         <SectionSkeleton rows={4} />
       ) : (
         <ul className="space-y-3">

@@ -12,6 +12,7 @@ import type {
   Taxpayer,
 } from "@/types/fiscal";
 import type {
+  CaseMessageReadModel,
   DebtPeriod,
   DivergenceReadModel,
   FiscalCaseReadModel,
@@ -26,7 +27,7 @@ import type {
 export interface FiscalService {
   getDashboardSummary(): Promise<DashboardSummary>;
   listFiscalCases(): Promise<FiscalCase[]>;
-  listChatQueue(): Promise<ChatQueueItem[]>;
+  listChatQueue(municipalityId: string): Promise<ChatQueueItem[]>;
   listNotificationCandidates(): Promise<NotificationCandidate[]>;
   listProcessingHealth(): Promise<ProcessingHealthIndicator[]>;
   listProductionBlockers(): Promise<ProductionBlocker[]>;
@@ -39,7 +40,14 @@ export interface FiscalService {
   listNotificationRecipients(): Promise<NotificationRecipientReadModel[]>;
   listKnowledgeArticles(): Promise<KnowledgeArticleReadModel[]>;
   listPortalCases(): Promise<PortalCaseReadModel[]>;
+  listCaseMessages(municipalityId: string, caseId: string): Promise<CaseMessageReadModel[]>;
   getOperationalReport(): Promise<OperationalReport>;
+  claimCaseQuestion(
+    questionId: string,
+    municipalityId: string,
+    membershipId: string,
+    handlingMode: "human" | "ai_assist",
+  ): Promise<string>;
   submitCaseQuestion(caseId: string, body: string, clientRequestId: string): Promise<string>;
   searchFiscal(query: string, municipalityId: string): Promise<SearchResultItem[]>;
 }
@@ -51,7 +59,7 @@ function activeService(): FiscalService {
 export const fiscalService: FiscalService = {
   getDashboardSummary: () => activeService().getDashboardSummary(),
   listFiscalCases: () => activeService().listFiscalCases(),
-  listChatQueue: () => activeService().listChatQueue(),
+  listChatQueue: (municipalityId) => activeService().listChatQueue(municipalityId),
   listNotificationCandidates: () => activeService().listNotificationCandidates(),
   listProcessingHealth: () => activeService().listProcessingHealth(),
   listProductionBlockers: () => activeService().listProductionBlockers(),
@@ -64,7 +72,11 @@ export const fiscalService: FiscalService = {
   listNotificationRecipients: () => activeService().listNotificationRecipients(),
   listKnowledgeArticles: () => activeService().listKnowledgeArticles(),
   listPortalCases: () => activeService().listPortalCases(),
+  listCaseMessages: (municipalityId, caseId) =>
+    activeService().listCaseMessages(municipalityId, caseId),
   getOperationalReport: () => activeService().getOperationalReport(),
+  claimCaseQuestion: (questionId, municipalityId, membershipId, handlingMode) =>
+    activeService().claimCaseQuestion(questionId, municipalityId, membershipId, handlingMode),
   submitCaseQuestion: (caseId, body, clientRequestId) =>
     activeService().submitCaseQuestion(caseId, body, clientRequestId),
   searchFiscal: (query, municipalityId) => activeService().searchFiscal(query, municipalityId),
@@ -74,7 +86,7 @@ export const fiscalService: FiscalService = {
 export const fiscalKeys = {
   dashboard: ["dashboard", "summary"] as const,
   cases: ["dashboard", "cases"] as const,
-  chat: ["dashboard", "chat"] as const,
+  chat: (municipalityId: string) => ["dashboard", "chat", municipalityId] as const,
   notifications: ["dashboard", "notifications"] as const,
   health: ["dashboard", "health"] as const,
   blockers: ["dashboard", "blockers"] as const,
@@ -86,5 +98,7 @@ export const fiscalKeys = {
   recipients: ["notification-recipients"] as const,
   knowledge: ["knowledge"] as const,
   portal: ["portal-cases"] as const,
+  caseMessages: (municipalityId: string, caseId: string) =>
+    ["case-messages", municipalityId, caseId] as const,
   report: ["operational-report"] as const,
 };

@@ -285,12 +285,20 @@ export const fiscalCases: FiscalCase[] = [
 export const chatQueue: ChatQueueItem[] = [
   {
     id: "cq-1",
+    municipalityId: "demo-cordeiropolis",
+    caseId: "fc-1",
+    caseNumber: "HML-FC-1",
     taxpayerName: "Empresa Alfa de Demonstração Ltda.",
     cnpj: "00000000000100",
     lastMessage:
       "Recebi uma cobrança de ISS de janeiro, mas emitimos as notas pelo portal. Como faço a conferência?",
     waitingSince: "2026-07-31T08:18:00-03:00",
     waitingLabel: "aguardando há 42 min",
+    slaDueAt: "2026-07-31T10:00:00-03:00",
+    status: "submitted",
+    handlingMode: "unassigned",
+    assignedMembershipId: null,
+    claimedAt: null,
     origin: "portal do contribuinte",
     priority: "alto",
     suggestedReply:
@@ -298,11 +306,19 @@ export const chatQueue: ChatQueueItem[] = [
   },
   {
     id: "cq-2",
+    municipalityId: "demo-cordeiropolis",
+    caseId: "fc-2",
+    caseNumber: "HML-FC-2",
     taxpayerName: "Empresa Beta de Demonstração Ltda.",
     cnpj: "00000000000200",
     lastMessage: "Preciso da segunda via da guia de 12/2025 com o novo vencimento.",
     waitingSince: "2026-07-31T07:05:00-03:00",
     waitingLabel: "aguardando há 1 h 55 min",
+    slaDueAt: "2026-07-31T09:30:00-03:00",
+    status: "awaiting_fiscal",
+    handlingMode: "human",
+    assignedMembershipId: "demo-membership-2",
+    claimedAt: "2026-07-31T07:15:00-03:00",
     origin: "whatsapp",
     priority: "medio",
     suggestedReply:
@@ -310,12 +326,20 @@ export const chatQueue: ChatQueueItem[] = [
   },
   {
     id: "cq-3",
+    municipalityId: "demo-cordeiropolis",
+    caseId: "fc-3",
+    caseNumber: "HML-FC-3",
     taxpayerName: "Empresa Gama de Demonstração S/S",
     cnpj: "00000000000300",
     lastMessage:
       "Discordamos do enquadramento aplicado. Podemos apresentar documentos do conselho?",
     waitingSince: "2026-07-30T17:40:00-03:00",
     waitingLabel: "aguardando há 15 h",
+    slaDueAt: "2026-07-31T08:00:00-03:00",
+    status: "submitted",
+    handlingMode: "unassigned",
+    assignedMembershipId: null,
+    claimedAt: null,
     origin: "e-mail",
     priority: "critico",
     suggestedReply:

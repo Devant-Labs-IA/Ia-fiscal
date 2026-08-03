@@ -18,20 +18,24 @@ Escopo: IA Fiscal em homologação/sandbox
 
 ## Situação de segurança conhecida
 
-| Controle                   | Evidência atual                                         | Gate                                                             |
-| -------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------- |
-| RLS                        | habilitada nas 101 tabelas inventariadas                | parcial: políticas por papel não foram testadas E2E              |
-| schemas privados/auditoria | 18 tabelas com RLS sem policy                           | bloqueado até confirmar grants e comportamento deny-all          |
-| RPCs privilegiados         | 19 `SECURITY DEFINER`; fluxos de maior risco corrigidos | parcial: matriz E2E individual ainda pendente                    |
-| Edge Functions             | worker e search em paridade, `verify_jwt=true`          | parcial: autorização funcional ainda precisa de testes negativos |
-| usuários reais de teste    | zero usuários/memberships/vínculos validados            | **BLOCKED**                                                      |
-| auditoria                  | 949 eventos e zero âncoras no inventário inicial        | **BLOCKED** até verificar integridade/imutabilidade              |
-| segredos web               | scanner sem segredo administrativo em path web          | manter scanner no CI e revisar bundle                            |
-| entrega externa            | zero tentativas; destino externo desabilitado           | manter fechado                                                   |
+| Controle                   | Evidência atual                                         | Gate                                                    |
+| -------------------------- | ------------------------------------------------------- | ------------------------------------------------------- |
+| RLS                        | habilitada nas 101 tabelas inventariadas                | parcial: políticas por papel não foram testadas E2E     |
+| schemas privados/auditoria | 18 tabelas com RLS sem policy                           | bloqueado até confirmar grants e comportamento deny-all |
+| RPCs privilegiados         | 19 `SECURITY DEFINER`; fluxos de maior risco corrigidos | parcial: matriz E2E individual ainda pendente           |
+| Edge Functions             | worker em paridade; search local exige JWT e AAL2       | parcial: search ainda não implantada/testada no runtime |
+| usuários reais de teste    | zero usuários/memberships/vínculos validados            | **BLOCKED**                                             |
+| auditoria                  | 949 eventos e zero âncoras no inventário inicial        | **BLOCKED** até verificar integridade/imutabilidade     |
+| segredos web               | scanner sem segredo administrativo em path web          | manter scanner no CI e revisar bundle                   |
+| entrega externa            | zero tentativas; destino externo desabilitado           | manter fechado                                          |
 
 O hardening de autorização foi aplicado na migração `20260802230147` e passou na regressão SQL
 transacional de homologação. O relatório e os gates remanescentes estão em
 [`security/reviews/2026-08-02-remediation.md`](security/reviews/2026-08-02-remediation.md).
+
+A migração `20260803014627`, ainda pendente de implantação, adiciona AAL2 nas fronteiras de caso,
+remove herança fiscal da administração técnica e vincula o claim à prefeitura/membership ativa.
+Ela foi validada contra o catálogo de homologação em transação com rollback.
 
 ## Auditoria obrigatória dos RPCs `SECURITY DEFINER`
 

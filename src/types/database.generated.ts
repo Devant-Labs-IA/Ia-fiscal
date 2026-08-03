@@ -6406,6 +6406,7 @@ export type Database = {
           created_at: string | null
           handling_mode: string | null
           municipality_id: string | null
+          operational_priority: number | null
           priority: number | null
           question_id: string | null
           question_preview: string | null
@@ -7586,7 +7587,12 @@ export type Database = {
         Returns: string
       }
       ia_claim_case_question: {
-        Args: { p_handling_mode?: string; p_question_id: string }
+        Args: {
+          p_expected_membership_id: string
+          p_expected_municipality_id: string
+          p_handling_mode?: string
+          p_question_id: string
+        }
         Returns: string
       }
       ia_claim_jobs: {

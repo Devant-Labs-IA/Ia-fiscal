@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { CalendarDays } from "lucide-react";
 
+import { useAuth } from "@/auth/AuthContext";
 import { ErrorState, SectionSkeleton } from "@/components/common/SectionCard";
 import { ActivityTimeline } from "@/components/dashboard/ActivityTimeline";
 import { BlockersSection } from "@/components/dashboard/BlockersSection";
@@ -35,6 +36,8 @@ export const Route = createFileRoute("/")({
 });
 
 function DashboardFiscal() {
+  const auth = useAuth();
+  const municipalityId = auth.access?.municipalityId ?? "";
   const summary = useQuery({
     queryKey: fiscalKeys.dashboard,
     queryFn: () => fiscalService.getDashboardSummary(),
@@ -44,8 +47,9 @@ function DashboardFiscal() {
     queryFn: () => fiscalService.listFiscalCases(),
   });
   const chat = useQuery({
-    queryKey: fiscalKeys.chat,
-    queryFn: () => fiscalService.listChatQueue(),
+    queryKey: fiscalKeys.chat(municipalityId),
+    queryFn: () => fiscalService.listChatQueue(municipalityId),
+    enabled: Boolean(municipalityId),
   });
   const notifications = useQuery({
     queryKey: fiscalKeys.notifications,
@@ -93,18 +97,38 @@ function DashboardFiscal() {
         <MetricGrid metrics={summary.data?.metrics ?? []} />
       )}
 
-      <PriorityCasesSection cases={cases.data} isLoading={cases.isLoading} />
+      <PriorityCasesSection
+        cases={cases.data}
+        isLoading={cases.isLoading}
+        isError={cases.isError}
+      />
 
       <div className="grid gap-5 2xl:grid-cols-2">
-        <ChatQueueSection items={chat.data} isLoading={chat.isLoading} />
-        <NotificationsSection items={notifications.data} isLoading={notifications.isLoading} />
+        <ChatQueueSection items={chat.data} isLoading={chat.isLoading} isError={chat.isError} />
+        <NotificationsSection
+          items={notifications.data}
+          isLoading={notifications.isLoading}
+          isError={notifications.isError}
+        />
       </div>
 
-      <ProcessingHealthSection items={health.data} isLoading={health.isLoading} />
+      <ProcessingHealthSection
+        items={health.data}
+        isLoading={health.isLoading}
+        isError={health.isError}
+      />
 
       <div className="grid gap-5 xl:grid-cols-2">
-        <BlockersSection items={blockers.data} isLoading={blockers.isLoading} />
-        <ActivityTimeline items={events.data} isLoading={events.isLoading} />
+        <BlockersSection
+          items={blockers.data}
+          isLoading={blockers.isLoading}
+          isError={blockers.isError}
+        />
+        <ActivityTimeline
+          items={events.data}
+          isLoading={events.isLoading}
+          isError={events.isError}
+        />
       </div>
     </div>
   );

@@ -22,6 +22,24 @@ describe("serviço fiscal demonstrativo", () => {
     await expect(
       mockFiscalService.submitCaseQuestion("case-demo", "Pergunta válida", "request:demo-123"),
     ).rejects.toThrow("demo_write_disabled");
+    await expect(
+      mockFiscalService.claimCaseQuestion(
+        "question-demo",
+        "demo-cordeiropolis",
+        "membership-demo",
+        "human",
+      ),
+    ).rejects.toThrow("demo_write_disabled");
+  });
+
+  it("expõe a conversa fictícia somente para leitura", async () => {
+    const queue = await mockFiscalService.listChatQueue("demo-cordeiropolis");
+    const messages = await mockFiscalService.listCaseMessages(
+      queue[0]!.municipalityId,
+      queue[0]!.caseId,
+    );
+    expect(messages).toHaveLength(1);
+    expect(messages[0]?.body).toBe(queue[0]?.lastMessage);
   });
 
   it("mantém toda entrega externa zerada", async () => {

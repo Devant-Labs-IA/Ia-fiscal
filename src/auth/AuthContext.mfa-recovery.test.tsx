@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => ({
   builders: [] as Array<{
     table: string;
     not: ReturnType<typeof vi.fn>;
+    is: ReturnType<typeof vi.fn>;
     lte: ReturnType<typeof vi.fn>;
     or: ReturnType<typeof vi.fn>;
   }>,
@@ -68,6 +69,7 @@ function makeQueryBuilder(table: string) {
     select: vi.fn(),
     eq: vi.fn(),
     not: vi.fn(),
+    is: vi.fn(),
     lte: vi.fn(),
     or: vi.fn(),
     limit: vi.fn(),
@@ -76,13 +78,20 @@ function makeQueryBuilder(table: string) {
   builder.select.mockReturnValue(builder);
   builder.eq.mockReturnValue(builder);
   builder.not.mockReturnValue(builder);
+  builder.is.mockReturnValue(builder);
   builder.lte.mockReturnValue(builder);
   builder.or.mockReturnValue(builder);
   builder.limit.mockReturnValue(builder);
   builder.maybeSingle.mockImplementation(async () => {
     return mocks.tableResults[table] ?? { data: null, error: null };
   });
-  mocks.builders.push({ table, not: builder.not, lte: builder.lte, or: builder.or });
+  mocks.builders.push({
+    table,
+    not: builder.not,
+    is: builder.is,
+    lte: builder.lte,
+    or: builder.or,
+  });
   return builder;
 }
 
@@ -91,6 +100,7 @@ function Probe() {
   return (
     <>
       <output>{auth.status}</output>
+      <span>{auth.access?.role ?? "sem-papel"}</span>
       <span>{auth.mfaEnrollment?.secret ?? "sem-chave"}</span>
       <button type="button" onClick={() => void auth.startMfaEnrollment().catch(() => undefined)}>
         cadastrar mfa
@@ -274,15 +284,21 @@ describe("gate MFA e recuperação de senha", () => {
 
     expect(mocks.builders.map(({ table }) => table)).toEqual([
       "municipality_memberships",
+      "platform_administrators",
       "taxpayer_user_links",
       "accountant_user_links",
     ]);
-    for (const builder of mocks.builders) {
+    for (const builder of mocks.builders.filter(
+      ({ table }) => table !== "platform_administrators",
+    )) {
       expect(builder.lte).toHaveBeenCalledWith("valid_from", expect.any(String));
       expect(builder.or).toHaveBeenCalledWith(
         expect.stringMatching(/^valid_until\.is\.null,valid_until\.gt\./),
       );
     }
+    expect(
+      mocks.builders.find((builder) => builder.table === "platform_administrators")?.is,
+    ).toHaveBeenCalledWith("revoked_at", null);
     for (const table of ["taxpayer_user_links", "accountant_user_links"]) {
       expect(mocks.builders.find((builder) => builder.table === table)?.not).toHaveBeenCalledWith(
         "verified_at",
@@ -290,6 +306,22 @@ describe("gate MFA e recuperação de senha", () => {
         null,
       );
     }
+  });
+
+  it("resolve administrador técnico sem atribuir um vínculo fiscal municipal", async () => {
+    mocks.getSession.mockResolvedValue({ data: { session: sessionFor() }, error: null });
+    mocks.tableResults["platform_administrators"] = {
+      data: { user_id: "user-1" },
+      error: null,
+    };
+
+    renderProvider();
+    await screen.findByText("ready");
+    expect(screen.getByText("platform_admin")).toBeTruthy();
+    expect(mocks.builders.map(({ table }) => table)).toEqual([
+      "municipality_memberships",
+      "platform_administrators",
+    ]);
   });
 
   it("renderiza a tela de cadastro MFA antes de qualquer conteúdo protegido", async () => {

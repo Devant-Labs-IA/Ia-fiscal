@@ -10,11 +10,13 @@ Plataforma de apoio à fiscalização tributária municipal, inicialmente homolo
 Snapshot consolidado em 2 de agosto de 2026:
 
 - Supabase `qvgenxcrdrqyiyozxtdt`, região `sa-east-1`, PostgreSQL 17.6, saudável;
-- 33 migrações canônicas reconciliadas com o histórico remoto por tamanho e SHA-256;
-- 101 tabelas com RLS, 30 views, 98 funções e duas Edge Functions com JWT obrigatório;
+- 33 migrações aplicadas reconciliadas com o histórico remoto por tamanho e SHA-256;
+- uma 34ª migração de AAL2, contexto municipal e claim idempotente validada com rollback, ainda não aplicada;
+- 101 tabelas com RLS, 30 views, 98 funções e duas Edge Functions versionadas;
+- `ia-fiscal-search` exige JWT verificado e AAL2 na fonte local; esse avanço ainda não foi implantado;
 - migração de autorização `20260802230147` aplicada e regressão SQL aprovada com rollback;
-- frontend autenticado com MFA TOTP, recuperação de senha, cache isolado e envio idempotente;
-- tipos TypeScript gerados a partir do banco remoto;
+- frontend autenticado com MFA TOTP, recuperação de senha, cache isolado, fila municipal e claim interno supervisionado;
+- tipos TypeScript baseados no catálogo remoto e atualizados para o contrato validado da migração pendente;
 - nenhum usuário ou vínculo real disponível para homologação E2E;
 - nenhuma entrega externa ou promoção para produção autorizada.
 
@@ -94,8 +96,9 @@ O mesmo conjunto é executado no CI. Um build verde comprova integridade estáti
 
 ## Banco e Edge Functions
 
-[`supabase/migrations`](supabase/migrations) é a única fonte canônica de replay. Seus 33 arquivos
-representam as versões e os corpos SQL registrados remotamente; as diferenças de `LF` terminal são
+[`supabase/migrations`](supabase/migrations) é a única fonte canônica de replay. Os primeiros 33
+arquivos representam as versões e os corpos SQL registrados remotamente; o 34º está validado com
+rollback e pendente de implantação. As diferenças de `LF` terminal do baseline aplicado são
 documentadas no manifesto de checksums.
 
 Os arquivos em [`supabase/sql/applied`](supabase/sql/applied) são apenas um **arquivo histórico

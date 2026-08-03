@@ -11,6 +11,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
+    "qa:contract": "vitest run src/qa",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

@@ -88,6 +88,7 @@ export interface FiscalCaseReadModel {
   municipalityId: string;
   caseId: string;
   caseNumber: string;
+  divergenceId: string | null;
   taxpayerId: string;
   taxpayerName: string;
   status: string;
@@ -152,6 +153,18 @@ export interface PortalCaseReadModel {
   legalReviewRequired: boolean;
   threadId: string | null;
   threadStatus: string | null;
+}
+
+export interface CaseMessageReadModel {
+  id: string;
+  caseId: string;
+  body: string;
+  senderType: string;
+  sourceType: string;
+  status: string;
+  visibility: string;
+  createdAt: string;
+  publishedAt: string | null;
 }
 
 export interface OperationalReport {

@@ -27,27 +27,33 @@ Regra de escalada: dúvida jurídica, fonte conflitante, baixa confiança, dado 
 
 ## Estado dos gates
 
-| Gate                | Estado               | Motivo/evidência necessária                                         |
-| ------------------- | -------------------- | ------------------------------------------------------------------- |
-| fonte versionada    | PASS após publicação | verificar árvore e commit no repositório privado                    |
-| build/lint/types    | PASS local           | repetir no CI do commit exato                                       |
-| testes unitários    | PASS                 | 7 arquivos, 22 testes                                               |
-| banco reproduzível  | PARTIAL              | 33/33 migrações reconciliadas; replay vazio ainda não executado     |
-| RPC/RLS             | PARTIAL              | hardening e regressão remota passaram; matriz E2E completa pendente |
-| autenticação E2E    | BLOCKED              | MFA/recuperação implementados; zero usuários reais de teste         |
-| Edge/worker         | PARTIAL              | fonte em paridade e JWT ativo; runtime/observabilidade pendentes    |
-| IA supervisionada   | BLOCKED              | faltam execução, revisão, rejeição e auditoria E2E                  |
-| preview Vercel      | NOT RUN              | nenhum preview validado para o commit consolidado                   |
-| comunicação externa | CLOSED               | proibida por escopo e por gate jurídico/operacional                 |
-| produção            | CLOSED               | replay, E2E, restore, operação e aprovações ainda pendentes         |
+| Gate                | Estado     | Motivo/evidência necessária                                         |
+| ------------------- | ---------- | ------------------------------------------------------------------- |
+| fonte versionada    | PENDING    | publicar branch e verificar árvore/commit no repositório privado    |
+| build/lint/types    | PASS local | repetir no CI do commit exato                                       |
+| testes unitários    | PASS       | 13 arquivos, 45 testes                                              |
+| banco reproduzível  | PARTIAL    | 33 aplicadas reconciliadas + 1 pendente validada; replay não rodou  |
+| RPC/RLS             | PARTIAL    | AAL2/contexto/claim passaram com rollback; deploy e E2E pendentes   |
+| autenticação E2E    | BLOCKED    | MFA/recuperação implementados; zero usuários reais de teste         |
+| Edge/worker         | PARTIAL    | busca local exige JWT+AAL2; implantação e runtime pendentes         |
+| IA supervisionada   | BLOCKED    | claim/leitura conectados; resposta, revisão e publicação E2E faltam |
+| preview Vercel      | NOT RUN    | nenhum preview validado para o commit consolidado                   |
+| comunicação externa | CLOSED     | proibida por escopo e por gate jurídico/operacional                 |
+| produção            | CLOSED     | replay, E2E, restore, operação e aprovações ainda pendentes         |
 
-O ledger inicial contém 31 itens: 11 PASS, 7 FAIL, 9 BLOCKED e 4 NOT_RUN, com quatro defeitos P1, dois P2 e um P3. A cópia imutável desse inventário está em [`qa/ledger-initial.json`](qa/ledger-initial.json). O estado posterior à consolidação está em [`qa/release-readiness-2026-08-02.md`](qa/release-readiness-2026-08-02.md).
+O ledger inicial contém 31 itens: 11 PASS, 7 FAIL, 9 BLOCKED e 4 NOT_RUN, com quatro defeitos P1,
+dois P2 e um P3. A cópia imutável está em [`qa/ledger-initial.json`](qa/ledger-initial.json). O
+ledger atual mantém o inventário incompleto de forma explícita: 4 PASS, 4 BLOCKED e 3 NOT_RUN,
+sem ciclo crítico completo. Consulte [`qa/ledger-current.json`](qa/ledger-current.json) e
+[`qa/release-readiness-2026-08-02.md`](qa/release-readiness-2026-08-02.md).
 
 ## Baseline reconciliado do Supabase
 
-O acesso ao projeto foi restabelecido e o histórico remoto passou a conter 33 migrações. Os corpos
-SQL estão versionados em `supabase/migrations` e reconciliados por checksum. A correção de
-autorização foi aplicada e passou na regressão SQL transacional.
+O acesso ao projeto foi restabelecido e o histórico remoto contém 33 migrações aplicadas,
+reconciliadas por checksum. Uma 34ª migração restringe administração técnica, exige AAL2 e vincula
+o claim ao contexto municipal ativo; ela passou com a regressão SQL em transação revertida e não
+foi aplicada. A evidência está em
+[`qa/evidence/supabase-authorization-regression-2026-08-03.json`](qa/evidence/supabase-authorization-regression-2026-08-03.json).
 
 Isso não fecha o gate de reconstrução: o replay completo em banco descartável e a comparação com
 `supabase/baseline/catalog-fingerprint.json` continuam obrigatórios.

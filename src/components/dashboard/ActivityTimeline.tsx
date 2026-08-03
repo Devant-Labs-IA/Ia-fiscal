@@ -1,6 +1,11 @@
 import { Brain, Calculator, FileEdit, UserCheck, type LucideIcon } from "lucide-react";
 
-import { SectionCard, SectionSkeleton } from "@/components/common/SectionCard";
+import {
+  EmptyState,
+  ErrorState,
+  SectionCard,
+  SectionSkeleton,
+} from "@/components/common/SectionCard";
 import { formatDateTime } from "@/lib/format";
 import type { AuditEvent } from "@/types/fiscal";
 
@@ -14,16 +19,21 @@ const eventIcons: Record<AuditEvent["type"], LucideIcon> = {
 interface ActivityTimelineProps {
   items: AuditEvent[] | undefined;
   isLoading: boolean;
+  isError: boolean;
 }
 
-export function ActivityTimeline({ items, isLoading }: ActivityTimelineProps) {
+export function ActivityTimeline({ items, isLoading, isError }: ActivityTimelineProps) {
   return (
     <SectionCard
       title="Atividade recente"
       description="Eventos registrados no ambiente de homologação."
     >
-      {isLoading ? (
+      {isError ? (
+        <ErrorState message="Não foi possível carregar a atividade recente." />
+      ) : isLoading ? (
         <SectionSkeleton rows={4} />
+      ) : (items ?? []).length === 0 ? (
+        <EmptyState message="Nenhum evento auditável foi encontrado." />
       ) : (
         <ol className="relative space-y-5 border-l border-border pl-6">
           {(items ?? []).map((item) => {

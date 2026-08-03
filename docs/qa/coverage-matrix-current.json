@@ -1,0 +1,295 @@
+{
+  "schema_version": 1,
+  "system": {
+    "name": "IA Fiscal",
+    "environment": "local_homologation",
+    "data_mode": "mock",
+    "browser_execution": "not_run"
+  },
+  "responsive_contract": {
+    "mobile_breakpoint_px": 768,
+    "viewports": [
+      {
+        "id": "mobile",
+        "class": "mobile",
+        "width": 390,
+        "height": 844,
+        "expected_navigation": "mobile_drawer"
+      },
+      {
+        "id": "mobile_boundary",
+        "class": "mobile",
+        "width": 767,
+        "height": 1024,
+        "expected_navigation": "mobile_drawer"
+      },
+      {
+        "id": "tablet",
+        "class": "tablet",
+        "width": 768,
+        "height": 1024,
+        "expected_navigation": "desktop_sidebar"
+      },
+      {
+        "id": "desktop",
+        "class": "desktop",
+        "width": 1440,
+        "height": 1000,
+        "expected_navigation": "desktop_sidebar"
+      }
+    ]
+  },
+  "roles": [
+    "unauthenticated",
+    "authenticated_unlinked",
+    "platform_admin",
+    "municipal_admin",
+    "supervisor",
+    "fiscal_auditor",
+    "legal_reviewer",
+    "taxpayer",
+    "accountant"
+  ],
+  "routes": [
+    {
+      "route_template": "/",
+      "sample_path": "/",
+      "area": "dashboard",
+      "allowed_roles": ["municipal_admin", "supervisor", "fiscal_auditor", "legal_reviewer"],
+      "denied_roles": [
+        "unauthenticated",
+        "authenticated_unlinked",
+        "platform_admin",
+        "taxpayer",
+        "accountant"
+      ],
+      "required_states": ["loading", "success", "partial_error", "empty"],
+      "critical_interactions": ["navigate_metrics", "filter_priority", "open_case_drawer"]
+    },
+    {
+      "route_template": "/contribuintes",
+      "sample_path": "/contribuintes",
+      "area": "taxpayers",
+      "allowed_roles": ["municipal_admin", "supervisor", "fiscal_auditor", "legal_reviewer"],
+      "denied_roles": [
+        "unauthenticated",
+        "authenticated_unlinked",
+        "platform_admin",
+        "taxpayer",
+        "accountant"
+      ],
+      "required_states": ["loading", "success", "error", "empty", "filtered_empty"],
+      "critical_interactions": ["search", "filter", "open_taxpayer_360"]
+    },
+    {
+      "route_template": "/contribuintes/$taxpayerId",
+      "sample_path": "/contribuintes/tp-1",
+      "area": "taxpayer_360",
+      "allowed_roles": ["municipal_admin", "supervisor", "fiscal_auditor", "legal_reviewer"],
+      "denied_roles": [
+        "unauthenticated",
+        "authenticated_unlinked",
+        "platform_admin",
+        "taxpayer",
+        "accountant"
+      ],
+      "required_states": ["loading", "success", "error", "not_found"],
+      "critical_interactions": ["deep_link", "refresh", "back_to_taxpayers"]
+    },
+    {
+      "route_template": "/fiscalizacoes",
+      "sample_path": "/fiscalizacoes",
+      "area": "cases",
+      "allowed_roles": ["municipal_admin", "supervisor", "fiscal_auditor", "legal_reviewer"],
+      "denied_roles": [
+        "unauthenticated",
+        "authenticated_unlinked",
+        "platform_admin",
+        "taxpayer",
+        "accountant"
+      ],
+      "required_states": ["loading", "success", "error", "empty"],
+      "critical_interactions": ["open_taxpayer_360", "inspect_case"]
+    },
+    {
+      "route_template": "/debitos",
+      "sample_path": "/debitos",
+      "area": "debts",
+      "allowed_roles": ["municipal_admin", "supervisor", "fiscal_auditor", "legal_reviewer"],
+      "denied_roles": [
+        "unauthenticated",
+        "authenticated_unlinked",
+        "platform_admin",
+        "taxpayer",
+        "accountant"
+      ],
+      "required_states": ["loading", "success", "error", "empty", "filtered_empty"],
+      "critical_interactions": ["search", "filter", "open_taxpayer_360"]
+    },
+    {
+      "route_template": "/notificacoes",
+      "sample_path": "/notificacoes",
+      "area": "notifications",
+      "allowed_roles": ["municipal_admin", "supervisor", "fiscal_auditor", "legal_reviewer"],
+      "denied_roles": [
+        "unauthenticated",
+        "authenticated_unlinked",
+        "platform_admin",
+        "taxpayer",
+        "accountant"
+      ],
+      "required_states": ["loading", "success", "error", "empty"],
+      "critical_interactions": ["inspect_recipient_blocks", "confirm_external_delivery_disabled"]
+    },
+    {
+      "route_template": "/atendimento",
+      "sample_path": "/atendimento",
+      "area": "service_queue",
+      "allowed_roles": ["municipal_admin", "supervisor", "fiscal_auditor", "legal_reviewer"],
+      "denied_roles": [
+        "unauthenticated",
+        "authenticated_unlinked",
+        "platform_admin",
+        "taxpayer",
+        "accountant"
+      ],
+      "required_states": [
+        "loading",
+        "success",
+        "error",
+        "empty",
+        "mutation_pending",
+        "mutation_error",
+        "mutation_success"
+      ],
+      "critical_interactions": [
+        "inspect_question",
+        "open_protected_conversation",
+        "claim_question",
+        "confirm_response_publication_blocked"
+      ],
+      "claim_roles": ["supervisor", "fiscal_auditor", "legal_reviewer"]
+    },
+    {
+      "route_template": "/segundo-cerebro",
+      "sample_path": "/segundo-cerebro",
+      "area": "knowledge",
+      "allowed_roles": ["municipal_admin", "supervisor", "fiscal_auditor", "legal_reviewer"],
+      "denied_roles": [
+        "unauthenticated",
+        "authenticated_unlinked",
+        "platform_admin",
+        "taxpayer",
+        "accountant"
+      ],
+      "required_states": ["loading", "success", "error", "empty", "filtered_empty"],
+      "critical_interactions": ["search", "expand_governed_answer"]
+    },
+    {
+      "route_template": "/relatorios",
+      "sample_path": "/relatorios",
+      "area": "reports",
+      "allowed_roles": ["municipal_admin", "supervisor", "fiscal_auditor", "legal_reviewer"],
+      "denied_roles": [
+        "unauthenticated",
+        "authenticated_unlinked",
+        "platform_admin",
+        "taxpayer",
+        "accountant"
+      ],
+      "required_states": ["loading", "success", "error", "empty"],
+      "critical_interactions": ["inspect_operational_totals", "confirm_external_delivery_zero"]
+    },
+    {
+      "route_template": "/configuracoes",
+      "sample_path": "/configuracoes",
+      "area": "settings",
+      "allowed_roles": ["platform_admin", "municipal_admin"],
+      "denied_roles": [
+        "unauthenticated",
+        "authenticated_unlinked",
+        "supervisor",
+        "fiscal_auditor",
+        "legal_reviewer",
+        "taxpayer",
+        "accountant"
+      ],
+      "required_states": ["authorized", "denied"],
+      "critical_interactions": ["direct_url_authorization"]
+    },
+    {
+      "route_template": "/portal",
+      "sample_path": "/portal",
+      "area": "taxpayer_portal",
+      "allowed_roles": ["taxpayer", "accountant"],
+      "denied_roles": [
+        "unauthenticated",
+        "authenticated_unlinked",
+        "platform_admin",
+        "municipal_admin",
+        "supervisor",
+        "fiscal_auditor",
+        "legal_reviewer"
+      ],
+      "required_states": [
+        "loading",
+        "success",
+        "error",
+        "empty",
+        "denied",
+        "mutation_pending",
+        "mutation_error",
+        "mutation_success"
+      ],
+      "critical_interactions": [
+        "select_case",
+        "review_question",
+        "confirm_question",
+        "retry_idempotently"
+      ]
+    }
+  ],
+  "accessibility_checks": [
+    {
+      "id": "A11Y-LANDMARK-001",
+      "execution": "static",
+      "requirement": "Exactly one main landmark in the authenticated application shell"
+    },
+    {
+      "id": "A11Y-LANG-001",
+      "execution": "static",
+      "requirement": "Document language is pt-BR"
+    },
+    {
+      "id": "A11Y-FOCUS-001",
+      "execution": "static",
+      "requirement": "A global visible focus style exists"
+    },
+    {
+      "id": "A11Y-MOBILE-NAV-001",
+      "execution": "static",
+      "requirement": "The mobile navigation dialog retains a visible accessible close control"
+    },
+    {
+      "id": "A11Y-KEYBOARD-001",
+      "execution": "browser_pending",
+      "requirement": "Keyboard order, focus trap, focus return and skip navigation"
+    },
+    {
+      "id": "A11Y-NAME-001",
+      "execution": "browser_pending",
+      "requirement": "Interactive controls expose names, states and field errors"
+    },
+    {
+      "id": "A11Y-CONTRAST-001",
+      "execution": "browser_pending",
+      "requirement": "WCAG AA contrast, 200% zoom and responsive reflow"
+    }
+  ],
+  "execution": {
+    "contract_command": "npm run qa:contract",
+    "remote_browser_used": false,
+    "planned_route_viewport_cases": 44,
+    "notes": "This matrix validates inventory and static contracts. It does not claim browser, role or Supabase E2E coverage."
+  }
+}

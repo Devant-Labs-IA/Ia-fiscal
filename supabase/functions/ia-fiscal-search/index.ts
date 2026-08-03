@@ -119,6 +119,15 @@ Deno.serve(async (request: Request) => {
     },
   });
 
+  const token = authorization.slice("bearer ".length).trim();
+  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+  if (claimsError || !claimsData?.claims?.sub) {
+    return json(request, 401, { error: "invalid_authorization" });
+  }
+  if (claimsData.claims.aal !== "aal2") {
+    return json(request, 403, { error: "aal2_required" });
+  }
+
   const { data, error } = await supabase.rpc("ia_search_fiscal", {
     p_municipality_id: municipalityId,
     p_query: query,

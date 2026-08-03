@@ -1,5 +1,10 @@
 import { runtimeConfig } from "@/config/runtime";
 import { getSupabaseClient } from "@/lib/supabase";
+import {
+  chatOperationalPriority,
+  compareChatQueueItems,
+  normalizeHandlingMode,
+} from "@/services/chat-queue";
 import type { FiscalService } from "@/services/fiscal-service";
 import type {
   AuditEvent,
@@ -15,6 +20,7 @@ import type {
   Taxpayer,
 } from "@/types/fiscal";
 import type {
+  CaseMessageReadModel,
   DebtPeriod,
   DivergenceReadModel,
   FiscalCaseReadModel,
@@ -37,6 +43,12 @@ class FiscalDataError extends Error {
 
 function stringValue(value: unknown, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
+}
+
+function identifierValue(value: unknown, fallback = ""): string {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return fallback;
 }
 
 function nullableString(value: unknown): string | null {
@@ -162,8 +174,9 @@ function mapCase(row: Row): FiscalCaseReadModel {
     municipalityId: stringValue(row["municipality_id"]),
     caseId: stringValue(row["case_id"] ?? row["id"]),
     caseNumber: stringValue(row["case_number"], "—"),
+    divergenceId: nullableString(row["divergence_id"]),
     taxpayerId: stringValue(row["taxpayer_id"]),
-    taxpayerName: stringValue(row["taxpayer_name"] ?? row["legal_name"], "Contribuinte sem nome"),
+    taxpayerName: "Contribuinte protegido",
     status: stringValue(row["status"] ?? row["case_status"], "unknown"),
     confidentiality: stringValue(row["confidentiality"], "internal"),
     executionMode: stringValue(row["execution_mode"], "sandbox"),
@@ -299,6 +312,34 @@ async function listPortalCases(): Promise<PortalCaseReadModel[]> {
   }));
 }
 
+async function listCaseMessages(
+  municipalityId: string,
+  caseId: string,
+): Promise<CaseMessageReadModel[]> {
+  if (!municipalityId || !caseId) return [];
+  const { data, error } = await getSupabaseClient()
+    .from("case_messages")
+    .select(
+      "id, case_id, body, sender_type, source_type, status, visibility, created_at, published_at",
+    )
+    .eq("municipality_id", municipalityId)
+    .eq("case_id", caseId)
+    .order("created_at", { ascending: false })
+    .limit(200);
+  throwIfError(error);
+  return ((data as Row[] | null) ?? []).reverse().map((row) => ({
+    id: stringValue(row["id"]),
+    caseId: stringValue(row["case_id"]),
+    body: stringValue(row["body"]),
+    senderType: stringValue(row["sender_type"], "unknown"),
+    sourceType: stringValue(row["source_type"], "manual"),
+    status: stringValue(row["status"], "unknown"),
+    visibility: stringValue(row["visibility"], "restricted"),
+    createdAt: stringValue(row["created_at"]),
+    publishedAt: nullableString(row["published_at"]),
+  }));
+}
+
 async function getOperationalReport(): Promise<OperationalReport> {
   const [taxpayers, recipients] = await Promise.all([
     listTaxpayerSummaries(),
@@ -382,18 +423,22 @@ function dashboardMetrics(report: OperationalReport): DashboardMetric[] {
 }
 
 async function listFiscalCasesLegacy(): Promise<FiscalCase[]> {
-  const [cases, summaries, debtPeriods] = await Promise.all([
+  const [cases, summaries, divergences] = await Promise.all([
     listFiscalCaseRows(),
     listTaxpayerSummaries(),
-    listDebtPeriods(),
+    listDivergences(),
   ]);
   const byTaxpayer = new Map(summaries.map((item) => [item.taxpayerId, item]));
+  const byDivergence = new Map(divergences.map((item) => [item.divergenceId, item]));
   return cases.map((item) => {
     const summary = byTaxpayer.get(item.taxpayerId);
-    const period = debtPeriods.find((debt) => debt.taxpayerId === item.taxpayerId);
+    const divergence = item.divergenceId ? byDivergence.get(item.divergenceId) : undefined;
+    const divergencePeriods = divergence
+      ? [...new Set([divergence.periodStart, divergence.periodEnd].filter(Boolean))]
+      : [];
     const taxpayer: Taxpayer = {
       id: item.taxpayerId,
-      name: item.taxpayerName,
+      name: summary?.legalName ?? item.taxpayerName,
       cnpj: summary?.taxId ?? "",
       tradeName: summary?.tradeName ?? "",
       segment: summary?.taxpayerType ?? "não classificado",
@@ -405,15 +450,15 @@ async function listFiscalCasesLegacy(): Promise<FiscalCase[]> {
       id: `debt:${item.caseId}`,
       taxpayerId: item.taxpayerId,
       tax: "ISSQN — conferência municipal",
-      competences: period?.competence ? [period.competence] : [],
-      amount: period?.openBalance ?? 0,
-      dueDate: period?.firstDueOn ?? item.openedAt,
-      status: period?.status === "em_aberto" ? "vencido" : "em_discussao",
+      competences: divergencePeriods,
+      amount: divergence?.differenceAmount ?? 0,
+      dueDate: divergence?.periodEnd ?? item.openedAt,
+      status: "em_discussao",
     };
     return {
       id: item.caseId,
       taxpayer,
-      divergenceType: item.explanationTitle ?? "Conferência fiscal",
+      divergenceType: item.explanationTitle ?? divergence?.divergenceType ?? "Conferência fiscal",
       divergenceDetail: item.explanationSummary ?? "Detalhes disponíveis no dossiê autenticado.",
       amount: debt.amount,
       competences: debt.competences,
@@ -431,25 +476,44 @@ async function listFiscalCasesLegacy(): Promise<FiscalCase[]> {
   });
 }
 
-async function listChatQueue(): Promise<ChatQueueItem[]> {
+async function listChatQueue(municipalityId: string): Promise<ChatQueueItem[]> {
+  if (!municipalityId) throw new FiscalDataError("invalid_municipality_id");
   const { data, error } = await getSupabaseClient()
     .from("vw_fiscal_chat_inbox")
     .select("*")
-    .order("priority", { ascending: false })
+    .eq("municipality_id", municipalityId)
+    .in("status", ["waiting", "claimed"])
+    .order("operational_priority", { ascending: false })
+    .order("sla_due_at", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true })
     .limit(200);
   throwIfError(error);
-  return ((data as Row[] | null) ?? []).map((row) => ({
-    id: stringValue(row["question_id"]),
-    taxpayerName: stringValue(row["taxpayer_name"]),
-    cnpj: "identificador protegido",
-    lastMessage: stringValue(row["question_preview"]),
-    waitingSince: stringValue(row["created_at"]),
-    waitingLabel: nullableString(row["sla_due_at"]) ? "SLA registrado" : "sem SLA configurado",
-    origin: "portal do contribuinte",
-    priority: statusToRisk(stringValue(row["status"]), numberValue(row["priority"])),
-    suggestedReply: "Nova resposta exige revisão humana ou conhecimento publicado vigente.",
-  }));
+  return ((data as Row[] | null) ?? [])
+    .map((row) => {
+      const status = stringValue(row["status"], "submitted");
+      const slaDueAt = nullableString(row["sla_due_at"]);
+      return {
+        id: stringValue(row["question_id"]),
+        municipalityId: stringValue(row["municipality_id"]),
+        caseId: stringValue(row["case_id"]),
+        caseNumber: stringValue(row["case_number"], "Processo protegido"),
+        taxpayerName: stringValue(row["taxpayer_name"]),
+        cnpj: "identificador protegido",
+        lastMessage: stringValue(row["question_preview"]),
+        waitingSince: stringValue(row["created_at"]),
+        waitingLabel: slaDueAt ? "SLA registrado" : "sem SLA configurado",
+        slaDueAt,
+        status,
+        handlingMode: normalizeHandlingMode(row["handling_mode"]),
+        assignedMembershipId: nullableString(row["assigned_membership_id"]),
+        claimedAt: nullableString(row["claimed_at"]),
+        origin: "portal do contribuinte" as const,
+        priority: chatOperationalPriority(status, slaDueAt),
+        suggestedReply:
+          "Nenhuma resposta automática foi gerada. Consulte a conversa e as fontes governadas antes de redigir qualquer orientação.",
+      };
+    })
+    .sort(compareChatQueueItems);
 }
 
 async function listProcessingHealth(): Promise<ProcessingHealthIndicator[]> {
@@ -483,7 +547,7 @@ async function listAuditEvents(): Promise<AuditEvent[]> {
     .limit(20);
   throwIfError(error);
   return ((data as Row[] | null) ?? []).map((row) => ({
-    id: stringValue(row["id"]),
+    id: identifierValue(row["id"]),
     type: "escalonamento",
     title: stringValue(row["event_type"], "Evento do processo"),
     description: `Evento auditável com visibilidade ${stringValue(row["visibility"], "restrita")}.`,
@@ -601,7 +665,26 @@ export const supabaseFiscalService: FiscalService = {
   listNotificationRecipients,
   listKnowledgeArticles,
   listPortalCases,
+  listCaseMessages,
   getOperationalReport,
+  async claimCaseQuestion(questionId, municipalityId, membershipId, handlingMode): Promise<string> {
+    if (!questionId) throw new FiscalDataError("invalid_question_id");
+    if (!municipalityId) throw new FiscalDataError("invalid_municipality_id");
+    if (!membershipId) throw new FiscalDataError("invalid_membership_id");
+    if (handlingMode !== "human" && handlingMode !== "ai_assist") {
+      throw new FiscalDataError("invalid_handling_mode");
+    }
+    const { data, error } = await getSupabaseClient().rpc("ia_claim_case_question", {
+      p_question_id: questionId,
+      p_expected_municipality_id: municipalityId,
+      p_expected_membership_id: membershipId,
+      p_handling_mode: handlingMode,
+    });
+    throwIfError(error);
+    const returnedMembershipId = stringValue(data);
+    if (!returnedMembershipId) throw new FiscalDataError("claim_membership_missing");
+    return returnedMembershipId;
+  },
   async submitCaseQuestion(caseId, body, clientRequestId): Promise<string> {
     const normalizedBody = body.trim();
     if (normalizedBody.length < 5 || normalizedBody.length > 4000) {

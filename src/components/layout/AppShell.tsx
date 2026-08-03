@@ -48,9 +48,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   const auth = useAuth();
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const isPortal = auth.access?.role === "taxpayer" || auth.access?.role === "accountant";
+  const isPlatformAdmin = auth.access?.role === "platform_admin";
 
   if (isPortal && !pathname.startsWith("/portal")) {
     return <Navigate to="/portal" replace />;
+  }
+  if (isPlatformAdmin && !pathname.startsWith("/configuracoes")) {
+    return <Navigate to="/configuracoes" replace />;
   }
 
   return (
@@ -60,7 +64,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <SidebarInset className="min-w-0 flex-1 bg-background">
           <Topbar />
           <AppBreadcrumb />
-          <main className="px-3 pb-12 pt-3 sm:px-6">{children}</main>
+          <div className="px-3 pb-12 pt-3 sm:px-6">{children}</div>
         </SidebarInset>
       </div>
     </SidebarProvider>

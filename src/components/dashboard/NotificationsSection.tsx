@@ -1,7 +1,19 @@
-import { CheckCircle2, Mail, MessageCircle, ShieldAlert, type LucideIcon } from "lucide-react";
-import { toast } from "sonner";
+import { Link } from "@tanstack/react-router";
+import {
+  ArrowRight,
+  CheckCircle2,
+  Mail,
+  MessageCircle,
+  ShieldAlert,
+  type LucideIcon,
+} from "lucide-react";
 
-import { EmptyState, SectionCard, SectionSkeleton } from "@/components/common/SectionCard";
+import {
+  EmptyState,
+  ErrorState,
+  SectionCard,
+  SectionSkeleton,
+} from "@/components/common/SectionCard";
 import { StatusBadge } from "@/components/common/StatusBadges";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,13 +29,22 @@ const channelIcons: Record<NotificationCandidate["channel"], LucideIcon> = {
 interface NotificationsSectionProps {
   items: NotificationCandidate[] | undefined;
   isLoading: boolean;
+  isError: boolean;
 }
 
-export function NotificationsSection({ items, isLoading }: NotificationsSectionProps) {
+export function NotificationsSection({ items, isLoading, isError }: NotificationsSectionProps) {
+  const visibleCount = items?.length ?? 0;
+
   return (
     <SectionCard
       title="Notificações para validar"
-      description="86 destinatários preparados. Nenhum liberado para envio."
+      description={
+        isLoading
+          ? "Carregando candidatos a destinatário."
+          : isError
+            ? "Contagem indisponível. Nenhum envio foi liberado."
+            : `${visibleCount} candidato${visibleCount === 1 ? "" : "s"} ${visibleCount === 1 ? "visível" : "visíveis"}. Nenhum liberado para envio.`
+      }
       action={
         <Badge
           variant="outline"
@@ -33,7 +54,9 @@ export function NotificationsSection({ items, isLoading }: NotificationsSectionP
         </Badge>
       }
     >
-      {isLoading ? (
+      {isError ? (
+        <ErrorState message="Não foi possível carregar os candidatos de notificação." />
+      ) : isLoading ? (
         <SectionSkeleton rows={3} />
       ) : (items ?? []).length === 0 ? (
         <EmptyState message="Nenhuma notificação aguardando validação." />
@@ -72,26 +95,22 @@ export function NotificationsSection({ items, isLoading }: NotificationsSectionP
                 </div>
 
                 <div className="flex flex-wrap items-start gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      toast.info("Mensagem aberta para revisão", {
-                        description: item.draftMessage,
-                      })
-                    }
-                  >
-                    Revisar mensagem
+                  <Button asChild size="sm" variant="outline">
+                    <Link
+                      to="/notificacoes"
+                      aria-label={`Abrir detalhes da notificação de ${item.taxpayerName}`}
+                    >
+                      Abrir detalhes
+                      <ArrowRight className="size-4" aria-hidden />
+                    </Link>
                   </Button>
                   <Button
                     size="sm"
-                    onClick={() =>
-                      toast.success("Validação de contato registrada", {
-                        description: "Ambiente de homologação — nenhum envio externo autorizado.",
-                      })
-                    }
+                    disabled
+                    title="A validação de contatos ainda não está habilitada nesta interface."
+                    aria-label={`Validação de contato indisponível para ${item.taxpayerName}`}
                   >
-                    Validar contato
+                    Validação indisponível
                   </Button>
                 </div>
               </li>

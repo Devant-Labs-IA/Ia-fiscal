@@ -80,11 +80,19 @@ export interface NotificationCandidate {
 
 export interface ChatQueueItem {
   id: string;
+  municipalityId: string;
+  caseId: string;
+  caseNumber: string;
   taxpayerName: string;
   cnpj: string;
   lastMessage: string;
   waitingSince: string;
   waitingLabel: string;
+  slaDueAt: string | null;
+  status: string;
+  handlingMode: "unassigned" | "human" | "ai_assist";
+  assignedMembershipId: string | null;
+  claimedAt: string | null;
   origin: "portal do contribuinte" | "whatsapp" | "e-mail" | "atendimento presencial";
   priority: RiskLevel;
   suggestedReply: string;

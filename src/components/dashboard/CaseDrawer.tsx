@@ -1,5 +1,5 @@
+import { Link } from "@tanstack/react-router";
 import { FileText, Landmark, Receipt } from "lucide-react";
-import { toast } from "sonner";
 
 import { RiskBadge, StatusBadge } from "@/components/common/StatusBadges";
 import { HomologationBanner } from "@/components/layout/HomologationBanner";
@@ -30,6 +30,8 @@ function Field({ label, value }: { label: string; value: string }) {
 }
 
 export function CaseDrawer({ fiscalCase, onOpenChange }: CaseDrawerProps) {
+  const hasFinancialReference = Boolean(fiscalCase?.competences.length);
+
   return (
     <Sheet open={Boolean(fiscalCase)} onOpenChange={onOpenChange}>
       <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
@@ -86,13 +88,25 @@ export function CaseDrawer({ fiscalCase, onOpenChange }: CaseDrawerProps) {
               <section>
                 <h3 className="flex items-center gap-2 text-sm font-semibold">
                   <Receipt className="size-4 text-primary" aria-hidden />
-                  Débito vinculado
+                  Referência financeira da divergência
                 </h3>
                 <dl className="mt-3 grid grid-cols-2 gap-3">
-                  <Field label="Tributo" value={fiscalCase.debt.tax} />
+                  <Field label="Escopo" value={fiscalCase.debt.tax} />
                   <Field label="Situação" value={fiscalCase.debt.status.replace("_", " ")} />
-                  <Field label="Vencimento" value={formatDate(fiscalCase.debt.dueDate)} />
-                  <Field label="Valor" value={formatCurrency(fiscalCase.debt.amount)} />
+                  <Field
+                    label="Fim do período"
+                    value={
+                      hasFinancialReference ? formatDate(fiscalCase.debt.dueDate) : "Não vinculado"
+                    }
+                  />
+                  <Field
+                    label="Diferença apurada"
+                    value={
+                      hasFinancialReference
+                        ? formatCurrency(fiscalCase.debt.amount)
+                        : "Não vinculada"
+                    }
+                  />
                 </dl>
               </section>
 
@@ -114,24 +128,16 @@ export function CaseDrawer({ fiscalCase, onOpenChange }: CaseDrawerProps) {
               </section>
 
               <div className="flex flex-wrap gap-2">
-                <Button
-                  onClick={() =>
-                    toast.success("Análise registrada em rascunho", {
-                      description: "Ambiente de homologação — nenhum envio externo autorizado.",
-                    })
-                  }
-                >
-                  Registrar análise
+                <Button asChild>
+                  <Link to="/fiscalizacoes">Abrir fiscalizações</Link>
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={() =>
-                    toast.info("Solicitação de documentos preparada", {
-                      description: "O pedido fica retido até autorização de envio.",
-                    })
-                  }
-                >
-                  Solicitar documentos
+                <Button asChild variant="outline">
+                  <Link
+                    to="/contribuintes/$taxpayerId"
+                    params={{ taxpayerId: fiscalCase.taxpayer.id }}
+                  >
+                    Ver contribuinte 360
+                  </Link>
                 </Button>
               </div>
             </div>

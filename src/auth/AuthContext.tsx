@@ -51,8 +51,7 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const STAFF_ROLES = new Set<StaffRole>([
-  "platform_admin",
+const MUNICIPAL_STAFF_ROLES = new Set<StaffRole>([
   "municipal_admin",
   "supervisor",
   "fiscal_auditor",
@@ -89,12 +88,29 @@ async function resolveAccess(userId: string): Promise<AccessContext | null> {
     .maybeSingle();
 
   if (staff.error) throw staff.error;
-  if (staff.data && STAFF_ROLES.has(staff.data.role as StaffRole)) {
+  if (staff.data && MUNICIPAL_STAFF_ROLES.has(staff.data.role as StaffRole)) {
     return {
       role: staff.data.role as StaffRole,
       municipalityId: staff.data.municipality_id as string,
       municipalityLabel: runtimeConfig.municipalityLabel,
       membershipId: staff.data.id as string,
+    };
+  }
+
+  const platform = await supabase
+    .from("platform_administrators")
+    .select("user_id")
+    .eq("user_id", userId)
+    .eq("active", true)
+    .is("revoked_at", null)
+    .maybeSingle();
+
+  if (platform.error) throw platform.error;
+  if (platform.data) {
+    return {
+      role: "platform_admin",
+      municipalityId: "",
+      municipalityLabel: "Administração da plataforma",
     };
   }
 
