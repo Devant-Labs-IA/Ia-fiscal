@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Lint, types, tests and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Reject administrative secrets in web sources
+        shell: bash
+        run: |
+          admin_key='SUPABASE_''SERVICE_ROLE_KEY'
+          secret_prefix='sb_''secret_'
+          service_role_key='SERVICE_''ROLE_KEY'
+          admin_pattern="(${admin_key}|${secret_prefix}|${service_role_key})"
+          if git grep -nE "$admin_pattern" -- src public ':(exclude)**/*.test.*'; then
+            echo 'Administrative secret marker found in a web-delivered path.'
+            exit 1
+          fi
+
+      - name: Reject committed secret values
+        shell: bash
+        run: |
+          private_key='PRIVATE ''KEY'
+          secret_prefix='sb_''secret_'
+          admin_key='SUPABASE_''SERVICE_ROLE_KEY'
+          secret_pattern="(BEGIN (RSA |EC |OPENSSH )?${private_key}|${secret_prefix}[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9_]{20,}|${admin_key}[[:space:]]*=)"
+          if git grep -nE "$secret_pattern" -- .; then
+            echo 'Potential secret value found in the repository.'
+            exit 1
+          fi
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Formatting
+        run: npm run format:check
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Production build (artifact validation only)
+        env:
+          VITE_APP_ENV: homologation
+          VITE_DATA_MODE: mock
+          VITE_ALLOW_DEMO: "true"
+          VITE_SUPABASE_URL: https://qvgenxcrdrqyiyozxtdt.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_Frt254fLpExL7A52zWNCnw_ZXLP7k33
+          VITE_MUNICIPALITY_LABEL: Cordeirópolis/SP
+          VITE_MUNICIPALITY_IBGE: "3512407"
+          VITE_APP_TIMEZONE: America/Sao_Paulo
+        run: npm run build

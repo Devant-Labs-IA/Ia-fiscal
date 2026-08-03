@@ -1,0 +1,9 @@
+# Configuração versionada apenas para desenvolvimento e homologação.
+# O project_id remoto não é usado aqui para promover mudanças automaticamente.
+project_id = "ia-fiscal"
+
+[functions.ia-fiscal-worker]
+verify_jwt = true
+
+[functions.ia-fiscal-search]
+verify_jwt = true

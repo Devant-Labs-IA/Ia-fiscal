@@ -1,0 +1,12 @@
+node_modules
+dist
+.output
+.vinxi
+pnpm-lock.yaml
+package-lock.json
+bun.lock
+routeTree.gen.ts
+src/types/database.generated.ts
+supabase/migrations
+supabase/functions
+docs/security/reviews/2026-08-02-pre-remediation.md

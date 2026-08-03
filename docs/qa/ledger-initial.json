@@ -1,0 +1,672 @@
+{
+  "schema_version": 1,
+  "system": {
+    "name": "IA Fiscal",
+    "environment": "homologation/sandbox",
+    "version": "Supabase 32 migrations through 20260802162332; local frontend 98630ba plus uncommitted dependency changes; GitHub remote empty",
+    "base_url": "https://qvgenxcrdrqyiyozxtdt.supabase.co"
+  },
+  "run": {
+    "inventory_complete": false,
+    "clean_critical_passes": 0,
+    "full_regression_after_last_change": false
+  },
+  "scope": {
+    "roles": ["unauthenticated", "fiscal_staff", "taxpayer", "service_worker", "maintainer"],
+    "viewports": ["mobile", "tablet", "desktop"],
+    "areas": [
+      "repository",
+      "frontend",
+      "auth",
+      "database",
+      "edge",
+      "integrations",
+      "security",
+      "deployment",
+      "ui_quality",
+      "observability",
+      "performance"
+    ]
+  },
+  "items": [
+    {
+      "id": "OPS-GH-001",
+      "layer": "operations",
+      "area": "repository",
+      "name": "Acesso ao repositório privado",
+      "required": true,
+      "critical": false,
+      "status": "pass",
+      "expected_roles": ["maintainer"],
+      "tested_roles": ["maintainer"],
+      "expected_viewports": [],
+      "tested_viewports": [],
+      "evidence": [
+        "GitHub connector 2026-08-02 17:23 BRT: AlmoreContabilidade/Ia-fiscal, private, admin/push/pull=true"
+      ],
+      "defects": [],
+      "notes": "Valida acesso, não presença do código."
+    },
+    {
+      "id": "OPS-GH-002",
+      "layer": "operations",
+      "area": "repository",
+      "name": "Código-fonte e histórico publicados no GitHub",
+      "required": true,
+      "critical": true,
+      "status": "fail",
+      "expected_roles": ["maintainer"],
+      "tested_roles": ["maintainer"],
+      "expected_viewports": [],
+      "tested_viewports": [],
+      "evidence": [
+        "GitHub connector 2026-08-02 17:23 BRT: repository size=0",
+        "GitHub commits endpoint: 409 Git Repository is empty"
+      ],
+      "defects": ["DEF-001"],
+      "notes": "O remoto comprovado está vazio."
+    },
+    {
+      "id": "OPS-LOCAL-001",
+      "layer": "operations",
+      "area": "repository",
+      "name": "Snapshot local do frontend",
+      "required": false,
+      "critical": false,
+      "status": "pass",
+      "expected_roles": ["maintainer"],
+      "tested_roles": ["maintainer"],
+      "expected_viewports": [],
+      "tested_viewports": [],
+      "evidence": [
+        "git local 2026-08-02 17:23 BRT: HEAD 98630ba, quatro commits locais, branch main",
+        "git remote -v: nenhuma saída",
+        "git status: package.json e package-lock.json modificados"
+      ],
+      "defects": [],
+      "notes": "Evidência local separada do GitHub remoto."
+    },
+    {
+      "id": "OPS-SOURCE-PARITY-001",
+      "layer": "operations",
+      "area": "repository",
+      "name": "Paridade entre código local, GitHub e Supabase implantado",
+      "required": true,
+      "critical": true,
+      "status": "blocked",
+      "expected_roles": ["maintainer"],
+      "tested_roles": ["maintainer"],
+      "expected_viewports": [],
+      "tested_viewports": [],
+      "evidence": [
+        "GitHub remoto vazio; checkout local sem remote; Supabase contém 32 migrações e 2 Edge Functions",
+        "Consultas SQL adicionais bloqueadas por cota do revisor automático até 2026-08-08 00:48 BRT"
+      ],
+      "defects": ["DEF-001"],
+      "notes": "Não é possível provar que o código implantado é reproduzível pelo repositório."
+    },
+    {
+      "id": "DB-PROJECT-001",
+      "layer": "database",
+      "area": "database",
+      "name": "Projeto Supabase correto e saudável",
+      "required": true,
+      "critical": false,
+      "status": "pass",
+      "expected_roles": ["maintainer"],
+      "tested_roles": ["maintainer"],
+      "expected_viewports": [],
+      "tested_viewports": [],
+      "evidence": [
+        "Supabase connector: qvgenxcrdrqyiyozxtdt, name IA Fiscal, region sa-east-1, status ACTIVE_HEALTHY, PostgreSQL 17.6"
+      ],
+      "defects": [],
+      "notes": ""
+    },
+    {
+      "id": "DB-SCHEMA-001",
+      "layer": "database",
+      "area": "database",
+      "name": "Inventário de tabelas e RLS",
+      "required": true,
+      "critical": false,
+      "status": "pass",
+      "expected_roles": ["maintainer"],
+      "tested_roles": ["maintainer"],
+      "expected_viewports": [],
+      "tested_viewports": [],
+      "evidence": [
+        "Supabase list_tables: 101 tabelas — 83 public, 16 private, 2 audit",
+        "Supabase list_tables: RLS habilitada nas 101 tabelas"
+      ],
+      "defects": [],
+      "notes": "Existência e configuração estática; não prova políticas corretas."
+    },
+    {
+      "id": "DB-MIGRATIONS-001",
+      "layer": "database",
+      "area": "database",
+      "name": "Histórico de migrações implantadas",
+      "required": true,
+      "critical": false,
+      "status": "pass",
+      "expected_roles": ["maintainer"],
+      "tested_roles": ["maintainer"],
+      "expected_viewports": [],
+      "tested_viewports": [],
+      "evidence": [
+        "Supabase list_migrations: 32 migrações, de 20260730025805 ia_fiscal_001_foundation a 20260802162332 taxpayer_360_divergence_metadata_access"
+      ],
+      "defects": [],
+      "notes": "Os arquivos correspondentes não estão no GitHub remoto."
+    },
+    {
+      "id": "DB-HANDOFF-360-001",
+      "layer": "database",
+      "area": "database",
+      "name": "Estruturas recentes do contribuinte 360",
+      "required": false,
+      "critical": false,
+      "status": "pass",
+      "expected_roles": ["fiscal_staff", "taxpayer"],
+      "tested_roles": ["fiscal_staff"],
+      "expected_viewports": ["desktop"],
+      "tested_viewports": [],
+      "evidence": [
+        "Migrações 20260802162024, 162031, 162037 e 162332: access/core views, history/relationships, next actions e divergence metadata",
+        "Postgres log: teste transacional RLS de leitura da visão 360 por fiscal_auditor executado com rollback antes da migração final"
+      ],
+      "defects": [],
+      "notes": "Confirma implantação e uma prova histórica limitada; não é E2E atual."
+    },
+    {
+      "id": "DB-RLS-NO-POLICY-001",
+      "layer": "security",
+      "area": "security",
+      "name": "Exposição efetiva das tabelas RLS sem políticas",
+      "required": true,
+      "critical": true,
+      "status": "blocked",
+      "expected_roles": ["unauthenticated", "fiscal_staff", "taxpayer", "service_worker"],
+      "tested_roles": [],
+      "expected_viewports": [],
+      "tested_viewports": [],
+      "evidence": [
+        "Security advisor: 18 INFO rls_enabled_no_policy — 16 private e 2 audit",
+        "Consultas de grants/Data API bloqueadas pela cota do revisor automático"
+      ],
+      "defects": [],
+      "notes": "RLS sem policy tende a deny-all; exposição dos schemas e grants não foi comprovada."
+    },
+    {
+      "id": "DB-CRUD-001",
+      "layer": "database",
+      "area": "database",
+      "name": "CRUD, constraints, transações e concorrência",
+      "required": true,
+      "critical": true,
+      "status": "blocked",
+      "expected_roles": ["fiscal_staff", "taxpayer", "service_worker"],
+      "tested_roles": [],
+      "expected_viewports": [],
+      "tested_viewports": [],
+      "evidence": [
+        "Nenhum tenant/usuário de teste autorizado foi disponibilizado para esta passagem",
+        "Consultas SQL adicionais rejeitadas por cota do revisor automático até 2026-08-08 00:48 BRT"
+      ],
+      "defects": [],
+      "notes": "Não executar mutações em dados possivelmente reais."
+    },
+    {
+      "id": "DB-AUDIT-001",
+      "layer": "security",
+      "area": "security",
+      "name": "Integridade da trilha de auditoria",
+      "required": true,
+      "critical": true,
+      "status": "blocked",
+      "expected_roles": ["fiscal_staff", "taxpayer", "service_worker", "maintainer"],
+      "tested_roles": [],
+      "expected_viewports": [],
+      "tested_viewports": [],
+      "evidence": [
+        "Supabase list_tables: audit.audit_events=949 linhas; audit.audit_anchors=0",
+        "Verificação de encadeamento/imutabilidade não executada por bloqueio SQL"
+      ],
+      "defects": [],
+      "notes": "Volume não prova integridade."
+    },
+    {
+      "id": "SEC-ADVISOR-001",
+      "layer": "security",
+      "area": "security",
+      "name": "RPCs SECURITY DEFINER expostas a authenticated",
+      "required": true,
+      "critical": true,
+      "status": "fail",
+      "expected_roles": ["unauthenticated", "fiscal_staff", "taxpayer"],
+      "tested_roles": [],
+      "expected_viewports": [],
+      "tested_viewports": [],
+      "evidence": [
+        "Supabase security advisor: 19 WARN authenticated_security_definer_function_executable em public",
+        "Advisories incluem ativação de políticas/regras/templates, aprovação de lotes, publicação de conteúdo/respostas, busca e reconstrução de cálculos"
+      ],
+      "defects": ["DEF-006"],
+      "notes": "É risco potencial; exploração não foi validada."
+    },
+    {
+      "id": "SEC-TENANT-NEGATION-001",
+      "layer": "security",
+      "area": "security",
+      "name": "Negação entre tenants e perfis",
+      "required": true,
+      "critical": true,
+      "status": "blocked",
+      "expected_roles": ["unauthenticated", "fiscal_staff", "taxpayer"],
+      "tested_roles": [],
+      "expected_viewports": [],
+      "tested_viewports": [],
+      "evidence": [
+        "Inventário mostra 2 municípios, mas profiles=0 e municipality_memberships=0",
+        "Sem sessões de teste e consultas SQL adicionais bloqueadas"
+      ],
+      "defects": [],
+      "notes": "Nenhum PASS de isolamento pode ser declarado."
+    },
+    {
+      "id": "BE-EDGE-STATIC-001",
+      "layer": "backend",
+      "area": "edge",
+      "name": "Edge Functions implantadas e inspecionáveis",
+      "required": true,
+      "critical": false,
+      "status": "pass",
+      "expected_roles": ["service_worker", "fiscal_staff"],
+      "tested_roles": ["maintainer"],
+      "expected_viewports": [],
+      "tested_viewports": [],
+      "evidence": [
+        "ia-fiscal-worker v3 ACTIVE verify_jwt=true",
+        "ia-fiscal-search v1 ACTIVE verify_jwt=true",
+        "Ambas fixam @supabase/supabase-js em 2.111.0"
+      ],
+      "defects": [],
+      "notes": "Inspeção estática, não execução."
+    },
+    {
+      "id": "BE-WORKER-RUNTIME-001",
+      "layer": "backend",
+      "area": "edge",
+      "name": "Worker consome fila e registra heartbeat",
+      "required": true,
+      "critical": true,
+      "status": "blocked",
+      "expected_roles": ["service_worker"],
+      "tested_roles": [],
+      "expected_viewports": [],
+      "tested_viewports": [],
+      "evidence": [
+        "Edge logs últimas 24h: vazio",
+        "public.worker_health=0 e private.jobs=0 na listagem de tabelas",
+        "Worker exige JWT e x-ia-worker-secret; nenhum agendador/projeto Vercel foi identificado"
+      ],
+      "defects": [],
+      "notes": "Não houve autorização para disparar o worker nem job controlado disponível."
+    },
+    {
+      "id": "BE-SEARCH-RUNTIME-001",
+      "layer": "api",
+      "area": "edge",
+      "name": "Busca fiscal autenticada executa RPC com RLS",
+      "required": true,
+      "critical": true,
+      "status": "blocked",
+      "expected_roles": ["unauthenticated", "fiscal_staff", "taxpayer"],
+      "tested_roles": [],
+      "expected_viewports": ["desktop"],
+      "tested_viewports": [],
+      "evidence": [
+        "Código implantado valida Bearer, CORS, UUID, limite e chama ia_search_fiscal",
+        "Edge logs últimas 24h: vazio; nenhuma credencial de teste foi disponibilizada"
+      ],
+      "defects": [],
+      "notes": "Contrato estático presente; efeito real não confirmado."
+    },
+    {
+      "id": "INT-EXTERNAL-IO-001",
+      "layer": "integration",
+      "area": "integrations",
+      "name": "Entrega externa de notificação e geração por IA",
+      "required": true,
+      "critical": true,
+      "status": "not_run",
+      "expected_roles": ["service_worker", "fiscal_staff", "taxpayer"],
+      "tested_roles": [],
+      "expected_viewports": [],
+      "tested_viewports": [],
+      "evidence": [],
+      "defects": [],
+      "notes": "Worker declara mode=sandbox e external_io=disabled; envio real é corretamente bloqueado nesta fase."
+    },
+    {
+      "id": "FE-ROUTE-INVENTORY-001",
+      "layer": "ui",
+      "area": "frontend",
+      "name": "Inventário estático de rotas",
+      "required": true,
+      "critical": false,
+      "status": "pass",
+      "expected_roles": ["fiscal_staff", "taxpayer"],
+      "tested_roles": ["maintainer"],
+      "expected_viewports": ["mobile", "tablet", "desktop"],
+      "tested_viewports": [],
+      "evidence": [
+        "Código local: 10 rotas de página — dashboard, contribuintes, fiscalizações, débitos, notificações, atendimento, segundo cérebro, relatórios, configurações e portal"
+      ],
+      "defects": [],
+      "notes": "Inventário estático não comprova navegação dinâmica."
+    },
+    {
+      "id": "FE-BACKEND-001",
+      "layer": "integration",
+      "area": "frontend",
+      "name": "Frontend conectado ao Supabase real",
+      "required": true,
+      "critical": true,
+      "status": "fail",
+      "expected_roles": ["fiscal_staff", "taxpayer"],
+      "tested_roles": ["maintainer"],
+      "expected_viewports": ["mobile", "tablet", "desktop"],
+      "tested_viewports": [],
+      "evidence": [
+        "src/services/fiscal-service.ts: fiscalService = mockFiscalService",
+        "src/data/mocks.ts: dados fictícios de homologação",
+        "Busca e ações de dashboard geram apenas toasts e estado local"
+      ],
+      "defects": ["DEF-002"],
+      "notes": "Não existe cadeia UI→API→banco no frontend auditado."
+    },
+    {
+      "id": "FE-ROUTES-IMPLEMENTED-001",
+      "layer": "ui",
+      "area": "frontend",
+      "name": "Rotas funcionais além do dashboard",
+      "required": true,
+      "critical": true,
+      "status": "fail",
+      "expected_roles": ["fiscal_staff", "taxpayer"],
+      "tested_roles": ["maintainer"],
+      "expected_viewports": ["mobile", "tablet", "desktop"],
+      "tested_viewports": [],
+      "evidence": [
+        "9 de 10 rotas usam PagePlaceholder: contribuintes, fiscalizações, débitos, notificações, atendimento, segundo cérebro, relatórios, configurações e portal"
+      ],
+      "defects": ["DEF-003"],
+      "notes": "Somente o dashboard contém componentes operacionais, ainda mockados."
+    },
+    {
+      "id": "AUTH-FRONT-001",
+      "layer": "auth",
+      "area": "auth",
+      "name": "Login, sessão e autorização reais no frontend",
+      "required": true,
+      "critical": true,
+      "status": "fail",
+      "expected_roles": ["unauthenticated", "fiscal_staff", "taxpayer"],
+      "tested_roles": ["maintainer"],
+      "expected_viewports": ["mobile", "tablet", "desktop"],
+      "tested_viewports": [],
+      "evidence": [
+        "Topbar: toast 'Sessão simulada: autenticação real será adicionada depois'",
+        "navigation.ts: perfil Contribuinte será implementado em etapa futura",
+        "Supabase list_tables: profiles=0 e municipality_memberships=0"
+      ],
+      "defects": ["DEF-004"],
+      "notes": ""
+    },
+    {
+      "id": "FE-TYPECHECK-001",
+      "layer": "ui",
+      "area": "ui_quality",
+      "name": "TypeScript sem erros",
+      "required": true,
+      "critical": false,
+      "status": "pass",
+      "expected_roles": ["maintainer"],
+      "tested_roles": ["maintainer"],
+      "expected_viewports": [],
+      "tested_viewports": [],
+      "evidence": ["./node_modules/.bin/tsc --noEmit: exit 0 em 2026-08-02"],
+      "defects": [],
+      "notes": "Snapshot local com package files modificados."
+    },
+    {
+      "id": "FE-LINT-SRC-001",
+      "layer": "ui",
+      "area": "ui_quality",
+      "name": "Lint do diretório src",
+      "required": false,
+      "critical": false,
+      "status": "pass",
+      "expected_roles": ["maintainer"],
+      "tested_roles": ["maintainer"],
+      "expected_viewports": [],
+      "tested_viewports": [],
+      "evidence": ["eslint src: exit 0, 0 erros, 6 warnings react-refresh/only-export-components"],
+      "defects": [],
+      "notes": "O lint completo `eslint .` foi interrompido após aproximadamente 90s sem conclusão."
+    },
+    {
+      "id": "FE-LINT-FULL-001",
+      "layer": "ui",
+      "area": "ui_quality",
+      "name": "Lint completo do repositório",
+      "required": false,
+      "critical": false,
+      "status": "blocked",
+      "expected_roles": ["maintainer"],
+      "tested_roles": ["maintainer"],
+      "expected_viewports": [],
+      "tested_viewports": [],
+      "evidence": [
+        "npm run lint permaneceu sem saída/conclusão por aproximadamente 90s e foi interrompido com exit 130"
+      ],
+      "defects": [],
+      "notes": "O lint focal de src passou."
+    },
+    {
+      "id": "FE-TESTS-001",
+      "layer": "ui",
+      "area": "ui_quality",
+      "name": "Testes automatizados do frontend",
+      "required": true,
+      "critical": true,
+      "status": "fail",
+      "expected_roles": ["fiscal_staff", "taxpayer", "maintainer"],
+      "tested_roles": [],
+      "expected_viewports": ["mobile", "tablet", "desktop"],
+      "tested_viewports": [],
+      "evidence": [
+        "Nenhum arquivo *.test.* ou *.spec.* encontrado",
+        "package.json não possui script test; dependências Vitest/Testing Library estão apenas em mudanças locais não commitadas"
+      ],
+      "defects": ["DEF-005"],
+      "notes": ""
+    },
+    {
+      "id": "UI-E2E-001",
+      "layer": "ui",
+      "area": "ui_quality",
+      "name": "Jornadas E2E por perfil e viewport",
+      "required": true,
+      "critical": true,
+      "status": "not_run",
+      "expected_roles": ["unauthenticated", "fiscal_staff", "taxpayer"],
+      "tested_roles": [],
+      "expected_viewports": ["mobile", "tablet", "desktop"],
+      "tested_viewports": [],
+      "evidence": [],
+      "defects": [],
+      "notes": "Sem deployment Vercel e sem autenticação/backend conectados."
+    },
+    {
+      "id": "A11Y-E2E-001",
+      "layer": "accessibility",
+      "area": "ui_quality",
+      "name": "Teclado, foco, nomes acessíveis, contraste e erros",
+      "required": true,
+      "critical": false,
+      "status": "not_run",
+      "expected_roles": ["unauthenticated", "fiscal_staff", "taxpayer"],
+      "tested_roles": [],
+      "expected_viewports": ["mobile", "tablet", "desktop"],
+      "tested_viewports": [],
+      "evidence": [],
+      "defects": [],
+      "notes": ""
+    },
+    {
+      "id": "VERCEL-DISCOVERY-001",
+      "layer": "operations",
+      "area": "deployment",
+      "name": "Descoberta da conta Vercel",
+      "required": false,
+      "critical": false,
+      "status": "pass",
+      "expected_roles": ["maintainer"],
+      "tested_roles": ["maintainer"],
+      "expected_viewports": [],
+      "tested_viewports": [],
+      "evidence": ["Vercel connector: team diego-4685s-projects acessível; projects=[]"],
+      "defects": [],
+      "notes": ""
+    },
+    {
+      "id": "VERCEL-DEPLOY-001",
+      "layer": "operations",
+      "area": "deployment",
+      "name": "Projeto e deployment Vercel do IA Fiscal",
+      "required": false,
+      "critical": false,
+      "status": "not_run",
+      "expected_roles": ["maintainer", "fiscal_staff", "taxpayer"],
+      "tested_roles": ["maintainer"],
+      "expected_viewports": ["mobile", "tablet", "desktop"],
+      "tested_viewports": [],
+      "evidence": [],
+      "defects": [],
+      "notes": "Nenhum projeto/deploy identificável na equipe conectada."
+    },
+    {
+      "id": "OBS-LOGS-001",
+      "layer": "operations",
+      "area": "observability",
+      "name": "Observabilidade operacional do Supabase",
+      "required": true,
+      "critical": true,
+      "status": "blocked",
+      "expected_roles": ["maintainer", "service_worker"],
+      "tested_roles": ["maintainer"],
+      "expected_viewports": [],
+      "tested_viewports": [],
+      "evidence": [
+        "Postgres logs acessíveis e mostram migrações/teste transacional",
+        "API logs: Failed to get project's logs",
+        "Edge/Auth/Storage/Realtime logs das últimas 24h: vazios"
+      ],
+      "defects": [],
+      "notes": "Ausência de evento não comprova funcionamento."
+    },
+    {
+      "id": "PERF-ADVISOR-001",
+      "layer": "performance",
+      "area": "performance",
+      "name": "Foreign keys com índice de cobertura",
+      "required": false,
+      "critical": false,
+      "status": "fail",
+      "expected_roles": ["maintainer"],
+      "tested_roles": ["maintainer"],
+      "expected_viewports": [],
+      "tested_viewports": [],
+      "evidence": [
+        "Supabase performance advisor: 12 unindexed_foreign_keys INFO",
+        "Os avisos atingem contas correntes, calendário/vencimento, candidatos de notificação e cálculo efetivo do Simples"
+      ],
+      "defects": ["DEF-007"],
+      "notes": "Impacto ainda não medido sob volume."
+    }
+  ],
+  "defects": [
+    {
+      "id": "DEF-001",
+      "severity": "P1",
+      "status": "open",
+      "title": "GitHub remoto vazio e checkout local sem remote; backend implantado não é reproduzível pelo repositório",
+      "item_ids": ["OPS-GH-002", "OPS-SOURCE-PARITY-001"],
+      "evidence": [
+        "GitHub size=0 e commits 409; git remote -v vazio; Supabase possui 32 migrações e 2 Edge Functions"
+      ],
+      "waiver": null
+    },
+    {
+      "id": "DEF-002",
+      "severity": "P1",
+      "status": "open",
+      "title": "Frontend não está conectado ao backend real",
+      "item_ids": ["FE-BACKEND-001"],
+      "evidence": ["fiscalService = mockFiscalService; dados e ações permanecem locais/toast"],
+      "waiver": null
+    },
+    {
+      "id": "DEF-003",
+      "severity": "P2",
+      "status": "open",
+      "title": "Nove das dez rotas de negócio são placeholders",
+      "item_ids": ["FE-ROUTES-IMPLEMENTED-001"],
+      "evidence": ["Inspeção estática: 9 arquivos de rota renderizam PagePlaceholder"],
+      "waiver": null
+    },
+    {
+      "id": "DEF-004",
+      "severity": "P1",
+      "status": "open",
+      "title": "Autenticação, sessão e perfis reais não implementados no frontend",
+      "item_ids": ["AUTH-FRONT-001"],
+      "evidence": [
+        "UI declara sessão simulada e perfil Contribuinte futuro; profiles e memberships sem registros"
+      ],
+      "waiver": null
+    },
+    {
+      "id": "DEF-005",
+      "severity": "P2",
+      "status": "open",
+      "title": "Não há suíte automatizada executável no frontend",
+      "item_ids": ["FE-TESTS-001"],
+      "evidence": ["Nenhum arquivo test/spec e nenhum script test no package.json"],
+      "waiver": null
+    },
+    {
+      "id": "DEF-006",
+      "severity": "P1",
+      "status": "open",
+      "title": "Dezenove RPCs SECURITY DEFINER são executáveis por authenticated e exigem validação de autorização",
+      "item_ids": ["SEC-ADVISOR-001"],
+      "evidence": [
+        "Supabase Security Advisor: 19 WARN authenticated_security_definer_function_executable"
+      ],
+      "waiver": null
+    },
+    {
+      "id": "DEF-007",
+      "severity": "P3",
+      "status": "open",
+      "title": "Doze foreign keys não têm índice de cobertura",
+      "item_ids": ["PERF-ADVISOR-001"],
+      "evidence": ["Supabase Performance Advisor: 12 unindexed_foreign_keys INFO"],
+      "waiver": null
+    }
+  ]
+}

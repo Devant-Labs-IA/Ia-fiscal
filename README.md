@@ -1,67 +1,122 @@
-# SIGISS Pro — backend NFS-e Nacional
+# IA Fiscal
 
-Backend multitenant para emissão e gestão de NFS-e pelo padrão nacional. O Supabase é o sistema de registro para identidade, empresas, documentos, auditoria, cobrança e visão 360. Assinatura XML e autenticação mTLS usam um `Signing Gateway` isolado; o projeto nunca armazena PFX, chave privada ou senha no Postgres/Storage.
+Plataforma de apoio à fiscalização tributária municipal, inicialmente homologada para Cordeirópolis/SP (`3512407`). O produto cruza dados fiscais, aponta divergências, organiza casos e oferece consulta supervisionada à base de conhecimento. Cálculos, elegibilidade e permissões são determinísticos; decisões com efeito fiscal continuam sob responsabilidade humana.
 
-## Estado real
+> [!WARNING]
+> O sistema está em **homologação/sandbox**. Produção, comunicação externa, ciência fiscal, geração de prazo legal e qualquer lançamento automatizado estão proibidos até a aprovação de todos os gates descritos em [`docs/harness-release-gates.md`](docs/harness-release-gates.md).
 
-- Arquitetura e guardrails: definidos.
-- SQL de fundação, RLS, Storage e views: implementado e verificado estaticamente.
-- Edge Functions e testes determinísticos: implementados; 17 unidades SQL, 70 tabelas, 13 entrypoints Edge, 31 módulos TypeScript e 24 casos unitários passam localmente.
-- Projeto Supabase de homologação `xfzymoigffkfqmkzfuhq`: 17 migrações aplicadas e 10 funções ativas em `sa-east-1`; três rotas externas aguardam aprovação explícita dos provedores.
-- Integração SEFIN/ADN real: bloqueada até credenciais, certificado de homologação e PoC de mTLS + XMLDSig.
-- Front-end: fora deste pacote.
+## Estado atual
 
-Nenhuma integração fiscal é considerada aprovada apenas por existir código. O gate exige execução no ambiente oficial de produção restrita e reconciliação dos documentos.
+Snapshot consolidado em 2 de agosto de 2026:
+
+- Supabase `qvgenxcrdrqyiyozxtdt`, região `sa-east-1`, PostgreSQL 17.6, saudável;
+- 33 migrações canônicas reconciliadas com o histórico remoto por tamanho e SHA-256;
+- 101 tabelas com RLS, 30 views, 98 funções e duas Edge Functions com JWT obrigatório;
+- migração de autorização `20260802230147` aplicada e regressão SQL aprovada com rollback;
+- frontend autenticado com MFA TOTP, recuperação de senha, cache isolado e envio idempotente;
+- tipos TypeScript gerados a partir do banco remoto;
+- nenhum usuário ou vínculo real disponível para homologação E2E;
+- nenhuma entrega externa ou promoção para produção autorizada.
+
+Os gates locais de código estão verdes. O estado de produção continua **CLOSED** até replay do
+banco em ambiente descartável, matriz E2E por papel, homologação real de MFA/e-mail, restore,
+observabilidade e aprovações fiscal, jurídica, de segurança e proteção de dados. Consulte
+[`docs/qa/release-readiness-2026-08-02.md`](docs/qa/release-readiness-2026-08-02.md).
+
+## Escopo do MVP
+
+- conta corrente e divergências de ISS;
+- cruzamento SIGISSWEB × PGDAS-D para empresas do Simples Nacional;
+- cálculo determinístico de anexo, base, RBT12, alíquota efetiva e Fator R;
+- visão 360 do contribuinte;
+- gestão de casos, destinatários candidatos e bloqueios de comunicação;
+- pesquisa na base de conhecimento e rascunhos assistidos por IA, sempre sujeitos às regras de supervisão.
+
+Ficam fora do MVP: notificação formal por DTE/SIGISS, WhatsApp/SMS, chat externo, captura de XML, pagamentos, aplicativo móvel e módulos comerciais não fiscais.
 
 ## Arquitetura
 
-```mermaid
-flowchart TB
-    UI["SIGISS Pro"] --> API["Edge Functions + RLS"]
-    API --> DB["Supabase Postgres"]
-    API --> STORE["Storage privado"]
-    DB --> OUTBOX["Outbox e fila"]
-    OUTBOX --> WORKER["Fiscal worker"]
-    WORKER --> SIGNER["Signing Gateway isolado"]
-    SIGNER --> NATIONAL["SEFIN / ADN"]
-    WORKER --> DB
-```
+| Camada     | Tecnologia                                     | Responsabilidade                                                        |
+| ---------- | ---------------------------------------------- | ----------------------------------------------------------------------- |
+| Web        | React 19, TanStack Start, TypeScript, Tailwind | interface autenticada e leitura dos contratos fiscais                   |
+| Identidade | Supabase Auth                                  | sessão; o acesso efetivo depende de membership ou vínculo válido        |
+| Dados      | Supabase/PostgreSQL                            | RLS, views 360, funções determinísticas e trilha de auditoria           |
+| Edge       | `ia-fiscal-search`, `ia-fiscal-worker`         | pesquisa fiscal e processamento assíncrono em sandbox                   |
+| IA         | execução supervisionada                        | interpretação e rascunhos; nunca lançamento, autuação ou envio autônomo |
 
-Detalhes: `docs/architecture.md`, `docs/security-and-lgpd.md`, `docs/api-contracts.md`, `docs/deployment.md` e `docs/qa-plan.md`.
+Detalhes: [`docs/architecture.md`](docs/architecture.md).
 
-Evidência hospedada: `qa/remote-validation-2026-08-02.md`.
+## Desenvolvimento local
 
-## Regras inegociáveis
+### Pré-requisitos
 
-1. `tenant_id` em todas as entidades do cliente e FKs compostas para impedir vínculo entre tenants.
-2. RLS em todas as tabelas expostas; autorização nunca depende de `user_metadata`.
-3. Mutação fiscal somente pelo backend; navegador não grava NFS-e, evento, certificado ou auditoria.
-4. Mesma idempotency key + payload diferente resulta em conflito.
-5. Timeout após possível transmissão vira `unknown`; consultar a DPS antes de retransmitir.
-6. PFX, senha e chave privada nunca passam pelo Supabase.
-7. XML/DANFSE ficam em buckets privados, versionados, com hash e sem URL permanente.
-8. Inadimplência pode impedir nova emissão, mas não consulta/exportação dos documentos existentes.
-9. Empresa e perfil tributário só ficam ativos depois de aceite dos documentos vigentes e verificação externa vinculada à sessão AAL2.
-10. Cada worker processa um único efeito remoto por lease; geração de fencing e idempotência acompanham a chamada ao gateway.
+- Node.js 22 LTS ou superior;
+- npm compatível com o `package-lock.json`;
+- acesso autorizado ao projeto de homologação quando for testar dados reais.
 
-## Verificação local
-
-Requer Node.js 24+:
+### Instalação
 
 ```bash
-npm run verify
+git clone https://github.com/AlmoreContabilidade/Ia-fiscal.git
+cd Ia-fiscal
+cp .env.example .env.local
+npm ci
+npm run dev
 ```
 
-Os testes locais comprovam invariantes determinísticos e verificações estáticas. Eles não aprovam a integração nacional.
+Abra a URL informada pelo Vite. O modo padrão usa Supabase de homologação. O modo de demonstração usa apenas fixtures e não habilita escrita ou comunicação externa.
 
-O arquivo `qa/build-manifest.json`, gerado no fim da verificação, contém SHA-256 de cada arquivo-fonte incluído nesta versão. O ledger `qa/test-ledger.json` mantém o gate estrito de produção bloqueado enquanto faltarem evidências externas.
+### Variáveis públicas
 
-## Implantação
+| Variável                        | Uso                          | Padrão de homologação      |
+| ------------------------------- | ---------------------------- | -------------------------- |
+| `VITE_APP_ENV`                  | rótulo do ambiente           | `homologation`             |
+| `VITE_DATA_MODE`                | `supabase` ou `mock`         | `supabase`                 |
+| `VITE_ALLOW_DEMO`               | permite sessão demonstrativa | `true`                     |
+| `VITE_SUPABASE_URL`             | URL pública do projeto       | projeto IA Fiscal          |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | chave publicável do cliente  | chave `sb_publishable_...` |
+| `VITE_MUNICIPALITY_LABEL`       | rótulo do tenant             | `Cordeirópolis/SP`         |
+| `VITE_MUNICIPALITY_IBGE`        | código IBGE                  | `3512407`                  |
+| `VITE_APP_TIMEZONE`             | timezone civil               | `America/Sao_Paulo`        |
 
-1. Criar projetos separados de desenvolvimento/homologação e produção.
-2. Aplicar os arquivos de `supabase/sql` como migrações versionadas no projeto-alvo.
-3. Executar os advisors de segurança e performance.
-4. Implantar Edge Functions com dependências pinadas.
-5. Usar as chaves gerenciadas que o Supabase injeta e configurar apenas os secrets customizados e o Signing Gateway fora do frontend.
-6. Executar a matriz de RLS e os testes de produção restrita.
-7. Somente então iniciar piloto com dados sintéticos e poucos CNPJs autorizados.
+Nunca exponha `service_role`, chaves `sb_secret_`, senha de banco ou tokens de provedores em variáveis `VITE_*`.
+
+## Verificações locais
+
+```bash
+npm run lint
+npm run typecheck
+npm test
+npm run build
+```
+
+O mesmo conjunto é executado no CI. Um build verde comprova integridade estática e de empacotamento; não substitui testes de RLS, autorização, papéis ou fluxos E2E.
+
+## Banco e Edge Functions
+
+[`supabase/migrations`](supabase/migrations) é a única fonte canônica de replay. Seus 33 arquivos
+representam as versões e os corpos SQL registrados remotamente; as diferenças de `LF` terminal são
+documentadas no manifesto de checksums.
+
+Os arquivos em [`supabase/sql/applied`](supabase/sql/applied) são apenas um **arquivo histórico
+parcial** e nunca devem ser executados como cadeia. Antes de qualquer reconstrução, siga o
+[`runbook de recuperação`](docs/database/recovery-runbook.md) e confira
+[`remote-manifest.json`](supabase/baseline/remote-manifest.json).
+
+## Documentação operacional
+
+- [Arquitetura e contratos](docs/architecture.md)
+- [Reconciliação do banco](docs/database/reconciliation-2026-08-02.md)
+- [Runbook de reconstrução e recuperação](docs/database/recovery-runbook.md)
+- [Segurança, LGPD e limites jurídicos](docs/security-lgpd-legal.md)
+- [Fechamento da remediação de segurança](docs/security/reviews/2026-08-02-remediation.md)
+- [Harness e gates de release](docs/harness-release-gates.md)
+- [Runbook de homologação](docs/runbooks/homologation.md)
+- [Resposta a incidentes](docs/runbooks/incident-response.md)
+- [ADRs](docs/adr)
+
+## Contribuição e publicação
+
+Trabalhe em branch, mantenha os gates verdes e preserve o histórico já publicado. O repositório é conectado ao Lovable; não faça force push, rebase destrutivo, amend ou squash de commits já enviados. Nenhuma mudança deve ser promovida a produção enquanto o gate de produção permanecer fechado.
+
+O projeto é privado. Nenhuma licença pública foi concedida.

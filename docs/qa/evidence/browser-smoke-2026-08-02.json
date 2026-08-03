@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "date": "2026-08-02",
+  "environment": "local_homologation",
+  "data_mode": "mock",
+  "browser": "Chromium headless",
+  "production_effects": false,
+  "viewports": [
+    {
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "width": 390,
+      "height": 844
+    }
+  ],
+  "routes": [
+    "/",
+    "/contribuintes",
+    "/fiscalizacoes",
+    "/debitos",
+    "/notificacoes",
+    "/atendimento",
+    "/segundo-cerebro",
+    "/relatorios",
+    "/configuracoes",
+    "/portal"
+  ],
+  "result": {
+    "routes_passed": 10,
+    "routes_total": 10,
+    "http_statuses": [200],
+    "console_errors": 0,
+    "page_errors": 0,
+    "failed_requests": 0,
+    "supabase_requests": 0,
+    "mobile_horizontal_overflow": false
+  },
+  "limitations": [
+    "Mock data only",
+    "No authenticated Supabase user",
+    "Not a substitute for the role and multi-tenant E2E matrix"
+  ]
+}

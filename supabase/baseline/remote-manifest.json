@@ -1,0 +1,362 @@
+{
+  "schema_version": 1,
+  "captured_at": "2026-08-02T20:06:00-03:00",
+  "project": {
+    "id": "qvgenxcrdrqyiyozxtdt",
+    "name": "IA Fiscal"
+  },
+  "source_table": "supabase_migrations.schema_migrations",
+  "canonical_replay_source": "supabase/migrations",
+  "historical_archive": {
+    "path": "supabase/sql/applied",
+    "replay_source": false,
+    "note": "Historical, partial evidence only. Do not execute this directory as a migration chain."
+  },
+  "normalization": {
+    "versions_20260730025805_through_20260802162332": "The repository file is the exact remote statements[1] byte sequence plus one terminal LF. remote_statement_sha256 hashes the remote bytes; local_sha256 hashes the repository file including that LF.",
+    "version_20260802230147": "The repository file and the remote statements[1] are byte-identical and both already end in LF.",
+    "text_encoding": "UTF-8"
+  },
+  "verification": {
+    "remote_migration_count": 33,
+    "local_migration_count": 33,
+    "remote_statement_hashes_first_32": "verified_read_only",
+    "remote_statement_hash_33": "verified_read_only",
+    "empty_database_replay": "not_run",
+    "catalog_equivalence": "not_run",
+    "rollback_entries": 0,
+    "note": "Presence and checksums of migration text do not prove that the current remote catalog contains no out-of-band DDL."
+  },
+  "migrations": [
+    {
+      "version": "20260730025805",
+      "name": "ia_fiscal_001_foundation",
+      "file": "20260730025805_ia_fiscal_001_foundation.sql",
+      "local_bytes": 11002,
+      "local_sha256": "8c228309becfd0f52adf69e2e792fbffbb532ac5301fc3340ec320714aa3b99c",
+      "remote_statement_bytes": 11001,
+      "remote_statement_sha256": "81cc4646e39aeb4d49327ef9e83b10602ed8456f2ea5fb10b70bfbc48e70876f",
+      "byte_relation": "remote_plus_terminal_lf"
+    },
+    {
+      "version": "20260730025821",
+      "name": "ia_fiscal_002_fiscal_domain",
+      "file": "20260730025821_ia_fiscal_002_fiscal_domain.sql",
+      "local_bytes": 39460,
+      "local_sha256": "2aea63f69751f508522ccc0475bdc3775f4837024e7dfb38642d9bf8141dccb4",
+      "remote_statement_bytes": 39459,
+      "remote_statement_sha256": "6c7839b7aa7ddf0a4e9de62f66d48203594aa548ac8a9312d3f8ef8c0e830d60",
+      "byte_relation": "remote_plus_terminal_lf"
+    },
+    {
+      "version": "20260730025835",
+      "name": "ia_fiscal_003_communication_and_ai",
+      "file": "20260730025835_ia_fiscal_003_communication_and_ai.sql",
+      "local_bytes": 42541,
+      "local_sha256": "812a756ab0a4df4fd0de16faa62fd98977c0fa3efa7f2f0f8141c4236b43ceb3",
+      "remote_statement_bytes": 42540,
+      "remote_statement_sha256": "ca7e22879317ea7b0970b0346b34a82ff3dd67185edd37fc7eb9353e17bf0ed6",
+      "byte_relation": "remote_plus_terminal_lf"
+    },
+    {
+      "version": "20260730025852",
+      "name": "ia_fiscal_004_security_and_audit",
+      "file": "20260730025852_ia_fiscal_004_security_and_audit.sql",
+      "local_bytes": 38770,
+      "local_sha256": "ed20b85b6d38b1946040f2514c0f3280b6a3b8dc652740aba3001e4b1a63b680",
+      "remote_statement_bytes": 38769,
+      "remote_statement_sha256": "2e9502437c43bb2781ed4573d0afd083531eda45413f9ffcb6b995195be58037",
+      "byte_relation": "remote_plus_terminal_lf"
+    },
+    {
+      "version": "20260730025912",
+      "name": "ia_fiscal_005_core_workflows",
+      "file": "20260730025912_ia_fiscal_005_core_workflows.sql",
+      "local_bytes": 54776,
+      "local_sha256": "7cce422319edf11f46d4ca34af727c8e9a7c61f2e4d3b6b63cf2426266f605ae",
+      "remote_statement_bytes": 54775,
+      "remote_statement_sha256": "90f27cbcbfcc365fc38402786537d49f3fb91eb41477d8c4faeea35b8cb1f896",
+      "byte_relation": "remote_plus_terminal_lf"
+    },
+    {
+      "version": "20260730025927",
+      "name": "ia_fiscal_006_ai_and_portal_workflows",
+      "file": "20260730025927_ia_fiscal_006_ai_and_portal_workflows.sql",
+      "local_bytes": 35847,
+      "local_sha256": "05e36d874b95570556dccc70fff835085472ba29fe832fa9b3c6119bf7f487a3",
+      "remote_statement_bytes": 35846,
+      "remote_statement_sha256": "e21c32db062afcf356893636bb7d0e074af378d9d6d8914e5815f9b67e3f6b6a",
+      "byte_relation": "remote_plus_terminal_lf"
+    },
+    {
+      "version": "20260730030014",
+      "name": "ia_fiscal_007_governance_views_and_seed",
+      "file": "20260730030014_ia_fiscal_007_governance_views_and_seed.sql",
+      "local_bytes": 36630,
+      "local_sha256": "99aa3bb0bc9a234fd3a854cc934e2db2f2873c0ed8c4d5996206c17e12fff0d8",
+      "remote_statement_bytes": 36629,
+      "remote_statement_sha256": "14aa96f679ae82a4c1aa6c36e69810a71a8f37454063799c3e634a860d490af1",
+      "byte_relation": "remote_plus_terminal_lf"
+    },
+    {
+      "version": "20260730030643",
+      "name": "ia_fiscal_008_operational_hardening",
+      "file": "20260730030643_ia_fiscal_008_operational_hardening.sql",
+      "local_bytes": 15966,
+      "local_sha256": "07d735f4ec63b2e8a7e748112dcae2ba1cfdfceb0acca326cafc9fb20dd26c75",
+      "remote_statement_bytes": 15965,
+      "remote_statement_sha256": "8e7c6cbfc92151de79dfc248bbc8bb30aab0b792009ef18ffc2e49ba836ad8c6",
+      "byte_relation": "remote_plus_terminal_lf"
+    },
+    {
+      "version": "20260731002105",
+      "name": "pgdas_factor_r_homologation",
+      "file": "20260731002105_pgdas_factor_r_homologation.sql",
+      "local_bytes": 63270,
+      "local_sha256": "1c1bf08c51c09dd5935b383abd06d98ec2f3f1d326e96c888d6d76b3299b7ca2",
+      "remote_statement_bytes": 63269,
+      "remote_statement_sha256": "12428517ddfc0fe3aeea0e74f1a610990ed2348e3bef447900f5857e9f52e9fa",
+      "byte_relation": "remote_plus_terminal_lf"
+    },
+    {
+      "version": "20260731003739",
+      "name": "natural_language_search_views",
+      "file": "20260731003739_natural_language_search_views.sql",
+      "local_bytes": 4691,
+      "local_sha256": "5856209245f82a499274d5d0a1d17300fcabbfb5b830afcca2d521beec5d36fc",
+      "remote_statement_bytes": 4690,
+      "remote_statement_sha256": "84de25711d950178b78b7c1c5b8c29d2600b9246ffa905f0b1981a5de9382c07",
+      "byte_relation": "remote_plus_terminal_lf"
+    },
+    {
+      "version": "20260731004337",
+      "name": "covering_indexes_for_fiscal_mvp",
+      "file": "20260731004337_covering_indexes_for_fiscal_mvp.sql",
+      "local_bytes": 948,
+      "local_sha256": "8efa4aed847c523dea1eb6a24cbfd1321dc7a8a6cb6999a25198159c36a9a279",
+      "remote_statement_bytes": 947,
+      "remote_statement_sha256": "4006c560f731a8946610e290636e5cf64d2b5bbd5c876f56e331d991e09dc18a",
+      "byte_relation": "remote_plus_terminal_lf"
+    },
+    {
+      "version": "20260731004422",
+      "name": "worker_only_simple_national_writes",
+      "file": "20260731004422_worker_only_simple_national_writes.sql",
+      "local_bytes": 514,
+      "local_sha256": "0b07d58c45283eb61f1ca81d865685cfdb5e8aa56dfaae03ac7d0e54618b18f7",
+      "remote_statement_bytes": 513,
+      "remote_statement_sha256": "85fc1a8b97348ebd4cc4c52a2c8d68cde4435e40b0d434f6c899db8a0244cf8f",
+      "byte_relation": "remote_plus_terminal_lf"
+    },
+    {
+      "version": "20260731020728",
+      "name": "fix_governed_content_trigger_guard",
+      "file": "20260731020728_fix_governed_content_trigger_guard.sql",
+      "local_bytes": 2686,
+      "local_sha256": "cd2e4ff28c4c2387cac2a6ffd95fc44dc1ce192cd16c5abbeaca5b44d5b63a10",
+      "remote_statement_bytes": 2685,
+      "remote_statement_sha256": "cc82f11928b712b9cd097658c7d357c8101cbc61e915643daf75d1fe3e14e802",
+      "byte_relation": "remote_plus_terminal_lf"
+    },
+    {
+      "version": "20260731021417",
+      "name": "fix_frozen_content_trigger_guard",
+      "file": "20260731021417_fix_frozen_content_trigger_guard.sql",
+      "local_bytes": 2788,
+      "local_sha256": "ebe9dd9e4b0bc49af1bd303ced8fe4e1ab19ba2714cb7215e4fec847791dbe1b",
+      "remote_statement_bytes": 2787,
+      "remote_statement_sha256": "8ec016c7c4d7e4cfe35728cde4318abf5c24e83566dd120d350805e338a9a0b7",
+      "byte_relation": "remote_plus_terminal_lf"
+    },
+    {
+      "version": "20260731025852",
+      "name": "backend_integrity_maturity_and_queue",
+      "file": "20260731025852_backend_integrity_maturity_and_queue.sql",
+      "local_bytes": 7865,
+      "local_sha256": "4caa1b1857316d2ca8967521fa71c2bec63b74c1e6cc77778ba82a868916cfc0",
+      "remote_statement_bytes": 7864,
+      "remote_statement_sha256": "6f29e89adf415086cb39c4222ef224ea0fe3a1b5071e42d6646a00624ce1cd2b",
+      "byte_relation": "remote_plus_terminal_lf"
+    },
+    {
+      "version": "20260731025912",
+      "name": "sandbox_truth_and_case_findings",
+      "file": "20260731025912_sandbox_truth_and_case_findings.sql",
+      "local_bytes": 12500,
+      "local_sha256": "32b06a3704052e7159991100182dc1479e15d0b9d8b0c25fa8b5be62c9a8cfd4",
+      "remote_statement_bytes": 12499,
+      "remote_statement_sha256": "b8e8b9d494f7b192490f1530979918b5a88560ce4d752c729b6cbe9722dbf59d",
+      "byte_relation": "remote_plus_terminal_lf"
+    },
+    {
+      "version": "20260731025930",
+      "name": "maturity_and_finding_search_models",
+      "file": "20260731025930_maturity_and_finding_search_models.sql",
+      "local_bytes": 4987,
+      "local_sha256": "6ed39edc3b17de4a6b6107e237cf4fdbcc691cb2a21f527dead83fecd2a38ae1",
+      "remote_statement_bytes": 4986,
+      "remote_statement_sha256": "949f03700c09ff4df596fc2977a14c7a9b35e8b1f195394bfc882265d51605cd",
+      "byte_relation": "remote_plus_terminal_lf"
+    },
+    {
+      "version": "20260731030813",
+      "name": "security_queue_and_worker_hardening",
+      "file": "20260731030813_security_queue_and_worker_hardening.sql",
+      "local_bytes": 15997,
+      "local_sha256": "bc459a11aeb739b77dc1b6f8ea99d03700053be15efdd25017fac54e81d03236",
+      "remote_statement_bytes": 15996,
+      "remote_statement_sha256": "cc411f84aa2d082526460fe055cb6e7731c84107aee231c82cd78140ba15a9f8",
+      "byte_relation": "remote_plus_terminal_lf"
+    },
+    {
+      "version": "20260731031944",
+      "name": "simple_national_effective_declarations",
+      "file": "20260731031944_simple_national_effective_declarations.sql",
+      "local_bytes": 27943,
+      "local_sha256": "f47f2336c5083890aa269c4d4030e467cc20946ccfd8a511dccb08d8f607aa18",
+      "remote_statement_bytes": 27942,
+      "remote_statement_sha256": "d10a1516d17f6002183f7f8fb0cce19304bb979ac8a415a5510453faeb6122f7",
+      "byte_relation": "remote_plus_terminal_lf"
+    },
+    {
+      "version": "20260731032530",
+      "name": "natural_language_fiscal_search",
+      "file": "20260731032530_natural_language_fiscal_search.sql",
+      "local_bytes": 21776,
+      "local_sha256": "ff9fe859600ac198cea84f9e6c586636c0a9442c454febe7ed44fd8494a94d74",
+      "remote_statement_bytes": 21775,
+      "remote_statement_sha256": "e40fb3a458bab9b9a15842eab90e1fc2cc9685d6a1c78b78f2750d3407ca607d",
+      "byte_relation": "remote_plus_terminal_lf"
+    },
+    {
+      "version": "20260731033154",
+      "name": "backend_validation_and_search_timezone",
+      "file": "20260731033154_backend_validation_and_search_timezone.sql",
+      "local_bytes": 21417,
+      "local_sha256": "c59fc26f362477fe5f796e5ab8390a064b939e4ebdd394fa25a07281438c3fe7",
+      "remote_statement_bytes": 21416,
+      "remote_statement_sha256": "60a4db9beda0f682f4badf64b7b3861c5b35e1a44d29c2a03bb55272ad8d388b",
+      "byte_relation": "remote_plus_terminal_lf"
+    },
+    {
+      "version": "20260731033409",
+      "name": "cover_new_backend_foreign_keys",
+      "file": "20260731033409_cover_new_backend_foreign_keys.sql",
+      "local_bytes": 913,
+      "local_sha256": "9e86996afd731505799c1014fcd179969302b928e500ef7f599e037d9b33f7b5",
+      "remote_statement_bytes": 912,
+      "remote_statement_sha256": "f8a60cb1d43e530b5d4f47153f47c2f1ebb031309df9d3c187f61a3dd772f663",
+      "byte_relation": "remote_plus_terminal_lf"
+    },
+    {
+      "version": "20260731035824",
+      "name": "security_definer_identity",
+      "file": "20260731035824_security_definer_identity.sql",
+      "local_bytes": 956,
+      "local_sha256": "b1eb9ade5ab7d6216c881c7f4d0bded3b13491d369db962d0afff0469d0e3e52",
+      "remote_statement_bytes": 955,
+      "remote_statement_sha256": "ec9b73cdaae9e857624c65e942b874b8a39ab3781c071f49cf140378342e89e0",
+      "byte_relation": "remote_plus_terminal_lf"
+    },
+    {
+      "version": "20260731045538",
+      "name": "simple_national_effective_rates_v2",
+      "file": "20260731045538_simple_national_effective_rates_v2.sql",
+      "local_bytes": 49572,
+      "local_sha256": "08d1312f76c66eb38728e9be4f8e51f46820c7969dc1ec70878c7eb502505605",
+      "remote_statement_bytes": 49571,
+      "remote_statement_sha256": "7718bc36da4fd80d4a564b7b82bf10862a8980a46f03bae645f5d3e0e8af19df",
+      "byte_relation": "remote_plus_terminal_lf"
+    },
+    {
+      "version": "20260731045555",
+      "name": "due_dates_relationships_notice_preflight_v2",
+      "file": "20260731045555_due_dates_relationships_notice_preflight_v2.sql",
+      "local_bytes": 64364,
+      "local_sha256": "295bc9f08922e78fa1116c62202685b7fe49d253b80259f4d5686af8112c6b5b",
+      "remote_statement_bytes": 64363,
+      "remote_statement_sha256": "eb6df192029e849af3c801e977277503159aad0a9cf38c9ebef8f9ccf979ffd1",
+      "byte_relation": "remote_plus_terminal_lf"
+    },
+    {
+      "version": "20260731113038",
+      "name": "supervised_knowledge_chat_and_case_portal",
+      "file": "20260731113038_supervised_knowledge_chat_and_case_portal.sql",
+      "local_bytes": 78649,
+      "local_sha256": "75aa2aeb0f639aa535cd8f7b9b8cfc64357ce659ed683f312f9303bf0ddbbf7a",
+      "remote_statement_bytes": 78648,
+      "remote_statement_sha256": "c18d4dba8a47c9ef4336832d6fe4bbe24c06700b4d071b9307f4d549c6d4592c",
+      "byte_relation": "remote_plus_terminal_lf"
+    },
+    {
+      "version": "20260731113203",
+      "name": "chat_escalation_state_and_homologation_fixtures",
+      "file": "20260731113203_chat_escalation_state_and_homologation_fixtures.sql",
+      "local_bytes": 8449,
+      "local_sha256": "4d167e9881657ffd8711431a47041d29bbd1e9ffd8dfb9cea44ea337e7bd10a2",
+      "remote_statement_bytes": 8448,
+      "remote_statement_sha256": "a4bc9d03d3632313271b8b085421ebebae61e3bcb91cbbcebd1782c4ccf992e0",
+      "byte_relation": "remote_plus_terminal_lf"
+    },
+    {
+      "version": "20260731113723",
+      "name": "supervised_knowledge_fk_indexes",
+      "file": "20260731113723_supervised_knowledge_fk_indexes.sql",
+      "local_bytes": 2355,
+      "local_sha256": "c475181fd306a9731ca92123ae2dcd2d0ad3d3f20a243532f5c08caa6c472913",
+      "remote_statement_bytes": 2354,
+      "remote_statement_sha256": "94ed52dbf2fccf2d0f22c36bd0c80c18f35808fb5409fb3edfef82b6ab7c012c",
+      "byte_relation": "remote_plus_terminal_lf"
+    },
+    {
+      "version": "20260802162024",
+      "name": "taxpayer_360_access_and_core_views",
+      "file": "20260802162024_taxpayer_360_access_and_core_views.sql",
+      "local_bytes": 15452,
+      "local_sha256": "8d6b83569dd02494968615a53ef1715f0c8b4e65d77cd320350f5a52aa43e9fc",
+      "remote_statement_bytes": 15451,
+      "remote_statement_sha256": "b4711f3c6568b42919f7c3a696a369b38f51e8235dffdaa1e703a5d8d20cd78c",
+      "byte_relation": "remote_plus_terminal_lf"
+    },
+    {
+      "version": "20260802162031",
+      "name": "taxpayer_360_history_and_relationships",
+      "file": "20260802162031_taxpayer_360_history_and_relationships.sql",
+      "local_bytes": 4399,
+      "local_sha256": "8dfd0bec7bc7c88508adaa4d5e976afd2012cf96a4f3d51651c179b343c61723",
+      "remote_statement_bytes": 4398,
+      "remote_statement_sha256": "261a9073ee077dbf55dab52d96d07b97cdec618652b6cd79aa2d2ef63ee7ea5e",
+      "byte_relation": "remote_plus_terminal_lf"
+    },
+    {
+      "version": "20260802162037",
+      "name": "taxpayer_360_next_actions",
+      "file": "20260802162037_taxpayer_360_next_actions.sql",
+      "local_bytes": 8242,
+      "local_sha256": "9383be8401d75f3ab6fa0e4d61facab3f906171544bf58fada29103c010b5d0a",
+      "remote_statement_bytes": 8241,
+      "remote_statement_sha256": "431750c9a8c8b636fe7416c0f9ebd767f34db99b81afeb41d4dde8a23e146bea",
+      "byte_relation": "remote_plus_terminal_lf"
+    },
+    {
+      "version": "20260802162332",
+      "name": "taxpayer_360_divergence_metadata_access",
+      "file": "20260802162332_taxpayer_360_divergence_metadata_access.sql",
+      "local_bytes": 1137,
+      "local_sha256": "aed8c433f3272f7df8029b8706ca5e992791343588eb7264fd76eeaa3222e1be",
+      "remote_statement_bytes": 1136,
+      "remote_statement_sha256": "0dd3c87fca952ca058841554d782554a2a533e26d2919c39b2515bc77d631d2d",
+      "byte_relation": "remote_plus_terminal_lf"
+    },
+    {
+      "version": "20260802230147",
+      "name": "harden_fiscal_authorization_boundaries",
+      "file": "20260802230147_harden_fiscal_authorization_boundaries.sql",
+      "local_bytes": 21183,
+      "local_sha256": "e75c9904c15bcd1311524f793df578f6174ffbd27f417de993f3e8c65f62cdca",
+      "remote_statement_bytes": 21183,
+      "remote_statement_sha256": "e75c9904c15bcd1311524f793df578f6174ffbd27f417de993f3e8c65f62cdca",
+      "byte_relation": "byte_identical"
+    }
+  ]
+}

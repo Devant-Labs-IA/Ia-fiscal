@@ -1,0 +1,20 @@
+{
+  "captured_at": "2026-08-02T23:07:38.984Z",
+  "project_id": "qvgenxcrdrqyiyozxtdt",
+  "schemas": ["audit", "private", "public"],
+  "fingerprints": {
+    "columns": { "entries": 1888, "md5": "c7fae49c02912caed3fe356d2fe237db" },
+    "constraints": { "entries": 974, "md5": "1e146b4a8f537289d318f46c99eb8be7" },
+    "functions": { "entries": 98, "md5": "3b583b70738707e55b8a614d01f321b8" },
+    "grants": { "entries": 2097, "md5": "a0d20bdd84b966fc7cd131c3f6adcfe2" },
+    "indexes": { "entries": 473, "md5": "e674e568d960afe5d14600c822da1acd" },
+    "policies": { "entries": 84, "md5": "97b090866ebc951253deaa1187f705e6" },
+    "triggers": { "entries": 209, "md5": "e55e5f8e2a156718d0576566d5f0bb9c" }
+  },
+  "latest_migration": {
+    "version": "20260802230147",
+    "name": "harden_fiscal_authorization_boundaries",
+    "statement_bytes": 21183,
+    "statement_md5": "72bab8e655dfcde3adf46bc9f55ca198"
+  }
+}

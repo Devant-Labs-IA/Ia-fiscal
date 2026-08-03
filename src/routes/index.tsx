@@ -1,0 +1,111 @@
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
+import { CalendarDays } from "lucide-react";
+
+import { ErrorState, SectionSkeleton } from "@/components/common/SectionCard";
+import { ActivityTimeline } from "@/components/dashboard/ActivityTimeline";
+import { BlockersSection } from "@/components/dashboard/BlockersSection";
+import { ChatQueueSection } from "@/components/dashboard/ChatQueueSection";
+import { MetricGrid } from "@/components/dashboard/MetricCards";
+import { NotificationsSection } from "@/components/dashboard/NotificationsSection";
+import { PriorityCasesSection } from "@/components/dashboard/PriorityCasesSection";
+import { ProcessingHealthSection } from "@/components/dashboard/ProcessingHealthSection";
+import { HomologationBanner } from "@/components/layout/HomologationBanner";
+import { formatDate } from "@/lib/format";
+import { fiscalKeys, fiscalService } from "@/services/fiscal-service";
+
+export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "Dashboard do Fiscal — IA Fiscal" },
+      {
+        name: "description",
+        content:
+          "Painel operacional da fiscalização tributária de Cordeirópolis/SP: prioridades, débitos, atendimentos e saúde do processamento.",
+      },
+      { property: "og:title", content: "Dashboard do Fiscal — IA Fiscal" },
+      {
+        property: "og:description",
+        content:
+          "Gestão tributária inteligente para a Prefeitura: prioridades de fiscalização, débitos vencidos e atendimentos em um só painel.",
+      },
+    ],
+  }),
+  component: DashboardFiscal,
+});
+
+function DashboardFiscal() {
+  const summary = useQuery({
+    queryKey: fiscalKeys.dashboard,
+    queryFn: () => fiscalService.getDashboardSummary(),
+  });
+  const cases = useQuery({
+    queryKey: fiscalKeys.cases,
+    queryFn: () => fiscalService.listFiscalCases(),
+  });
+  const chat = useQuery({
+    queryKey: fiscalKeys.chat,
+    queryFn: () => fiscalService.listChatQueue(),
+  });
+  const notifications = useQuery({
+    queryKey: fiscalKeys.notifications,
+    queryFn: () => fiscalService.listNotificationCandidates(),
+  });
+  const health = useQuery({
+    queryKey: fiscalKeys.health,
+    queryFn: () => fiscalService.listProcessingHealth(),
+  });
+  const blockers = useQuery({
+    queryKey: fiscalKeys.blockers,
+    queryFn: () => fiscalService.listProductionBlockers(),
+  });
+  const events = useQuery({
+    queryKey: fiscalKeys.events,
+    queryFn: () => fiscalService.listAuditEvents(),
+  });
+
+  return (
+    <div className="space-y-5 py-4">
+      <HomologationBanner />
+
+      <header className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+            {summary.data?.greeting ?? "Bom dia, Fiscal"}
+          </h1>
+          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
+            {summary.isLoading
+              ? "Carregando resumo operacional do dia…"
+              : (summary.data?.operationalSummary ?? "")}
+          </p>
+        </div>
+        <p className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5 text-xs font-medium tabular-nums text-muted-foreground">
+          <CalendarDays className="size-3.5" aria-hidden />
+          {summary.data ? formatDate(summary.data.referenceDate) : "—"}
+        </p>
+      </header>
+
+      {summary.isError ? (
+        <ErrorState message="Não foi possível carregar os indicadores. Tente novamente." />
+      ) : summary.isLoading ? (
+        <SectionSkeleton rows={3} />
+      ) : (
+        <MetricGrid metrics={summary.data?.metrics ?? []} />
+      )}
+
+      <PriorityCasesSection cases={cases.data} isLoading={cases.isLoading} />
+
+      <div className="grid gap-5 2xl:grid-cols-2">
+        <ChatQueueSection items={chat.data} isLoading={chat.isLoading} />
+        <NotificationsSection items={notifications.data} isLoading={notifications.isLoading} />
+      </div>
+
+      <ProcessingHealthSection items={health.data} isLoading={health.isLoading} />
+
+      <div className="grid gap-5 xl:grid-cols-2">
+        <BlockersSection items={blockers.data} isLoading={blockers.isLoading} />
+        <ActivityTimeline items={events.data} isLoading={events.isLoading} />
+      </div>
+    </div>
+  );
+}

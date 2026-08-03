@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "environment": "homologation",
+  "project_id": "qvgenxcrdrqyiyozxtdt",
+  "migration": {
+    "version": "20260802230147",
+    "name": "harden_fiscal_authorization_boundaries",
+    "applied": true,
+    "bytes": 21183,
+    "sha256": "e75c9904c15bcd1311524f793df578f6174ffbd27f417de993f3e8c65f62cdca",
+    "remote_statement_md5": "72bab8e655dfcde3adf46bc9f55ca198"
+  },
+  "test": {
+    "path": "supabase/tests/authorization_regression.sql",
+    "bytes": 15095,
+    "sha256": "d8fb92b4b2f4128012a5c07051e65d09829df01313761200781948eff58c06dd",
+    "transactional": true,
+    "terminates_with_rollback": true
+  },
+  "runs": [
+    {
+      "phase": "pre_remediation",
+      "expected_result": "fail",
+      "observed_result": "fail",
+      "evidence": "unassigned fiscal claimed confidential case"
+    },
+    {
+      "phase": "migration_plus_test_in_one_transaction",
+      "expected_result": "pass",
+      "observed_result": "pass"
+    },
+    {
+      "phase": "post_apply_test_only",
+      "expected_result": "pass",
+      "observed_result": "pass"
+    }
+  ],
+  "post_run_persistence_check": {
+    "auth_users": 0,
+    "municipality_memberships": 0,
+    "active_platform_administrators": 0
+  },
+  "post_apply_function_md5": {
+    "private.can_view_case_staff": "79ad84eb55c1f623f58786aba12eb9bc",
+    "private.can_review_case": "4a1eb8d6707b4f83fb7aa4f04dee485b",
+    "private.can_access_case": "4d0316aca7abbd26d67139019699593d",
+    "public.ia_submit_case_question": "c3c7e474aec328e251738f44f94bcad3"
+  },
+  "limitations": [
+    "Not replayed from an empty disposable database",
+    "No browser E2E user existed",
+    "No external delivery was exercised"
+  ]
+}
