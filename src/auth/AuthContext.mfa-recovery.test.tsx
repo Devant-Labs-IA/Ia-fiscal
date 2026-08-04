@@ -26,10 +26,13 @@ const mocks = vi.hoisted(() => ({
   tableResults: {} as Record<string, { data: unknown; error: unknown }>,
   builders: [] as Array<{
     table: string;
+    eq: ReturnType<typeof vi.fn>;
     not: ReturnType<typeof vi.fn>;
     is: ReturnType<typeof vi.fn>;
     lte: ReturnType<typeof vi.fn>;
     or: ReturnType<typeof vi.fn>;
+    order: ReturnType<typeof vi.fn>;
+    limit: ReturnType<typeof vi.fn>;
   }>,
 }));
 
@@ -72,6 +75,7 @@ function makeQueryBuilder(table: string) {
     is: vi.fn(),
     lte: vi.fn(),
     or: vi.fn(),
+    order: vi.fn(),
     limit: vi.fn(),
     maybeSingle: vi.fn(),
   };
@@ -81,16 +85,20 @@ function makeQueryBuilder(table: string) {
   builder.is.mockReturnValue(builder);
   builder.lte.mockReturnValue(builder);
   builder.or.mockReturnValue(builder);
+  builder.order.mockReturnValue(builder);
   builder.limit.mockReturnValue(builder);
   builder.maybeSingle.mockImplementation(async () => {
     return mocks.tableResults[table] ?? { data: null, error: null };
   });
   mocks.builders.push({
     table,
+    eq: builder.eq,
     not: builder.not,
     is: builder.is,
     lte: builder.lte,
     or: builder.or,
+    order: builder.order,
+    limit: builder.limit,
   });
   return builder;
 }
@@ -101,6 +109,8 @@ function Probe() {
     <>
       <output>{auth.status}</output>
       <span>{auth.access?.role ?? "sem-papel"}</span>
+      <span>{auth.access?.municipalityId ?? "sem-municipio"}</span>
+      <span>{auth.access?.municipalityLabel ?? "sem-rotulo"}</span>
       <span>{auth.mfaEnrollment?.secret ?? "sem-chave"}</span>
       <button type="button" onClick={() => void auth.startMfaEnrollment().catch(() => undefined)}>
         cadastrar mfa
@@ -202,6 +212,10 @@ describe("gate MFA e recuperação de senha", () => {
       },
       error: null,
     };
+    mocks.tableResults["municipalities"] = {
+      data: { id: "municipality-1", name: "Cordeirópolis", state_code: "SP" },
+      error: null,
+    };
 
     renderProvider();
     await screen.findByText("mfa_enrollment_required");
@@ -274,6 +288,10 @@ describe("gate MFA e recuperação de senha", () => {
   it("aplica validade temporal e verificação a todos os tipos de vínculo", async () => {
     const session = sessionFor();
     mocks.getSession.mockResolvedValue({ data: { session }, error: null });
+    mocks.tableResults["municipalities"] = {
+      data: { id: "municipality-1", name: "Cordeirópolis", state_code: "SP" },
+      error: null,
+    };
     mocks.tableResults["accountant_user_links"] = {
       data: { municipality_id: "municipality-1", accounting_firm_id: "firm-1" },
       error: null,
@@ -283,13 +301,14 @@ describe("gate MFA e recuperação de senha", () => {
     await screen.findByText("ready");
 
     expect(mocks.builders.map(({ table }) => table)).toEqual([
-      "municipality_memberships",
       "platform_administrators",
+      "municipalities",
+      "municipality_memberships",
       "taxpayer_user_links",
       "accountant_user_links",
     ]);
     for (const builder of mocks.builders.filter(
-      ({ table }) => table !== "platform_administrators",
+      ({ table }) => !["platform_administrators", "municipalities"].includes(table),
     )) {
       expect(builder.lte).toHaveBeenCalledWith("valid_from", expect.any(String));
       expect(builder.or).toHaveBeenCalledWith(
@@ -306,6 +325,50 @@ describe("gate MFA e recuperação de senha", () => {
         null,
       );
     }
+    expect(
+      mocks.builders.find((builder) => builder.table === "taxpayer_user_links")?.order,
+    ).toHaveBeenCalledWith("taxpayer_id", { ascending: true });
+    expect(
+      mocks.builders.find((builder) => builder.table === "accountant_user_links")?.order,
+    ).toHaveBeenCalledWith("accounting_firm_id", { ascending: true });
+  });
+
+  it("resolve o tenant configurado de forma determinística para usuário multi-município", async () => {
+    mocks.getSession.mockResolvedValue({ data: { session: sessionFor() }, error: null });
+    mocks.tableResults["municipalities"] = {
+      data: {
+        id: "municipality-cordeiropolis",
+        name: "Cordeirópolis",
+        state_code: "SP",
+      },
+      error: null,
+    };
+    mocks.tableResults["municipality_memberships"] = {
+      data: {
+        id: "membership-cordeiropolis",
+        municipality_id: "municipality-cordeiropolis",
+        role: "fiscal_auditor",
+      },
+      error: null,
+    };
+
+    renderProvider();
+    await screen.findByText("ready");
+    expect(screen.getByText("fiscal_auditor")).toBeTruthy();
+    expect(screen.getByText("municipality-cordeiropolis")).toBeTruthy();
+    expect(screen.getByText("Cordeirópolis/SP")).toBeTruthy();
+
+    const municipalityQuery = mocks.builders.find(({ table }) => table === "municipalities");
+    expect(municipalityQuery?.eq).toHaveBeenCalledWith("ibge_code", "3512407");
+
+    const membershipQuery = mocks.builders.find(
+      ({ table }) => table === "municipality_memberships",
+    );
+    expect(membershipQuery?.eq).toHaveBeenCalledWith(
+      "municipality_id",
+      "municipality-cordeiropolis",
+    );
+    expect(membershipQuery?.limit).not.toHaveBeenCalled();
   });
 
   it("resolve administrador técnico sem atribuir um vínculo fiscal municipal", async () => {
@@ -318,10 +381,7 @@ describe("gate MFA e recuperação de senha", () => {
     renderProvider();
     await screen.findByText("ready");
     expect(screen.getByText("platform_admin")).toBeTruthy();
-    expect(mocks.builders.map(({ table }) => table)).toEqual([
-      "municipality_memberships",
-      "platform_administrators",
-    ]);
+    expect(mocks.builders.map(({ table }) => table)).toEqual(["platform_administrators"]);
   });
 
   it("renderiza a tela de cadastro MFA antes de qualquer conteúdo protegido", async () => {

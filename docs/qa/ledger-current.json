@@ -2,9 +2,9 @@
   "schema_version": 1,
   "system": {
     "name": "IA Fiscal",
-    "environment": "local_homologation",
-    "version": "working-tree 2026-08-02; Supabase baseline 33 migrations + 1 migration validated and pending",
-    "base_url": "http://localhost:3000"
+    "environment": "supabase_homologation_pr1",
+    "version": "PR #1 homologation snapshot 2026-08-03; Supabase baseline 36 applied migrations; Edge search v3",
+    "base_url": "blocked:no-controlled-vercel-preview"
   },
   "run": {
     "inventory_complete": false,
@@ -33,7 +33,10 @@
       "role_navigation",
       "portal_write",
       "real_data",
-      "error_states"
+      "error_states",
+      "database",
+      "edge",
+      "deployment"
     ]
   },
   "items": [
@@ -106,10 +109,77 @@
       "tested_viewports": [],
       "evidence": [
         "test:src/qa/security-boundary-contract.test.ts",
-        "docs/qa/evidence/supabase-authorization-regression-2026-08-03.json"
+        "docs/qa/evidence/supabase-postapply-regression-2026-08-03.json"
       ],
       "defects": [],
-      "notes": "Prova a migração pendente e seu rollback; não afirma que a DDL ou a nova Edge Function já foram implantadas."
+      "notes": "Prova os contratos estáticos contra as migrações aplicadas e as regressões pós-aplicação."
+    },
+    {
+      "id": "DB-POSTAPPLY-REGRESSION-001",
+      "layer": "database",
+      "area": "database",
+      "name": "Migrações 34–36, autorização e fronteira operacional",
+      "required": true,
+      "critical": true,
+      "status": "pass",
+      "expected_roles": ["maintainer"],
+      "tested_roles": ["maintainer"],
+      "expected_viewports": [],
+      "tested_viewports": [],
+      "evidence": [
+        "docs/qa/evidence/supabase-postapply-regression-2026-08-03.json",
+        "supabase/baseline/remote-manifest.json — 36/36 migrations"
+      ],
+      "defects": [],
+      "notes": "Inclui duas passagens pré-aplicação e regressões pós-aplicação com rollback e zero entrega externa."
+    },
+    {
+      "id": "EDGE-SEARCH-RUNTIME-001",
+      "layer": "backend",
+      "area": "edge",
+      "name": "Busca fiscal Edge com JWT, AAL2 e tenant",
+      "required": true,
+      "critical": true,
+      "status": "pass",
+      "expected_roles": ["unauthenticated", "fiscal_auditor"],
+      "tested_roles": ["unauthenticated", "fiscal_auditor"],
+      "expected_viewports": [],
+      "tested_viewports": [],
+      "evidence": ["docs/qa/evidence/edge-search-runtime-2026-08-03.json"],
+      "defects": [],
+      "notes": "Cobriu ausência de token, assinatura adulterada, AAL1, AAL2 autorizado e tenant incorreto."
+    },
+    {
+      "id": "AUTH-LEAKED-PASSWORD-001",
+      "layer": "auth",
+      "area": "auth",
+      "name": "Proteção contra senhas vazadas no Supabase Auth",
+      "required": true,
+      "critical": true,
+      "status": "blocked",
+      "expected_roles": ["maintainer"],
+      "tested_roles": [],
+      "expected_viewports": [],
+      "tested_viewports": [],
+      "evidence": ["docs/qa/evidence/supabase-advisors-2026-08-03.json"],
+      "defects": [],
+      "notes": "Advisor confirma a proteção desabilitada; o conector atual não expõe escrita da configuração Auth."
+    },
+    {
+      "id": "VERCEL-PREVIEW-001",
+      "layer": "operations",
+      "area": "deployment",
+      "name": "Preview isolada do commit exato",
+      "required": true,
+      "critical": true,
+      "status": "blocked",
+      "expected_roles": ["maintainer"],
+      "tested_roles": [],
+      "expected_viewports": ["mobile", "tablet", "desktop"],
+      "tested_viewports": [],
+      "evidence": ["docs/qa/evidence/vercel-preview-blocker-2026-08-03.json"],
+      "defects": [],
+      "notes": "Zero projetos/deployments; o canal disponível não fixa cwd, target, projeto ou env e não foi usado."
     },
     {
       "id": "UI-MOCK-SMOKE-001",

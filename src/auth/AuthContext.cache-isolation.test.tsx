@@ -54,6 +54,7 @@ function queryBuilder() {
     is: vi.fn(),
     lte: vi.fn(),
     or: vi.fn(),
+    order: vi.fn(),
     limit: vi.fn(),
     maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
   };
@@ -63,6 +64,7 @@ function queryBuilder() {
   builder.is.mockReturnValue(builder);
   builder.lte.mockReturnValue(builder);
   builder.or.mockReturnValue(builder);
+  builder.order.mockReturnValue(builder);
   builder.limit.mockReturnValue(builder);
   return builder;
 }
@@ -159,6 +161,7 @@ describe("isolamento do cache fiscal por identidade", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "entrar demo" }));
     expect(queryClient.getQueryData(fiscalKeys.cases)).toBeUndefined();
+    expect(window.sessionStorage.getItem("ia-fiscal:demo-mode")).toBeNull();
 
     queryClient.setQueryData(fiscalKeys.cases, [{ caseNumber: "demo" }]);
     fireEvent.click(screen.getByRole("button", { name: "sair demo" }));

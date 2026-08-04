@@ -365,6 +365,39 @@ begin
     raise exception 'supervisor lost legitimate access';
   end if;
 
+  update public.case_questions
+     set status = 'submitted',
+         assigned_membership_id = null,
+         handling_mode = 'human',
+         answered_at = null,
+         claimed_at = null
+   where municipality_id = v_municipality_id
+     and id = v_question_id;
+  update public.case_assignments
+     set status = 'completed',
+         completed_at = now()
+   where municipality_id = v_municipality_id
+     and case_id = v_case_id
+     and membership_id = m_fiscal_assigned
+     and status = 'active';
+
+  if public.ia_claim_case_question(
+       v_question_id, v_municipality_id, m_supervisor, 'human'
+     ) is distinct from m_supervisor then
+    raise exception 'supervisor claim returned the wrong membership';
+  end if;
+  if not exists (
+    select 1
+    from public.case_assignments ca
+    where ca.municipality_id = v_municipality_id
+      and ca.case_id = v_case_id
+      and ca.membership_id = m_supervisor
+      and ca.assignment_role = 'reviewer'
+      and ca.status = 'active'
+  ) then
+    raise exception 'supervisor claim was mislabeled as responsible fiscal';
+  end if;
+
   perform set_config('request.jwt.claim.sub', u_municipal_admin::text, true);
   perform set_config(
     'request.jwt.claims',

@@ -1,20 +1,20 @@
 {
-  "captured_at": "2026-08-02T23:07:38.984Z",
+  "captured_at": "2026-08-04T00:49:00Z",
   "project_id": "qvgenxcrdrqyiyozxtdt",
   "schemas": ["audit", "private", "public"],
   "fingerprints": {
-    "columns": { "entries": 1888, "md5": "c7fae49c02912caed3fe356d2fe237db" },
-    "constraints": { "entries": 974, "md5": "1e146b4a8f537289d318f46c99eb8be7" },
-    "functions": { "entries": 98, "md5": "3b583b70738707e55b8a614d01f321b8" },
-    "grants": { "entries": 2097, "md5": "a0d20bdd84b966fc7cd131c3f6adcfe2" },
-    "indexes": { "entries": 473, "md5": "e674e568d960afe5d14600c822da1acd" },
+    "columns": { "entries": 1891, "md5": "ec25e4694f90705a139ea195c55bfafe" },
+    "constraints": { "entries": 976, "md5": "061312c3411487a84f062afc8fc5dfd1" },
+    "functions": { "entries": 102, "md5": "820bdd213d427043a4413eab770cf5f5" },
+    "grants": { "entries": 2092, "md5": "8d6a3e32b2adf4f593118ca664f37062" },
+    "indexes": { "entries": 474, "md5": "5b18b2fcaee48609f7f4a1bb6074ad76" },
     "policies": { "entries": 84, "md5": "97b090866ebc951253deaa1187f705e6" },
-    "triggers": { "entries": 209, "md5": "e55e5f8e2a156718d0576566d5f0bb9c" }
+    "triggers": { "entries": 212, "md5": "50b4240bb23dbc3b3b54a70f4a8ce27e" }
   },
   "latest_migration": {
-    "version": "20260802230147",
-    "name": "harden_fiscal_authorization_boundaries",
-    "statement_bytes": 21183,
-    "statement_md5": "72bab8e655dfcde3adf46bc9f55ca198"
+    "version": "20260804004659",
+    "name": "revalidate_case_assignment_roles",
+    "statement_bytes": 12096,
+    "statement_md5": "139e1686fb2618f51698cbea78803abf"
   }
 }

@@ -77,26 +77,6 @@ async function resolveAccess(userId: string): Promise<AccessContext | null> {
   const supabase = getSupabaseClient();
   const now = new Date().toISOString();
 
-  const staff = await supabase
-    .from("municipality_memberships")
-    .select("id, municipality_id, role")
-    .eq("user_id", userId)
-    .eq("status", "active")
-    .lte("valid_from", now)
-    .or(`valid_until.is.null,valid_until.gt.${now}`)
-    .limit(1)
-    .maybeSingle();
-
-  if (staff.error) throw staff.error;
-  if (staff.data && MUNICIPAL_STAFF_ROLES.has(staff.data.role as StaffRole)) {
-    return {
-      role: staff.data.role as StaffRole,
-      municipalityId: staff.data.municipality_id as string,
-      municipalityLabel: runtimeConfig.municipalityLabel,
-      membershipId: staff.data.id as string,
-    };
-  }
-
   const platform = await supabase
     .from("platform_administrators")
     .select("user_id")
@@ -114,14 +94,49 @@ async function resolveAccess(userId: string): Promise<AccessContext | null> {
     };
   }
 
+  const municipality = await supabase
+    .from("municipalities")
+    .select("id, name, state_code")
+    .eq("ibge_code", runtimeConfig.municipalityIbge)
+    .maybeSingle();
+
+  if (municipality.error) throw municipality.error;
+  if (!municipality.data) return null;
+  const municipalityId = municipality.data.id as string;
+  const municipalityLabel = `${String(municipality.data.name).trim()}/${String(
+    municipality.data.state_code,
+  ).trim()}`;
+
+  const staff = await supabase
+    .from("municipality_memberships")
+    .select("id, municipality_id, role")
+    .eq("user_id", userId)
+    .eq("municipality_id", municipalityId)
+    .eq("status", "active")
+    .lte("valid_from", now)
+    .or(`valid_until.is.null,valid_until.gt.${now}`)
+    .maybeSingle();
+
+  if (staff.error) throw staff.error;
+  if (staff.data && MUNICIPAL_STAFF_ROLES.has(staff.data.role as StaffRole)) {
+    return {
+      role: staff.data.role as StaffRole,
+      municipalityId,
+      municipalityLabel,
+      membershipId: staff.data.id as string,
+    };
+  }
+
   const taxpayer = await supabase
     .from("taxpayer_user_links")
     .select("municipality_id, taxpayer_id")
     .eq("user_id", userId)
+    .eq("municipality_id", municipalityId)
     .eq("status", "active")
     .not("verified_at", "is", null)
     .lte("valid_from", now)
     .or(`valid_until.is.null,valid_until.gt.${now}`)
+    .order("taxpayer_id", { ascending: true })
     .limit(1)
     .maybeSingle();
 
@@ -129,8 +144,8 @@ async function resolveAccess(userId: string): Promise<AccessContext | null> {
   if (taxpayer.data) {
     return {
       role: "taxpayer",
-      municipalityId: taxpayer.data.municipality_id as string,
-      municipalityLabel: runtimeConfig.municipalityLabel,
+      municipalityId,
+      municipalityLabel,
       taxpayerId: taxpayer.data.taxpayer_id as string,
     };
   }
@@ -139,10 +154,12 @@ async function resolveAccess(userId: string): Promise<AccessContext | null> {
     .from("accountant_user_links")
     .select("municipality_id, accounting_firm_id")
     .eq("user_id", userId)
+    .eq("municipality_id", municipalityId)
     .eq("status", "active")
     .not("verified_at", "is", null)
     .lte("valid_from", now)
     .or(`valid_until.is.null,valid_until.gt.${now}`)
+    .order("accounting_firm_id", { ascending: true })
     .limit(1)
     .maybeSingle();
 
@@ -150,8 +167,8 @@ async function resolveAccess(userId: string): Promise<AccessContext | null> {
   if (accountant.data) {
     return {
       role: "accountant",
-      municipalityId: accountant.data.municipality_id as string,
-      municipalityLabel: runtimeConfig.municipalityLabel,
+      municipalityId,
+      municipalityLabel,
       accountingFirmId: accountant.data.accounting_firm_id as string,
     };
   }
@@ -460,6 +477,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearRecoveryLocation();
         setMfaEnrollment(null);
         setMfaFactorId(null);
+        if (!runtimeConfig.allowDemo) {
+          setDemoMode(false);
+          setDemo(false);
+          if (session) void loadAccess(session);
+          else setStatus("unauthenticated");
+          return;
+        }
         setDemoMode(true);
         setDemo(true);
         setStatus("ready");

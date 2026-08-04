@@ -11,7 +11,7 @@
 - nenhum arquivo histórico `001`–`008`;
 - nenhum arquivo histórico `022`.
 
-O projeto remoto registra 33 migrações. Todas foram reconciliadas e estão em
+O projeto remoto registra 36 migrações. Todas foram reconciliadas e estão em
 `supabase/migrations/`; os checksums estão em `supabase/baseline/remote-manifest.json`.
 
 ## Por que não é seguro reproduzir

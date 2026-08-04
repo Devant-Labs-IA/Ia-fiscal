@@ -1,29 +1,28 @@
 # IA Fiscal
 
-Plataforma de apoio à fiscalização tributária municipal, inicialmente homologada para Cordeirópolis/SP (`3512407`). O produto cruza dados fiscais, aponta divergências, organiza casos e oferece consulta supervisionada à base de conhecimento. Cálculos, elegibilidade e permissões são determinísticos; decisões com efeito fiscal continuam sob responsabilidade humana.
+Plataforma de apoio à fiscalização tributária municipal, configurada para homologação em Cordeirópolis/SP (`3512407`). O produto cruza dados fiscais, aponta divergências, organiza casos e oferece consulta supervisionada à base de conhecimento. Cálculos, elegibilidade e permissões são determinísticos; decisões com efeito fiscal continuam sob responsabilidade humana.
 
 > [!WARNING]
 > O sistema está em **homologação/sandbox**. Produção, comunicação externa, ciência fiscal, geração de prazo legal e qualquer lançamento automatizado estão proibidos até a aprovação de todos os gates descritos em [`docs/harness-release-gates.md`](docs/harness-release-gates.md).
 
 ## Estado atual
 
-Snapshot consolidado em 2 de agosto de 2026:
+Snapshot técnico consolidado para homologação em 3 de agosto de 2026:
 
 - Supabase `qvgenxcrdrqyiyozxtdt`, região `sa-east-1`, PostgreSQL 17.6, saudável;
-- 33 migrações aplicadas reconciliadas com o histórico remoto por tamanho e SHA-256;
-- uma 34ª migração de AAL2, contexto municipal e claim idempotente validada com rollback, ainda não aplicada;
-- 101 tabelas com RLS, 30 views, 98 funções e duas Edge Functions versionadas;
-- `ia-fiscal-search` exige JWT verificado e AAL2 na fonte local; esse avanço ainda não foi implantado;
-- migração de autorização `20260802230147` aplicada e regressão SQL aprovada com rollback;
+- 36 migrações aplicadas e reconciliadas com o histórico remoto por tamanho e SHA-256;
+- 101 tabelas com RLS, 30 views, 102 funções e duas Edge Functions versionadas;
+- `ia-fiscal-search` v3 implantada, com JWT verificado, AAL2 e negativos de tenant aprovados;
+- regressões SQL de autorização e fronteira operacional aprovadas antes e depois da implantação;
 - frontend autenticado com MFA TOTP, recuperação de senha, cache isolado, fila municipal e claim interno supervisionado;
-- tipos TypeScript baseados no catálogo remoto e atualizados para o contrato validado da migração pendente;
+- tipos TypeScript atualizados para as duas colunas implantadas e validados pelo typecheck;
 - nenhum usuário ou vínculo real disponível para homologação E2E;
 - nenhuma entrega externa ou promoção para produção autorizada.
 
 Os gates locais de código estão verdes. O estado de produção continua **CLOSED** até replay do
 banco em ambiente descartável, matriz E2E por papel, homologação real de MFA/e-mail, restore,
 observabilidade e aprovações fiscal, jurídica, de segurança e proteção de dados. Consulte
-[`docs/qa/release-readiness-2026-08-02.md`](docs/qa/release-readiness-2026-08-02.md).
+[`docs/qa/release-readiness-2026-08-03.md`](docs/qa/release-readiness-2026-08-03.md).
 
 ## Escopo do MVP
 
@@ -52,7 +51,7 @@ Detalhes: [`docs/architecture.md`](docs/architecture.md).
 
 ### Pré-requisitos
 
-- Node.js 22 LTS ou superior;
+- Node.js `22.x`;
 - npm compatível com o `package-lock.json`;
 - acesso autorizado ao projeto de homologação quando for testar dados reais.
 
@@ -74,7 +73,7 @@ Abra a URL informada pelo Vite. O modo padrão usa Supabase de homologação. O 
 | ------------------------------- | ---------------------------- | -------------------------- |
 | `VITE_APP_ENV`                  | rótulo do ambiente           | `homologation`             |
 | `VITE_DATA_MODE`                | `supabase` ou `mock`         | `supabase`                 |
-| `VITE_ALLOW_DEMO`               | permite sessão demonstrativa | `true`                     |
+| `VITE_ALLOW_DEMO`               | permite sessão demonstrativa | `false`                    |
 | `VITE_SUPABASE_URL`             | URL pública do projeto       | projeto IA Fiscal          |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | chave publicável do cliente  | chave `sb_publishable_...` |
 | `VITE_MUNICIPALITY_LABEL`       | rótulo do tenant             | `Cordeirópolis/SP`         |
@@ -96,10 +95,9 @@ O mesmo conjunto é executado no CI. Um build verde comprova integridade estáti
 
 ## Banco e Edge Functions
 
-[`supabase/migrations`](supabase/migrations) é a única fonte canônica de replay. Os primeiros 33
-arquivos representam as versões e os corpos SQL registrados remotamente; o 34º está validado com
-rollback e pendente de implantação. As diferenças de `LF` terminal do baseline aplicado são
-documentadas no manifesto de checksums.
+[`supabase/migrations`](supabase/migrations) é a única fonte canônica de replay. Os 36 arquivos
+representam as versões e os corpos SQL registrados remotamente. As diferenças históricas de `LF`
+terminal são documentadas no manifesto de checksums.
 
 Os arquivos em [`supabase/sql/applied`](supabase/sql/applied) são apenas um **arquivo histórico
 parcial** e nunca devem ser executados como cadeia. Antes de qualquer reconstrução, siga o
@@ -109,7 +107,7 @@ parcial** e nunca devem ser executados como cadeia. Antes de qualquer reconstru�
 ## Documentação operacional
 
 - [Arquitetura e contratos](docs/architecture.md)
-- [Reconciliação do banco](docs/database/reconciliation-2026-08-02.md)
+- [Reconciliação atual do banco](docs/database/reconciliation-2026-08-03.md)
 - [Runbook de reconstrução e recuperação](docs/database/recovery-runbook.md)
 - [Segurança, LGPD e limites jurídicos](docs/security-lgpd-legal.md)
 - [Fechamento da remediação de segurança](docs/security/reviews/2026-08-02-remediation.md)

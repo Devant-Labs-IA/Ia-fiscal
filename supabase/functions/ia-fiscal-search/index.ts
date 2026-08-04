@@ -113,7 +113,7 @@ Deno.serve(async (request: Request) => {
     auth: { persistSession: false, autoRefreshToken: false },
     global: {
       headers: {
-        authorization,
+        Authorization: authorization,
         "x-ia-search": "ia-fiscal-search-v1",
       },
     },

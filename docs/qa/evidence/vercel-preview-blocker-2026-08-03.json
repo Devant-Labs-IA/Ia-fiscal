@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "captured_at_brt": "2026-08-03T21:40:00-03:00",
+  "team": {
+    "id": "team_7PgPF25Rfmx9izFaCovNT17V",
+    "slug": "diego-4685s-projects"
+  },
+  "state": {
+    "projects": 0,
+    "deployments": 0,
+    "production_deployments": 0,
+    "github_pr_vercel_status": "absent",
+    "cli_authenticated": false,
+    "vercel_token_available": false
+  },
+  "requested_target": "preview",
+  "result": "blocked",
+  "reason": "The available deployment action cannot bind cwd, project, target or environment variables; using it for the first deployment could create or target an unintended production project.",
+  "safe_path": [
+    "authenticate Vercel CLI without exposing a token",
+    "create standalone project ia-fiscal-homologacao without Git integration",
+    "set the eight public variables only for Preview",
+    "build under Node 22 and verify nodejs22.x in .vercel/output",
+    "deploy with --prebuilt --target=preview and verify target is not production",
+    "add the exact Preview origin to Supabase Auth redirects and Edge CORS",
+    "run browser E2E and remove temporary identities"
+  ],
+  "actions_not_taken": [
+    "no Vercel project created",
+    "no deployment created",
+    "no production target touched",
+    "no domain attached",
+    "no environment variable written"
+  ]
+}

@@ -1163,6 +1163,7 @@ export type Database = {
           municipality_id: string
           opened_count: number
           policy_version_id: string
+          request_sha256: string | null
           requested_count: number
           status: string
           submitted_at: string | null
@@ -1184,6 +1185,7 @@ export type Database = {
           municipality_id: string
           opened_count?: number
           policy_version_id: string
+          request_sha256?: string | null
           requested_count?: number
           status?: string
           submitted_at?: string | null
@@ -1205,6 +1207,7 @@ export type Database = {
           municipality_id?: string
           opened_count?: number
           policy_version_id?: string
+          request_sha256?: string | null
           requested_count?: number
           status?: string
           submitted_at?: string | null
@@ -3749,6 +3752,7 @@ export type Database = {
           external_email_enabled: boolean
           municipality_id: string
           official_help_url: string | null
+          sandbox_response_publication_enabled: boolean
           sigiss_login_url: string
           updated_at: string
           updated_by: string | null
@@ -3759,6 +3763,7 @@ export type Database = {
           external_email_enabled?: boolean
           municipality_id: string
           official_help_url?: string | null
+          sandbox_response_publication_enabled?: boolean
           sigiss_login_url: string
           updated_at?: string
           updated_by?: string | null
@@ -3769,6 +3774,7 @@ export type Database = {
           external_email_enabled?: boolean
           municipality_id?: string
           official_help_url?: string | null
+          sandbox_response_publication_enabled?: boolean
           sigiss_login_url?: string
           updated_at?: string
           updated_by?: string | null

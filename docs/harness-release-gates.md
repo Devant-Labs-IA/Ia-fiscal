@@ -1,6 +1,6 @@
 # Harness operacional e gates de release
 
-Status em 2 de agosto de 2026: **PARTIAL — snapshot consolidado; produção fechada**
+Status em 3 de agosto de 2026: **PARTIAL — backend homologado; Preview e produção fechadas**
 
 ## Objetivo
 
@@ -31,29 +31,28 @@ Regra de escalada: dúvida jurídica, fonte conflitante, baixa confiança, dado 
 | ------------------- | ---------- | ------------------------------------------------------------------- |
 | fonte versionada    | PENDING    | publicar branch e verificar árvore/commit no repositório privado    |
 | build/lint/types    | PASS local | repetir no CI do commit exato                                       |
-| testes unitários    | PASS       | 13 arquivos, 45 testes                                              |
-| banco reproduzível  | PARTIAL    | 33 aplicadas reconciliadas + 1 pendente validada; replay não rodou  |
-| RPC/RLS             | PARTIAL    | AAL2/contexto/claim passaram com rollback; deploy e E2E pendentes   |
+| testes unitários    | PASS local | suíte e contratos verdes; repetir no CI do commit exato             |
+| banco reproduzível  | PARTIAL    | 36/36 aplicadas e reconciliadas; replay vazio ainda não rodou       |
+| RPC/RLS             | PASS SQL   | autorização e fronteira operacional aprovadas pós-aplicação         |
 | autenticação E2E    | BLOCKED    | MFA/recuperação implementados; zero usuários reais de teste         |
-| Edge/worker         | PARTIAL    | busca local exige JWT+AAL2; implantação e runtime pendentes         |
+| Edge/worker         | PASS busca | search v3 aprovada em JWT inválido, AAL1, AAL2 e tenant incorreto   |
 | IA supervisionada   | BLOCKED    | claim/leitura conectados; resposta, revisão e publicação E2E faltam |
-| preview Vercel      | NOT RUN    | nenhum preview validado para o commit consolidado                   |
+| preview Vercel      | BLOCKED    | zero projetos e nenhum canal autenticado com target/env controlados |
 | comunicação externa | CLOSED     | proibida por escopo e por gate jurídico/operacional                 |
 | produção            | CLOSED     | replay, E2E, restore, operação e aprovações ainda pendentes         |
 
 O ledger inicial contém 31 itens: 11 PASS, 7 FAIL, 9 BLOCKED e 4 NOT_RUN, com quatro defeitos P1,
 dois P2 e um P3. A cópia imutável está em [`qa/ledger-initial.json`](qa/ledger-initial.json). O
-ledger atual mantém o inventário incompleto de forma explícita: 4 PASS, 4 BLOCKED e 3 NOT_RUN,
-sem ciclo crítico completo. Consulte [`qa/ledger-current.json`](qa/ledger-current.json) e
-[`qa/release-readiness-2026-08-02.md`](qa/release-readiness-2026-08-02.md).
+ledger atual mantém o inventário incompleto e a ausência de ciclo web crítico de forma explícita.
+Consulte [`qa/ledger-current.json`](qa/ledger-current.json) e
+[`qa/release-readiness-2026-08-03.md`](qa/release-readiness-2026-08-03.md).
 
 ## Baseline reconciliado do Supabase
 
-O acesso ao projeto foi restabelecido e o histórico remoto contém 33 migrações aplicadas,
-reconciliadas por checksum. Uma 34ª migração restringe administração técnica, exige AAL2 e vincula
-o claim ao contexto municipal ativo; ela passou com a regressão SQL em transação revertida e não
-foi aplicada. A evidência está em
-[`qa/evidence/supabase-authorization-regression-2026-08-03.json`](qa/evidence/supabase-authorization-regression-2026-08-03.json).
+O histórico remoto contém 36 migrações aplicadas e reconciliadas por checksum. AAL2, contexto
+municipal, claim idempotente, fronteiras de lote e publicação fail-closed passaram em duas provas
+pré-aplicação e nas regressões pós-aplicação. A evidência está em
+[`qa/evidence/supabase-postapply-regression-2026-08-03.json`](qa/evidence/supabase-postapply-regression-2026-08-03.json).
 
 Isso não fecha o gate de reconstrução: o replay completo em banco descartável e a comparação com
 `supabase/baseline/catalog-fingerprint.json` continuam obrigatórios.
@@ -92,7 +91,7 @@ Qualquer falha retorna o release ao estágio anterior. Produção somente existe
 
 - matriz de papéis: anônimo, fiscal, contribuinte, contador, worker e mantenedor;
 - isolamento entre tenants e entre contribuintes;
-- testes negativos das 19 funções privilegiadas;
+- testes negativos das 17 funções privilegiadas mantidas;
 - CRUD/transações/idempotência/concorrência onde aplicável;
 - Edge Functions com JWT inválido, usuário sem vínculo e escopo cruzado;
 - trilha ponta a ponta e correlação de logs;

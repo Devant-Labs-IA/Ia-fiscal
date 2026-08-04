@@ -23,3 +23,12 @@ nova evidência, incluir `/contribuintes/tp-1` e não sobrescrever o arquivo ant
 
 A tentativa desta fatia não produziu nova evidência: o automatizador local não pôde criar o socket
 de controle no sandbox e o navegador em nuvem não acessa `127.0.0.1`. O item permanece `NOT_RUN`.
+
+Evidências de backend/runtime desta rodada:
+
+- `evidence/supabase-postapply-regression-2026-08-03.json`: 36 migrações e regressões SQL;
+- `evidence/edge-search-runtime-2026-08-03.json`: Edge search v3, JWT/AAL2/tenant;
+- `evidence/supabase-advisors-2026-08-03.json`: advisors e riscos residuais;
+- `evidence/vercel-preview-blocker-2026-08-03.json`: motivo comprovado para não criar a Preview.
+
+Nenhum desses artefatos converte o gate de navegador em `PASS`.

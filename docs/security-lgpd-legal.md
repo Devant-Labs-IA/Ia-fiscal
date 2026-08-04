@@ -2,7 +2,7 @@
 
 Status: **gate de produção fechado**
 Escopo: IA Fiscal em homologação/sandbox
-Última revisão técnica: 2 de agosto de 2026
+Última revisão técnica: 3 de agosto de 2026
 
 > Este documento é um controle de engenharia e governança. Ele não substitui parecer da Procuradoria, do encarregado de dados ou da autoridade fiscal competente.
 
@@ -18,28 +18,33 @@ Escopo: IA Fiscal em homologação/sandbox
 
 ## Situação de segurança conhecida
 
-| Controle                   | Evidência atual                                         | Gate                                                    |
-| -------------------------- | ------------------------------------------------------- | ------------------------------------------------------- |
-| RLS                        | habilitada nas 101 tabelas inventariadas                | parcial: políticas por papel não foram testadas E2E     |
-| schemas privados/auditoria | 18 tabelas com RLS sem policy                           | bloqueado até confirmar grants e comportamento deny-all |
-| RPCs privilegiados         | 19 `SECURITY DEFINER`; fluxos de maior risco corrigidos | parcial: matriz E2E individual ainda pendente           |
-| Edge Functions             | worker em paridade; search local exige JWT e AAL2       | parcial: search ainda não implantada/testada no runtime |
-| usuários reais de teste    | zero usuários/memberships/vínculos validados            | **BLOCKED**                                             |
-| auditoria                  | 949 eventos e zero âncoras no inventário inicial        | **BLOCKED** até verificar integridade/imutabilidade     |
-| segredos web               | scanner sem segredo administrativo em path web          | manter scanner no CI e revisar bundle                   |
-| entrega externa            | zero tentativas; destino externo desabilitado           | manter fechado                                          |
+| Controle                   | Evidência atual                                        | Gate                                                |
+| -------------------------- | ------------------------------------------------------ | --------------------------------------------------- |
+| RLS                        | habilitada nas 101 tabelas inventariadas               | parcial: políticas por papel não foram testadas E2E |
+| schemas privados/auditoria | 18 tabelas deny-all, revisadas como internas           | manter sem policy de cliente e monitorar grants     |
+| RPCs privilegiados         | 17 `SECURITY DEFINER` intencionais e revisados         | parcial: matriz web individual ainda pendente       |
+| Edge Functions             | worker em paridade; search v3 exige JWT, AAL2 e tenant | runtime negativo/positivo aprovado                  |
+| senhas vazadas no Auth     | advisor informa proteção desabilitada                  | **BLOCKED** até configuração administrativa         |
+| usuários reais de teste    | zero usuários/memberships/vínculos validados           | **BLOCKED**                                         |
+| auditoria                  | 949 eventos e zero âncoras no inventário inicial       | **BLOCKED** até verificar integridade/imutabilidade |
+| segredos web               | scanner sem segredo administrativo em path web         | manter scanner no CI e revisar bundle               |
+| entrega externa            | zero tentativas; destino externo desabilitado          | manter fechado                                      |
 
 O hardening de autorização foi aplicado na migração `20260802230147` e passou na regressão SQL
 transacional de homologação. O relatório e os gates remanescentes estão em
 [`security/reviews/2026-08-02-remediation.md`](security/reviews/2026-08-02-remediation.md).
 
-A migração `20260803014627`, ainda pendente de implantação, adiciona AAL2 nas fronteiras de caso,
+A migração `20260803234455`, aplicada na homologação, adiciona AAL2 nas fronteiras de caso,
 remove herança fiscal da administração técnica e vincula o claim à prefeitura/membership ativa.
 Ela foi validada contra o catálogo de homologação em transação com rollback.
 
+As migrações `20260804002339` e `20260804004659` fecharam publicação de respostas por papéis da
+API, idempotência de lotes, reserva única de divergência e revalidação concorrente de papel fiscal.
+Duas passagens pré-aplicação e as regressões pós-aplicação passaram sem resíduos ou entregas.
+
 ## Auditoria obrigatória dos RPCs `SECURITY DEFINER`
 
-Para cada uma das 19 funções sinalizadas:
+Para cada uma das 17 funções sinalizadas e mantidas como entradas intencionais:
 
 - identificar owner, assinatura, `search_path`, `EXECUTE` grants e chamadores;
 - revogar `PUBLIC` e `authenticated` quando não forem indispensáveis;
@@ -105,7 +110,10 @@ Use o runbook [`runbooks/incident-response.md`](runbooks/incident-response.md). 
 
 ## Gate obrigatório antes de produção
 
-- [ ] completar a matriz E2E individual das 19 funções privilegiadas;
+- [ ] completar a matriz web/E2E individual das 17 funções privilegiadas;
+- [ ] habilitar e comprovar a proteção do Supabase Auth contra senhas vazadas;
+- [ ] bloquear `p_is_test=false` em `ia_rebuild_simple_national_effective_rates` sem controle de
+      produção e estado municipal explícitos no banco;
 - [ ] testes negativos de RLS por papel e tenant;
 - [ ] usuários e vínculos sintéticos de teste;
 - [ ] E2E completo com evidências;
