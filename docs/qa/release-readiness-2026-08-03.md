@@ -15,18 +15,18 @@ de produção e comunicação externa permanecem intocados.
 
 ## Gates comprovados
 
-| Gate                       | Estado  | Evidência                                                                 |
-| -------------------------- | ------- | ------------------------------------------------------------------------- |
-| Histórico Supabase         | PASS    | 36/36 versões, bytes e SHA-256 reconciliados                              |
-| Migrações 34–36            | PASS    | duas provas pré-aplicação e regressões pós-aplicação                      |
-| Autorização SQL            | PASS    | AAL2, tenant, replay, terminalidade e semântica de assignment             |
-| Fronteira operacional      | PASS    | idempotência, reserva de divergência, locks ordenados, ACL e zero entrega |
-| Edge `ia-fiscal-search` v3 | PASS    | JWT inválido, AAL1, AAL2 autorizado e tenant incorreto                    |
-| Tipos/baseline             | PASS    | catálogo/manifesto recapturados; duas colunas tipadas e validadas         |
-| CI do commit final         | PENDING | exige publicação do snapshot atualizado no PR #1                          |
-| Vercel Preview             | BLOCKED | nenhum projeto e nenhum canal autenticado com target/env explícitos       |
-| Browser E2E                | BLOCKED | depende da Preview e de redirect/CORS exatos                              |
-| Produção/entrega externa   | CLOSED  | fora do escopo autorizado                                                 |
+| Gate                       | Estado  | Evidência                                                                                                                                                                                                                          |
+| -------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Histórico Supabase         | PASS    | 36/36 versões, bytes e SHA-256 reconciliados                                                                                                                                                                                       |
+| Migrações 34–36            | PASS    | duas provas pré-aplicação e regressões pós-aplicação                                                                                                                                                                               |
+| Autorização SQL            | PASS    | AAL2, tenant, replay, terminalidade e semântica de assignment                                                                                                                                                                      |
+| Fronteira operacional      | PASS    | idempotência, reserva de divergência, locks ordenados, ACL e zero entrega                                                                                                                                                          |
+| Edge `ia-fiscal-search` v3 | PASS    | JWT inválido, AAL1, AAL2 autorizado e tenant incorreto                                                                                                                                                                             |
+| Tipos/baseline             | PASS    | catálogo/manifesto recapturados; duas colunas tipadas e validadas                                                                                                                                                                  |
+| CI do snapshot de código   | PASS    | [commit `72e9d095`](https://github.com/AlmoreContabilidade/Ia-fiscal/commit/72e9d0950a6ccac80e491ce5c818f11745989d9f); [Actions `30869245879`](https://github.com/AlmoreContabilidade/Ia-fiscal/actions/runs/30869245879) aprovado |
+| Vercel Preview             | BLOCKED | nenhum projeto e nenhum canal autenticado com target/env explícitos                                                                                                                                                                |
+| Browser E2E                | BLOCKED | depende da Preview e de redirect/CORS exatos                                                                                                                                                                                       |
+| Produção/entrega externa   | CLOSED  | fora do escopo autorizado                                                                                                                                                                                                          |
 
 ## Alertas e riscos residuais
 

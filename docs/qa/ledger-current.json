@@ -3,7 +3,7 @@
   "system": {
     "name": "IA Fiscal",
     "environment": "supabase_homologation_pr1",
-    "version": "PR #1 homologation snapshot 2026-08-03; Supabase baseline 36 applied migrations; Edge search v3",
+    "version": "PR #1 code snapshot 72e9d095; Supabase baseline 36 applied migrations; Edge search v3",
     "base_url": "blocked:no-controlled-vercel-preview"
   },
   "run": {

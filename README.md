@@ -19,9 +19,10 @@ Snapshot técnico consolidado para homologação em 3 de agosto de 2026:
 - nenhum usuário ou vínculo real disponível para homologação E2E;
 - nenhuma entrega externa ou promoção para produção autorizada.
 
-Os gates locais de código estão verdes. O estado de produção continua **CLOSED** até replay do
-banco em ambiente descartável, matriz E2E por papel, homologação real de MFA/e-mail, restore,
-observabilidade e aprovações fiscal, jurídica, de segurança e proteção de dados. Consulte
+Os gates locais e o GitHub Actions do snapshot `72e9d095` estão verdes. O estado de produção
+continua **CLOSED** até replay do banco em ambiente descartável, matriz E2E por papel, homologação
+real de MFA/e-mail, restore, observabilidade e aprovações fiscal, jurídica, de segurança e proteção
+de dados. Consulte
 [`docs/qa/release-readiness-2026-08-03.md`](docs/qa/release-readiness-2026-08-03.md).
 
 ## Escopo do MVP

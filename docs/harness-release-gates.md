@@ -27,19 +27,19 @@ Regra de escalada: dúvida jurídica, fonte conflitante, baixa confiança, dado 
 
 ## Estado dos gates
 
-| Gate                | Estado     | Motivo/evidência necessária                                         |
-| ------------------- | ---------- | ------------------------------------------------------------------- |
-| fonte versionada    | PENDING    | publicar branch e verificar árvore/commit no repositório privado    |
-| build/lint/types    | PASS local | repetir no CI do commit exato                                       |
-| testes unitários    | PASS local | suíte e contratos verdes; repetir no CI do commit exato             |
-| banco reproduzível  | PARTIAL    | 36/36 aplicadas e reconciliadas; replay vazio ainda não rodou       |
-| RPC/RLS             | PASS SQL   | autorização e fronteira operacional aprovadas pós-aplicação         |
-| autenticação E2E    | BLOCKED    | MFA/recuperação implementados; zero usuários reais de teste         |
-| Edge/worker         | PASS busca | search v3 aprovada em JWT inválido, AAL1, AAL2 e tenant incorreto   |
-| IA supervisionada   | BLOCKED    | claim/leitura conectados; resposta, revisão e publicação E2E faltam |
-| preview Vercel      | BLOCKED    | zero projetos e nenhum canal autenticado com target/env controlados |
-| comunicação externa | CLOSED     | proibida por escopo e por gate jurídico/operacional                 |
-| produção            | CLOSED     | replay, E2E, restore, operação e aprovações ainda pendentes         |
+| Gate                | Estado     | Motivo/evidência necessária                                                                                                                                            |
+| ------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| fonte versionada    | PASS       | PR #1, [commit `72e9d095`](https://github.com/AlmoreContabilidade/Ia-fiscal/commit/72e9d0950a6ccac80e491ce5c818f11745989d9f), árvore `c97dfe1a`, sem alteração da main |
+| build/lint/types    | PASS CI    | [GitHub Actions `30869245879`](https://github.com/AlmoreContabilidade/Ia-fiscal/actions/runs/30869245879) aprovado no commit exato                                     |
+| testes unitários    | PASS CI    | 50/50 testes e 12/12 contratos no mesmo snapshot                                                                                                                       |
+| banco reproduzível  | PARTIAL    | 36/36 aplicadas e reconciliadas; replay vazio ainda não rodou                                                                                                          |
+| RPC/RLS             | PASS SQL   | autorização e fronteira operacional aprovadas pós-aplicação                                                                                                            |
+| autenticação E2E    | BLOCKED    | MFA/recuperação implementados; zero usuários reais de teste                                                                                                            |
+| Edge/worker         | PASS busca | search v3 aprovada em JWT inválido, AAL1, AAL2 e tenant incorreto                                                                                                      |
+| IA supervisionada   | BLOCKED    | claim/leitura conectados; resposta, revisão e publicação E2E faltam                                                                                                    |
+| preview Vercel      | BLOCKED    | zero projetos e nenhum canal autenticado com target/env controlados                                                                                                    |
+| comunicação externa | CLOSED     | proibida por escopo e por gate jurídico/operacional                                                                                                                    |
+| produção            | CLOSED     | replay, E2E, restore, operação e aprovações ainda pendentes                                                                                                            |
 
 O ledger inicial contém 31 itens: 11 PASS, 7 FAIL, 9 BLOCKED e 4 NOT_RUN, com quatro defeitos P1,
 dois P2 e um P3. A cópia imutável está em [`qa/ledger-initial.json`](qa/ledger-initial.json). O
