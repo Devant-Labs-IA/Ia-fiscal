@@ -45,7 +45,11 @@ export function Topbar() {
   const isPortal = auth.access?.role === "taxpayer" || auth.access?.role === "accountant";
   const canSearch = !isPortal && auth.access?.role !== "platform_admin";
   const identity = String(auth.user?.user_metadata?.["full_name"] ?? auth.user?.email ?? "Usuário");
-  const roleLabel = auth.access ? ROLE_LABELS[auth.access.role] : "Acesso restrito";
+  const roleLabel = auth.access?.platformAdmin
+    ? "Administrador global"
+    : auth.access
+      ? ROLE_LABELS[auth.access.role]
+      : "Acesso restrito";
 
   async function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
