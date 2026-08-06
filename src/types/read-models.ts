@@ -6,6 +6,7 @@ export type AppRole = StaffRole | PortalRole;
 
 export interface AccessContext {
   role: AppRole;
+  platformAdmin?: boolean;
   municipalityId: string;
   municipalityLabel: string;
   membershipId?: string;
