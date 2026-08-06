@@ -36,8 +36,7 @@ export function AppSidebar() {
   const isActive = (url: string) => (url === "/" ? pathname === "/" : pathname.startsWith(url));
   const isPortal = auth.access?.role === "taxpayer" || auth.access?.role === "accountant";
   const isPlatformAdmin = auth.access?.role === "platform_admin";
-  const canConfigure =
-    auth.access?.role === "platform_admin" || auth.access?.role === "municipal_admin";
+  const canConfigure = auth.access?.platformAdmin || auth.access?.role === "municipal_admin";
   const navigation = isPortal
     ? portalNav
     : isPlatformAdmin
@@ -46,7 +45,11 @@ export function AppSidebar() {
   const identity = String(
     auth.user?.user_metadata?.["full_name"] ?? auth.user?.email ?? "Usuário autenticado",
   );
-  const roleLabel = auth.access ? ROLE_LABELS[auth.access.role] : "Acesso restrito";
+  const roleLabel = auth.access?.platformAdmin
+    ? "Administrador global"
+    : auth.access
+      ? ROLE_LABELS[auth.access.role]
+      : "Acesso restrito";
 
   return (
     <Sidebar collapsible="icon">
