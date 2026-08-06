@@ -273,6 +273,26 @@ describe("gate MFA e recuperação de senha", () => {
     expect(mocks.signOut).toHaveBeenCalledWith({ scope: "global" });
   });
 
+  it("trata type=invite como configuração de senha antes do MFA", async () => {
+    const session = sessionFor();
+    window.history.replaceState(
+      {},
+      "",
+      "/#access_token=invite-token&refresh_token=invite-refresh&type=invite",
+    );
+    mocks.getSession.mockResolvedValue({ data: { session }, error: null });
+
+    renderProvider();
+    await screen.findByText("password_recovery");
+    expect(mocks.getAuthenticatorAssuranceLevel).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "trocar senha" }));
+    await screen.findByText("unauthenticated");
+    expect(mocks.updateUser).toHaveBeenCalledWith({ password: "uma-senha-segura-123" });
+    expect(mocks.signOut).toHaveBeenCalledWith({ scope: "global" });
+    expect(window.location.hash).toBe("");
+  });
+
   it("gera link de recuperação com marcador dedicado", async () => {
     renderProvider();
     await screen.findByText("unauthenticated");
