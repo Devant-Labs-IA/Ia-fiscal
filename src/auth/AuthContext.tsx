@@ -97,13 +97,7 @@ async function resolveAccess(userId: string): Promise<AccessContext | null> {
     .maybeSingle();
 
   if (platform.error) throw platform.error;
-  if (platform.data) {
-    return {
-      role: "platform_admin",
-      municipalityId: "",
-      municipalityLabel: "Administração da plataforma",
-    };
-  }
+  const isPlatformAdmin = Boolean(platform.data);
 
   const municipality = await supabase
     .from("municipalities")
@@ -112,7 +106,16 @@ async function resolveAccess(userId: string): Promise<AccessContext | null> {
     .maybeSingle();
 
   if (municipality.error) throw municipality.error;
-  if (!municipality.data) return null;
+  if (!municipality.data) {
+    return isPlatformAdmin
+      ? {
+          role: "platform_admin",
+          platformAdmin: true,
+          municipalityId: "",
+          municipalityLabel: "Administração da plataforma",
+        }
+      : null;
+  }
   const municipalityId = municipality.data.id as string;
   const municipalityLabel = `${String(municipality.data.name).trim()}/${String(
     municipality.data.state_code,
@@ -132,9 +135,19 @@ async function resolveAccess(userId: string): Promise<AccessContext | null> {
   if (staff.data && MUNICIPAL_STAFF_ROLES.has(staff.data.role as StaffRole)) {
     return {
       role: staff.data.role as StaffRole,
+      platformAdmin: isPlatformAdmin,
       municipalityId,
       municipalityLabel,
       membershipId: staff.data.id as string,
+    };
+  }
+
+  if (isPlatformAdmin) {
+    return {
+      role: "platform_admin",
+      platformAdmin: true,
+      municipalityId: "",
+      municipalityLabel: "Administração da plataforma",
     };
   }
 
