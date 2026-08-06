@@ -14,7 +14,7 @@ export const Route = createFileRoute("/configuracoes")({
 
 function SettingsPage() {
   const auth = useAuth();
-  const canView = auth.access?.role === "platform_admin" || auth.access?.role === "municipal_admin";
+  const canView = auth.access?.platformAdmin || auth.access?.role === "municipal_admin";
   if (!canView) {
     return (
       <div className="py-4">
