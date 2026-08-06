@@ -65,12 +65,23 @@ function safeErrorCode(error: unknown): string {
   return "access_resolution_failed";
 }
 
-function clearRecoveryLocation(): void {
+function isPasswordSetupLocation(): boolean {
+  if (typeof window === "undefined") return false;
+  const url = new URL(window.location.href);
+  const fragment = new URLSearchParams(url.hash.replace(/^#/, ""));
+  const flowTypes = [url.searchParams.get("type"), fragment.get("type")];
+  return (
+    url.searchParams.get("recovery") === "1" ||
+    flowTypes.some((type) => type === "invite" || type === "recovery")
+  );
+}
+
+function clearPasswordSetupLocation(): void {
   if (typeof window === "undefined") return;
   const url = new URL(window.location.href);
-  if (!url.searchParams.has("recovery")) return;
   url.searchParams.delete("recovery");
-  window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  url.searchParams.delete("type");
+  window.history.replaceState({}, "", `${url.pathname}${url.search}`);
 }
 
 async function resolveAccess(userId: string): Promise<AccessContext | null> {
@@ -275,9 +286,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const demoActive = isDemoMode();
     setDemo(demoActive);
-    const recoveryFromUrl =
-      typeof window !== "undefined" &&
-      new URLSearchParams(window.location.search).get("recovery") === "1";
+    const recoveryFromUrl = isPasswordSetupLocation();
     recoveryRef.current = recoveryFromUrl;
 
     if (demoActive && !recoveryFromUrl) {
@@ -347,7 +356,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         accessRequestRef.current += 1;
         principalRef.current = null;
         recoveryRef.current = false;
-        clearRecoveryLocation();
+        clearPasswordSetupLocation();
         setMfaEnrollment(null);
         setMfaFactorId(null);
         await getSupabaseClient().auth.signOut({ scope: "local" });
@@ -452,7 +461,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         recoveryRef.current = false;
-        clearRecoveryLocation();
+        clearPasswordSetupLocation();
         queryClient.clear();
         accessRequestRef.current += 1;
         principalRef.current = null;
@@ -474,7 +483,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         queryClient.clear();
         accessRequestRef.current += 1;
         recoveryRef.current = false;
-        clearRecoveryLocation();
+        clearPasswordSetupLocation();
         setMfaEnrollment(null);
         setMfaFactorId(null);
         if (!runtimeConfig.allowDemo) {
