@@ -41,6 +41,8 @@ describe("contrato estático das fronteiras fiscais", () => {
     const appShell = source("src/components/layout/AppShell.tsx");
     const appSidebar = source("src/components/layout/AppSidebar.tsx");
     const topbar = source("src/components/layout/Topbar.tsx");
+    const authContext = source("src/auth/AuthContext.tsx");
+    expect(authContext).toContain("platformAdmin: isPlatformAdmin");
     expect(appShell).toContain('auth.access?.role === "platform_admin"');
     expect(appShell).toContain('<Navigate to="/configuracoes" replace />');
     expect(appSidebar).toContain('item.url === "/configuracoes"');
