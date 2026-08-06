@@ -109,6 +109,7 @@ function Probe() {
     <>
       <output>{auth.status}</output>
       <span>{auth.access?.role ?? "sem-papel"}</span>
+      <span>{auth.access?.platformAdmin ? "admin-global" : "admin-escopado"}</span>
       <span>{auth.access?.municipalityId ?? "sem-municipio"}</span>
       <span>{auth.access?.municipalityLabel ?? "sem-rotulo"}</span>
       <span>{auth.mfaEnrollment?.secret ?? "sem-chave"}</span>
@@ -401,7 +402,37 @@ describe("gate MFA e recuperação de senha", () => {
     renderProvider();
     await screen.findByText("ready");
     expect(screen.getByText("platform_admin")).toBeTruthy();
-    expect(mocks.builders.map(({ table }) => table)).toEqual(["platform_administrators"]);
+    expect(screen.getByText("admin-global")).toBeTruthy();
+    expect(mocks.builders.map(({ table }) => table)).toEqual([
+      "platform_administrators",
+      "municipalities",
+    ]);
+  });
+
+  it("combina administração global com vínculo municipal explícito", async () => {
+    mocks.getSession.mockResolvedValue({ data: { session: sessionFor() }, error: null });
+    mocks.tableResults["platform_administrators"] = {
+      data: { user_id: "user-1" },
+      error: null,
+    };
+    mocks.tableResults["municipalities"] = {
+      data: { id: "municipality-1", name: "Cordeirópolis", state_code: "SP" },
+      error: null,
+    };
+    mocks.tableResults["municipality_memberships"] = {
+      data: {
+        id: "membership-global",
+        municipality_id: "municipality-1",
+        role: "municipal_admin",
+      },
+      error: null,
+    };
+
+    renderProvider();
+    await screen.findByText("ready");
+    expect(screen.getByText("municipal_admin")).toBeTruthy();
+    expect(screen.getByText("admin-global")).toBeTruthy();
+    expect(screen.getByText("municipality-1")).toBeTruthy();
   });
 
   it("renderiza a tela de cadastro MFA antes de qualquer conteúdo protegido", async () => {
