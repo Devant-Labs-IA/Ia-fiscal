@@ -3,6 +3,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { Search, WalletCards } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { useAuth } from "@/auth/AuthContext";
 import {
   EmptyState,
   ErrorState,
@@ -65,15 +66,19 @@ function safeDate(value: string | null): string {
 }
 
 function DebtsPage() {
+  const auth = useAuth();
+  const municipalityId = auth.access?.municipalityId ?? "";
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("todos");
   const debts = useQuery({
-    queryKey: fiscalKeys.debts(),
-    queryFn: () => fiscalService.listDebtPeriods(),
+    queryKey: fiscalKeys.debts(municipalityId),
+    queryFn: () => fiscalService.listDebtPeriods(municipalityId),
+    enabled: Boolean(municipalityId),
   });
   const taxpayers = useQuery({
-    queryKey: fiscalKeys.taxpayers,
-    queryFn: () => fiscalService.listTaxpayerSummaries(),
+    queryKey: fiscalKeys.taxpayers(municipalityId),
+    queryFn: () => fiscalService.listTaxpayerSummaries(municipalityId),
+    enabled: Boolean(municipalityId),
   });
 
   const taxpayerById = useMemo(

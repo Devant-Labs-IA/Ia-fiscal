@@ -3,6 +3,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { ArrowRight, Building2, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { useAuth } from "@/auth/AuthContext";
 import {
   EmptyState,
   ErrorState,
@@ -53,11 +54,14 @@ export const Route = createFileRoute("/contribuintes")({
 type AttentionFilter = "todos" | "com_atencao" | "sem_atencao";
 
 function TaxpayersPage() {
+  const auth = useAuth();
+  const municipalityId = auth.access?.municipalityId ?? "";
   const [query, setQuery] = useState("");
   const [attention, setAttention] = useState<AttentionFilter>("todos");
   const taxpayers = useQuery({
-    queryKey: fiscalKeys.taxpayers,
-    queryFn: () => fiscalService.listTaxpayerSummaries(),
+    queryKey: fiscalKeys.taxpayers(municipalityId),
+    queryFn: () => fiscalService.listTaxpayerSummaries(municipalityId),
+    enabled: Boolean(municipalityId),
   });
 
   const filtered = useMemo(() => {

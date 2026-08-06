@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Ban, CheckCircle2, Clock3, MailCheck, ShieldAlert } from "lucide-react";
 
+import { useAuth } from "@/auth/AuthContext";
 import {
   EmptyState,
   ErrorState,
@@ -119,9 +120,12 @@ function RecipientCard({ item }: { item: NotificationRecipientReadModel }) {
 }
 
 function NotificationsPage() {
+  const auth = useAuth();
+  const municipalityId = auth.access?.municipalityId ?? "";
   const recipients = useQuery({
-    queryKey: fiscalKeys.recipients,
-    queryFn: () => fiscalService.listNotificationRecipients(),
+    queryKey: fiscalKeys.recipients(municipalityId),
+    queryFn: () => fiscalService.listNotificationRecipients(municipalityId),
+    enabled: Boolean(municipalityId),
   });
 
   const items = recipients.data ?? [];

@@ -218,7 +218,7 @@ function ServiceQueuePage() {
     },
     retry: false,
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: fiscalKeys.events });
+      await queryClient.invalidateQueries({ queryKey: fiscalKeys.events(municipalityId) });
       toast.success("Atendimento assumido", {
         description: "A atribuição foi registrada na trilha de auditoria.",
       });

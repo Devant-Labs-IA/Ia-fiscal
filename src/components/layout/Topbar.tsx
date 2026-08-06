@@ -1,5 +1,5 @@
-import { BellOff, LoaderCircle, MapPin, Search } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { BellOff, Check, LoaderCircle, MapPin, Search } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 
 import { useAuth } from "@/auth/AuthContext";
@@ -15,6 +15,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { runtimeConfig } from "@/config/runtime";
 import { fiscalService } from "@/services/fiscal-service";
@@ -42,14 +49,27 @@ export function Topbar() {
   const [results, setResults] = useState<SearchResultItem[]>([]);
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [switchingMunicipality, setSwitchingMunicipality] = useState(false);
+  const searchRequestRef = useRef(0);
   const isPortal = auth.access?.role === "taxpayer" || auth.access?.role === "accountant";
   const canSearch = !isPortal && auth.access?.role !== "platform_admin";
   const identity = String(auth.user?.user_metadata?.["full_name"] ?? auth.user?.email ?? "Usuário");
-  const roleLabel = auth.access?.platformAdmin
-    ? "Administrador global"
-    : auth.access
-      ? ROLE_LABELS[auth.access.role]
-      : "Acesso restrito";
+  const roleLabel =
+    auth.access?.platformAdmin && auth.access.role !== "platform_admin"
+      ? `Administrador global · ${ROLE_LABELS[auth.access.role]}`
+      : auth.access?.platformAdmin
+        ? "Administrador global"
+        : auth.access
+          ? ROLE_LABELS[auth.access.role]
+          : "Acesso restrito";
+
+  useEffect(() => {
+    searchRequestRef.current += 1;
+    setQuery("");
+    setResults([]);
+    setSearching(false);
+    setSearched(false);
+  }, [auth.access?.municipalityId]);
 
   async function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -59,15 +79,36 @@ export function Topbar() {
       return;
     }
     if (!auth.access) return;
+    const requestId = ++searchRequestRef.current;
+    const municipalityId = auth.access.municipalityId;
     setSearching(true);
     setSearched(true);
     try {
-      setResults(await fiscalService.searchFiscal(normalized, auth.access.municipalityId));
+      const nextResults = await fiscalService.searchFiscal(normalized, municipalityId);
+      if (requestId !== searchRequestRef.current) return;
+      setResults(nextResults);
     } catch {
+      if (requestId !== searchRequestRef.current) return;
       setResults([]);
       toast.error("A busca protegida não pôde ser concluída.");
     } finally {
-      setSearching(false);
+      if (requestId === searchRequestRef.current) setSearching(false);
+    }
+  }
+
+  async function selectMunicipality(municipalityId: string) {
+    setSwitchingMunicipality(true);
+    try {
+      const selected = await auth.selectMunicipality(municipalityId);
+      toast.success("Contexto municipal alterado", {
+        description: selected.label,
+      });
+    } catch {
+      toast.error("Não foi possível trocar o município", {
+        description: "Seu vínculo pode ter sido alterado. Atualize o acesso e tente novamente.",
+      });
+    } finally {
+      setSwitchingMunicipality(false);
     }
   }
 
@@ -98,7 +139,9 @@ export function Topbar() {
                 name="busca"
                 value={query}
                 onChange={(event) => {
+                  searchRequestRef.current += 1;
                   setQuery(event.target.value);
+                  setSearching(false);
                   setSearched(false);
                 }}
                 placeholder="Buscar contribuinte, CNPJ ou processo"
@@ -156,13 +199,36 @@ export function Topbar() {
           <div className="flex-1" />
         )}
 
-        <Badge
-          variant="outline"
-          className="hidden shrink-0 gap-1.5 border-border bg-primary-soft text-primary md:inline-flex"
-        >
-          <MapPin className="size-3.5" aria-hidden />
-          {auth.access?.municipalityLabel ?? runtimeConfig.municipalityLabel}
-        </Badge>
+        {auth.access?.platformAdmin && auth.municipalityContexts.length > 1 ? (
+          <Select
+            value={auth.access.municipalityId}
+            disabled={switchingMunicipality}
+            onValueChange={(municipalityId) => void selectMunicipality(municipalityId)}
+          >
+            <SelectTrigger
+              className="hidden w-[240px] shrink-0 border-border bg-primary-soft text-primary md:flex"
+              aria-label="Município em que o administrador global está atuando"
+            >
+              <MapPin className="size-3.5 shrink-0" aria-hidden />
+              <SelectValue placeholder="Selecionar município" />
+            </SelectTrigger>
+            <SelectContent>
+              {auth.municipalityContexts.map((municipality) => (
+                <SelectItem key={municipality.id} value={municipality.id}>
+                  {municipality.label} · {ROLE_LABELS[municipality.role]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <Badge
+            variant="outline"
+            className="hidden shrink-0 gap-1.5 border-border bg-primary-soft text-primary md:inline-flex"
+          >
+            <MapPin className="size-3.5" aria-hidden />
+            {auth.access?.municipalityLabel ?? runtimeConfig.municipalityLabel}
+          </Badge>
+        )}
 
         <Button
           variant="ghost"
@@ -181,7 +247,11 @@ export function Topbar() {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="shrink-0 gap-2 px-2">
+            <Button
+              variant="ghost"
+              className="shrink-0 gap-2 px-2"
+              aria-label={`Menu de ${identity}, ${roleLabel}`}
+            >
               <Avatar className="size-7">
                 <AvatarFallback className="bg-primary text-xs text-primary-foreground">
                   {initials(identity)}
@@ -199,6 +269,48 @@ export function Topbar() {
               <span className="block text-xs font-normal text-muted-foreground">{roleLabel}</span>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            {auth.access?.platformAdmin ? (
+              <>
+                <DropdownMenuLabel className="text-xs text-muted-foreground">
+                  <span className="block">Contexto municipal atual</span>
+                  <span className="mt-1 block text-sm font-medium text-foreground">
+                    {auth.access.municipalityLabel}
+                  </span>
+                  <span className="block font-normal">{ROLE_LABELS[auth.access.role]}</span>
+                </DropdownMenuLabel>
+                {auth.municipalityContexts.length > 1 ? (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-xs text-muted-foreground">
+                      Atuar no município
+                    </DropdownMenuLabel>
+                    {auth.municipalityContexts.map((municipality) => (
+                      <DropdownMenuItem
+                        key={municipality.id}
+                        disabled={switchingMunicipality}
+                        onSelect={() => void selectMunicipality(municipality.id)}
+                      >
+                        <Check
+                          className={
+                            municipality.id === auth.access?.municipalityId
+                              ? "size-4 opacity-100"
+                              : "size-4 opacity-0"
+                          }
+                          aria-hidden
+                        />
+                        <span className="min-w-0">
+                          <span className="block truncate">{municipality.label}</span>
+                          <span className="block truncate text-xs text-muted-foreground">
+                            {ROLE_LABELS[municipality.role]}
+                          </span>
+                        </span>
+                      </DropdownMenuItem>
+                    ))}
+                  </>
+                ) : null}
+                <DropdownMenuSeparator />
+              </>
+            ) : null}
             {auth.demo ? (
               <DropdownMenuItem onClick={auth.leaveDemo}>Sair da demonstração</DropdownMenuItem>
             ) : (

@@ -32,6 +32,70 @@ beforeEach(() => {
 });
 
 describe("contrato Supabase do atendimento", () => {
+  it.each([
+    [
+      "resumos de contribuinte",
+      "vw_taxpayer_360_summary",
+      () => supabaseFiscalService.listTaxpayerSummaries("municipality-1"),
+    ],
+    [
+      "períodos de débito",
+      "vw_taxpayer_360_debts",
+      () => supabaseFiscalService.listDebtPeriods("municipality-1"),
+    ],
+    [
+      "divergências",
+      "vw_taxpayer_360_divergences",
+      () => supabaseFiscalService.listDivergences("municipality-1"),
+    ],
+    [
+      "casos fiscais",
+      "vw_taxpayer_360_cases",
+      () => supabaseFiscalService.listFiscalCaseRows("municipality-1"),
+    ],
+    [
+      "destinatários",
+      "vw_notification_recipient_candidates",
+      () => supabaseFiscalService.listNotificationRecipients("municipality-1"),
+    ],
+    [
+      "conhecimento",
+      "vw_reusable_knowledge_articles",
+      () => supabaseFiscalService.listKnowledgeArticles("municipality-1"),
+    ],
+    [
+      "portal",
+      "vw_case_portal_home",
+      () => supabaseFiscalService.listPortalCases("municipality-1"),
+    ],
+    ["eventos", "case_events", () => supabaseFiscalService.listAuditEvents("municipality-1")],
+  ])("fixa municipality_id em %s", async (_label, table, run) => {
+    const chain = readChain([]);
+    mocks.from.mockReturnValue(chain);
+
+    await run();
+
+    expect(mocks.from).toHaveBeenCalledWith(table);
+    expect(chain.eq).toHaveBeenCalledWith("municipality_id", "municipality-1");
+  });
+
+  it("mantém a saúde do worker como leitura global sem coluna municipal", async () => {
+    const chain = readChain([]);
+    mocks.from.mockReturnValue(chain);
+
+    await supabaseFiscalService.listProcessingHealth();
+
+    expect(mocks.from).toHaveBeenCalledWith("api_worker_health");
+    expect(chain.eq).not.toHaveBeenCalled();
+  });
+
+  it("rejeita leitura municipal sem contexto explícito", async () => {
+    await expect(supabaseFiscalService.listTaxpayerSummaries(" ")).rejects.toThrow(
+      "invalid_municipality_id",
+    );
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
   it("mapeia a fila com vínculo de caso e prioridade operacional pelo SLA", async () => {
     const chain = readChain([
       {

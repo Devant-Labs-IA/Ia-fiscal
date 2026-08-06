@@ -83,6 +83,12 @@ function throwIfError(error: { code?: string } | null): void {
   if (error) throw new FiscalDataError(error.code?.slice(0, 80) || "query_failed");
 }
 
+function requireMunicipalityId(municipalityId: string): string {
+  const normalized = municipalityId.trim();
+  if (!normalized) throw new FiscalDataError("invalid_municipality_id");
+  return normalized;
+}
+
 function statusToRisk(status: string, waitingQuestionCount = 0): RiskLevel {
   // Operational priority only. This must never be presented as a legal risk conclusion.
   if (waitingQuestionCount > 0) return "alto";
@@ -190,20 +196,24 @@ function mapCase(row: Row): FiscalCaseReadModel {
   };
 }
 
-async function listTaxpayerSummaries(): Promise<Taxpayer360Summary[]> {
+async function listTaxpayerSummaries(municipalityId: string): Promise<Taxpayer360Summary[]> {
+  const scopedMunicipalityId = requireMunicipalityId(municipalityId);
   const { data, error } = await getSupabaseClient()
     .from("vw_taxpayer_360_summary")
     .select("*")
+    .eq("municipality_id", scopedMunicipalityId)
     .order("open_balance_total", { ascending: false })
     .limit(500);
   throwIfError(error);
   return (data as Row[] | null)?.map(mapSummary) ?? [];
 }
 
-async function listDebtPeriods(taxpayerId?: string): Promise<DebtPeriod[]> {
+async function listDebtPeriods(municipalityId: string, taxpayerId?: string): Promise<DebtPeriod[]> {
+  const scopedMunicipalityId = requireMunicipalityId(municipalityId);
   let query = getSupabaseClient()
     .from("vw_taxpayer_360_debts")
     .select("*")
+    .eq("municipality_id", scopedMunicipalityId)
     .order("competencia", { ascending: false })
     .limit(1000);
   if (taxpayerId) query = query.eq("taxpayer_id", taxpayerId);
@@ -212,10 +222,15 @@ async function listDebtPeriods(taxpayerId?: string): Promise<DebtPeriod[]> {
   return (data as Row[] | null)?.map(mapDebt) ?? [];
 }
 
-async function listDivergences(taxpayerId?: string): Promise<DivergenceReadModel[]> {
+async function listDivergences(
+  municipalityId: string,
+  taxpayerId?: string,
+): Promise<DivergenceReadModel[]> {
+  const scopedMunicipalityId = requireMunicipalityId(municipalityId);
   let query = getSupabaseClient()
     .from("vw_taxpayer_360_divergences")
     .select("*")
+    .eq("municipality_id", scopedMunicipalityId)
     .order("as_of", { ascending: false })
     .limit(1000);
   if (taxpayerId) query = query.eq("taxpayer_id", taxpayerId);
@@ -224,10 +239,15 @@ async function listDivergences(taxpayerId?: string): Promise<DivergenceReadModel
   return (data as Row[] | null)?.map(mapDivergence) ?? [];
 }
 
-async function listFiscalCaseRows(taxpayerId?: string): Promise<FiscalCaseReadModel[]> {
+async function listFiscalCaseRows(
+  municipalityId: string,
+  taxpayerId?: string,
+): Promise<FiscalCaseReadModel[]> {
+  const scopedMunicipalityId = requireMunicipalityId(municipalityId);
   let query = getSupabaseClient()
     .from("vw_taxpayer_360_cases")
     .select("*")
+    .eq("municipality_id", scopedMunicipalityId)
     .order("opened_at", { ascending: false })
     .limit(500);
   if (taxpayerId) query = query.eq("taxpayer_id", taxpayerId);
@@ -236,10 +256,14 @@ async function listFiscalCaseRows(taxpayerId?: string): Promise<FiscalCaseReadMo
   return (data as Row[] | null)?.map(mapCase) ?? [];
 }
 
-async function listNotificationRecipients(): Promise<NotificationRecipientReadModel[]> {
+async function listNotificationRecipients(
+  municipalityId: string,
+): Promise<NotificationRecipientReadModel[]> {
+  const scopedMunicipalityId = requireMunicipalityId(municipalityId);
   const { data, error } = await getSupabaseClient()
     .from("vw_notification_recipient_candidates")
     .select("*")
+    .eq("municipality_id", scopedMunicipalityId)
     .order("priority", { ascending: true })
     .limit(1000);
   throwIfError(error);
@@ -260,10 +284,12 @@ async function listNotificationRecipients(): Promise<NotificationRecipientReadMo
   }));
 }
 
-async function listKnowledgeArticles(): Promise<KnowledgeArticleReadModel[]> {
+async function listKnowledgeArticles(municipalityId: string): Promise<KnowledgeArticleReadModel[]> {
+  const scopedMunicipalityId = requireMunicipalityId(municipalityId);
   const { data, error } = await getSupabaseClient()
     .from("vw_reusable_knowledge_articles")
     .select("*")
+    .eq("municipality_id", scopedMunicipalityId)
     .order("published_at", { ascending: false })
     .limit(200);
   throwIfError(error);
@@ -283,10 +309,12 @@ async function listKnowledgeArticles(): Promise<KnowledgeArticleReadModel[]> {
   }));
 }
 
-async function listPortalCases(): Promise<PortalCaseReadModel[]> {
+async function listPortalCases(municipalityId: string): Promise<PortalCaseReadModel[]> {
+  const scopedMunicipalityId = requireMunicipalityId(municipalityId);
   const { data, error } = await getSupabaseClient()
     .from("vw_case_portal_home")
     .select("*")
+    .eq("municipality_id", scopedMunicipalityId)
     .order("prepared_at", { ascending: false })
     .limit(200);
   throwIfError(error);
@@ -316,13 +344,14 @@ async function listCaseMessages(
   municipalityId: string,
   caseId: string,
 ): Promise<CaseMessageReadModel[]> {
-  if (!municipalityId || !caseId) return [];
+  const scopedMunicipalityId = requireMunicipalityId(municipalityId);
+  if (!caseId) return [];
   const { data, error } = await getSupabaseClient()
     .from("case_messages")
     .select(
       "id, case_id, body, sender_type, source_type, status, visibility, created_at, published_at",
     )
-    .eq("municipality_id", municipalityId)
+    .eq("municipality_id", scopedMunicipalityId)
     .eq("case_id", caseId)
     .order("created_at", { ascending: false })
     .limit(200);
@@ -340,10 +369,11 @@ async function listCaseMessages(
   }));
 }
 
-async function getOperationalReport(): Promise<OperationalReport> {
+async function getOperationalReport(municipalityId: string): Promise<OperationalReport> {
+  const scopedMunicipalityId = requireMunicipalityId(municipalityId);
   const [taxpayers, recipients] = await Promise.all([
-    listTaxpayerSummaries(),
-    listNotificationRecipients(),
+    listTaxpayerSummaries(scopedMunicipalityId),
+    listNotificationRecipients(scopedMunicipalityId),
   ]);
   return {
     taxpayerCount: taxpayers.length,
@@ -422,11 +452,12 @@ function dashboardMetrics(report: OperationalReport): DashboardMetric[] {
   ];
 }
 
-async function listFiscalCasesLegacy(): Promise<FiscalCase[]> {
+async function listFiscalCasesLegacy(municipalityId: string): Promise<FiscalCase[]> {
+  const scopedMunicipalityId = requireMunicipalityId(municipalityId);
   const [cases, summaries, divergences] = await Promise.all([
-    listFiscalCaseRows(),
-    listTaxpayerSummaries(),
-    listDivergences(),
+    listFiscalCaseRows(scopedMunicipalityId),
+    listTaxpayerSummaries(scopedMunicipalityId),
+    listDivergences(scopedMunicipalityId),
   ]);
   const byTaxpayer = new Map(summaries.map((item) => [item.taxpayerId, item]));
   const byDivergence = new Map(divergences.map((item) => [item.divergenceId, item]));
@@ -477,11 +508,11 @@ async function listFiscalCasesLegacy(): Promise<FiscalCase[]> {
 }
 
 async function listChatQueue(municipalityId: string): Promise<ChatQueueItem[]> {
-  if (!municipalityId) throw new FiscalDataError("invalid_municipality_id");
+  const scopedMunicipalityId = requireMunicipalityId(municipalityId);
   const { data, error } = await getSupabaseClient()
     .from("vw_fiscal_chat_inbox")
     .select("*")
-    .eq("municipality_id", municipalityId)
+    .eq("municipality_id", scopedMunicipalityId)
     .in("status", ["waiting", "claimed"])
     .order("operational_priority", { ascending: false })
     .order("sla_due_at", { ascending: true, nullsFirst: false })
@@ -539,10 +570,12 @@ async function listProcessingHealth(): Promise<ProcessingHealthIndicator[]> {
   }));
 }
 
-async function listAuditEvents(): Promise<AuditEvent[]> {
+async function listAuditEvents(municipalityId: string): Promise<AuditEvent[]> {
+  const scopedMunicipalityId = requireMunicipalityId(municipalityId);
   const { data, error } = await getSupabaseClient()
     .from("case_events")
     .select("id, event_type, occurred_at, visibility")
+    .eq("municipality_id", scopedMunicipalityId)
     .order("occurred_at", { ascending: false })
     .limit(20);
   throwIfError(error);
@@ -557,12 +590,13 @@ async function listAuditEvents(): Promise<AuditEvent[]> {
 }
 
 async function searchFiscal(query: string, municipalityId: string): Promise<SearchResultItem[]> {
+  const scopedMunicipalityId = requireMunicipalityId(municipalityId);
   const normalized = query.trim();
   if (normalized.length < 2 || normalized.length > 500) {
     throw new FiscalDataError("invalid_search_length");
   }
   const { data, error } = await getSupabaseClient().functions.invoke("ia-fiscal-search", {
-    body: { municipality_id: municipalityId, query: normalized, limit: 30, offset: 0 },
+    body: { municipality_id: scopedMunicipalityId, query: normalized, limit: 30, offset: 0 },
   });
   if (error) throw new FiscalDataError("search_failed");
   const envelope = objectValue(data);
@@ -587,8 +621,8 @@ async function searchFiscal(query: string, municipalityId: string): Promise<Sear
 }
 
 export const supabaseFiscalService: FiscalService = {
-  async getDashboardSummary(): Promise<DashboardSummary> {
-    const report = await getOperationalReport();
+  async getDashboardSummary(municipalityId): Promise<DashboardSummary> {
+    const report = await getOperationalReport(municipalityId);
     return {
       environmentLabel: "Homologação — nenhum envio externo autorizado",
       greeting: "Painel do Fiscal",
@@ -600,8 +634,8 @@ export const supabaseFiscalService: FiscalService = {
   },
   listFiscalCases: listFiscalCasesLegacy,
   listChatQueue,
-  async listNotificationCandidates(): Promise<NotificationCandidate[]> {
-    const recipients = await listNotificationRecipients();
+  async listNotificationCandidates(municipalityId): Promise<NotificationCandidate[]> {
+    const recipients = await listNotificationRecipients(municipalityId);
     return recipients.slice(0, 20).map((item) => ({
       id: item.candidateId,
       taxpayerName: "Contribuinte protegido",
@@ -616,8 +650,8 @@ export const supabaseFiscalService: FiscalService = {
     }));
   },
   listProcessingHealth,
-  async listProductionBlockers(): Promise<ProductionBlocker[]> {
-    const report = await getOperationalReport();
+  async listProductionBlockers(municipalityId): Promise<ProductionBlocker[]> {
+    const report = await getOperationalReport(municipalityId);
     return [
       {
         id: "contacts",
@@ -645,8 +679,8 @@ export const supabaseFiscalService: FiscalService = {
     ];
   },
   listAuditEvents,
-  async listTaxpayers(): Promise<Taxpayer[]> {
-    const rows = await listTaxpayerSummaries();
+  async listTaxpayers(municipalityId): Promise<Taxpayer[]> {
+    const rows = await listTaxpayerSummaries(municipalityId);
     return rows.map((row) => ({
       id: row.taxpayerId,
       name: row.legalName,

@@ -28,11 +28,12 @@ vi.mock("@/auth/AuthContext", () => ({ useAuth: () => mocks.auth }));
 
 vi.mock("@/services/fiscal-service", () => ({
   fiscalKeys: {
-    chat: (municipalityId: string) => ["dashboard", "chat", municipalityId],
-    events: ["dashboard", "events"],
+    chat: (municipalityId: string) => ["municipality", municipalityId, "chat"],
+    events: (municipalityId: string) => ["municipality", municipalityId, "events"],
     caseMessages: (municipalityId: string, caseId: string) => [
-      "case-messages",
+      "municipality",
       municipalityId,
+      "case-messages",
       caseId,
     ],
   },

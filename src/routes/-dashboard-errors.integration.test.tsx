@@ -17,13 +17,13 @@ vi.mock("@/auth/AuthContext", () => ({
 
 vi.mock("@/services/fiscal-service", () => ({
   fiscalKeys: {
-    dashboard: ["dashboard", "summary"],
-    cases: ["dashboard", "cases"],
-    chat: (municipalityId: string) => ["dashboard", "chat", municipalityId],
-    notifications: ["dashboard", "notifications"],
-    health: ["dashboard", "health"],
-    blockers: ["dashboard", "blockers"],
-    events: ["dashboard", "events"],
+    dashboard: (municipalityId: string) => ["municipality", municipalityId, "dashboard"],
+    cases: (municipalityId: string) => ["municipality", municipalityId, "cases"],
+    chat: (municipalityId: string) => ["municipality", municipalityId, "chat"],
+    notifications: (municipalityId: string) => ["municipality", municipalityId, "notifications"],
+    health: ["platform", "worker-health"],
+    blockers: (municipalityId: string) => ["municipality", municipalityId, "blockers"],
+    events: (municipalityId: string) => ["municipality", municipalityId, "events"],
   },
   fiscalService: {
     getDashboardSummary: mocks.rejected,

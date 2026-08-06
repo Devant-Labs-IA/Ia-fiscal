@@ -146,26 +146,28 @@ describe("isolamento do cache fiscal por identidade", () => {
   it("remove dados fiscais antes do logout", async () => {
     const queryClient = renderProvider();
     await screen.findByText("unauthenticated");
-    queryClient.setQueryData(fiscalKeys.cases, [{ caseNumber: "sigiloso-A" }]);
+    queryClient.setQueryData(fiscalKeys.cases("municipality-1"), [{ caseNumber: "sigiloso-A" }]);
 
     fireEvent.click(screen.getByRole("button", { name: "sair" }));
 
-    await waitFor(() => expect(queryClient.getQueryData(fiscalKeys.cases)).toBeUndefined());
+    await waitFor(() =>
+      expect(queryClient.getQueryData(fiscalKeys.cases("municipality-1"))).toBeUndefined(),
+    );
     expect(mocks.signOut).toHaveBeenCalledWith({ scope: "local" });
   });
 
   it("remove o cache ao entrar e sair da demonstração", async () => {
     const queryClient = renderProvider();
     await screen.findByText("unauthenticated");
-    queryClient.setQueryData(fiscalKeys.cases, [{ caseNumber: "sigiloso-A" }]);
+    queryClient.setQueryData(fiscalKeys.cases("municipality-1"), [{ caseNumber: "sigiloso-A" }]);
 
     fireEvent.click(screen.getByRole("button", { name: "entrar demo" }));
-    expect(queryClient.getQueryData(fiscalKeys.cases)).toBeUndefined();
+    expect(queryClient.getQueryData(fiscalKeys.cases("municipality-1"))).toBeUndefined();
     expect(window.sessionStorage.getItem("ia-fiscal:demo-mode")).toBeNull();
 
-    queryClient.setQueryData(fiscalKeys.cases, [{ caseNumber: "demo" }]);
+    queryClient.setQueryData(fiscalKeys.cases("municipality-1"), [{ caseNumber: "demo" }]);
     fireEvent.click(screen.getByRole("button", { name: "sair demo" }));
-    expect(queryClient.getQueryData(fiscalKeys.cases)).toBeUndefined();
+    expect(queryClient.getQueryData(fiscalKeys.cases("municipality-1"))).toBeUndefined();
   });
 
   it("limpa o principal anterior antes de resolver uma nova sessão", async () => {
@@ -176,12 +178,12 @@ describe("isolamento do cache fiscal por identidade", () => {
       mocks.authCallback?.("SIGNED_IN", sessionFor("usuario-A"));
     });
     await screen.findByText("access_pending");
-    queryClient.setQueryData(fiscalKeys.cases, [{ caseNumber: "sigiloso-A" }]);
+    queryClient.setQueryData(fiscalKeys.cases("municipality-1"), [{ caseNumber: "sigiloso-A" }]);
 
     act(() => {
       mocks.authCallback?.("SIGNED_IN", sessionFor("usuario-B"));
     });
 
-    expect(queryClient.getQueryData(fiscalKeys.cases)).toBeUndefined();
+    expect(queryClient.getQueryData(fiscalKeys.cases("municipality-1"))).toBeUndefined();
   });
 });

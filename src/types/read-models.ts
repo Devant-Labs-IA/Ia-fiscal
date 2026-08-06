@@ -4,6 +4,16 @@ export type StaffRole =
 export type PortalRole = "taxpayer" | "accountant";
 export type AppRole = StaffRole | PortalRole;
 
+export interface MunicipalityContext {
+  id: string;
+  label: string;
+  name: string;
+  stateCode: string;
+  ibgeCode: string | null;
+  role: StaffRole;
+  membershipId: string;
+}
+
 export interface AccessContext {
   role: AppRole;
   platformAdmin?: boolean;

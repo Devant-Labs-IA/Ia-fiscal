@@ -27,4 +27,9 @@ describe("configuração pública", () => {
     setDemoMode(true);
     expect(window.sessionStorage.getItem("ia-fiscal:demo-mode")).toBeNull();
   });
+
+  it("habilita cadastro somente no ambiente explícito de homologação", () => {
+    expect(runtimeConfig.environment).toBe("homologation");
+    expect(runtimeConfig.allowSignup).toBe(true);
+  });
 });

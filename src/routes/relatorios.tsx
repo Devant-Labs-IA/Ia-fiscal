@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { AlertTriangle, CircleDollarSign, FileSearch, Users } from "lucide-react";
 
+import { useAuth } from "@/auth/AuthContext";
 import { ErrorState, SectionCard, SectionSkeleton } from "@/components/common/SectionCard";
 import { HomologationBanner } from "@/components/layout/HomologationBanner";
 import { formatCurrency, formatNumber } from "@/lib/format";
@@ -13,9 +14,12 @@ export const Route = createFileRoute("/relatorios")({
 });
 
 function ReportsPage() {
+  const auth = useAuth();
+  const municipalityId = auth.access?.municipalityId ?? "";
   const report = useQuery({
-    queryKey: fiscalKeys.report,
-    queryFn: () => fiscalService.getOperationalReport(),
+    queryKey: fiscalKeys.report(municipalityId),
+    queryFn: () => fiscalService.getOperationalReport(municipalityId),
+    enabled: Boolean(municipalityId),
   });
   const cards = report.data
     ? [

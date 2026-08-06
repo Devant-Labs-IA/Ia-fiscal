@@ -28,6 +28,9 @@ function SettingsPage() {
     );
   }
   const host = new URL(runtimeConfig.supabaseUrl).host;
+  const activeMunicipality = auth.municipalityContexts.find(
+    (municipality) => municipality.id === auth.access?.municipalityId,
+  );
   return (
     <div className="space-y-5 py-4">
       <HomologationBanner />
@@ -45,11 +48,15 @@ function SettingsPage() {
           <dl className="space-y-3 text-sm">
             <div className="flex justify-between gap-4">
               <dt className="text-muted-foreground">Município</dt>
-              <dd className="font-medium">{runtimeConfig.municipalityLabel}</dd>
+              <dd className="font-medium">
+                {auth.access?.municipalityLabel ?? runtimeConfig.municipalityLabel}
+              </dd>
             </div>
             <div className="flex justify-between gap-4">
               <dt className="text-muted-foreground">IBGE</dt>
-              <dd className="font-mono">{runtimeConfig.municipalityIbge}</dd>
+              <dd className="font-mono">
+                {activeMunicipality?.ibgeCode ?? runtimeConfig.municipalityIbge}
+              </dd>
             </div>
             <div className="flex justify-between gap-4">
               <dt className="text-muted-foreground">Fonte de dados</dt>

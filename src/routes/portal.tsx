@@ -53,11 +53,12 @@ function PortalPage() {
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const submissionRef = useRef<PortalQuestionSubmission | null>(null);
   const isPortalRole = auth.access?.role === "taxpayer" || auth.access?.role === "accountant";
+  const municipalityId = auth.access?.municipalityId ?? "";
 
   const cases = useQuery({
-    queryKey: fiscalKeys.portal,
-    queryFn: () => fiscalService.listPortalCases(),
-    enabled: isPortalRole,
+    queryKey: fiscalKeys.portal(municipalityId),
+    queryFn: () => fiscalService.listPortalCases(municipalityId),
+    enabled: isPortalRole && Boolean(municipalityId),
   });
 
   const activeCaseId = selectedCaseId || cases.data?.[0]?.caseId || "";
@@ -74,7 +75,7 @@ function PortalPage() {
       }
       setBody("");
       setConfirmationOpen(false);
-      await queryClient.invalidateQueries({ queryKey: fiscalKeys.portal });
+      await queryClient.invalidateQueries({ queryKey: fiscalKeys.portal(municipalityId) });
       toast.success("Pergunta registrada", {
         description:
           "A equipe fiscal fará a análise. Não há resposta automática nem efeito jurídico.",

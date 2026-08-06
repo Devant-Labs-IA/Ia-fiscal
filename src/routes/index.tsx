@@ -39,12 +39,14 @@ function DashboardFiscal() {
   const auth = useAuth();
   const municipalityId = auth.access?.municipalityId ?? "";
   const summary = useQuery({
-    queryKey: fiscalKeys.dashboard,
-    queryFn: () => fiscalService.getDashboardSummary(),
+    queryKey: fiscalKeys.dashboard(municipalityId),
+    queryFn: () => fiscalService.getDashboardSummary(municipalityId),
+    enabled: Boolean(municipalityId),
   });
   const cases = useQuery({
-    queryKey: fiscalKeys.cases,
-    queryFn: () => fiscalService.listFiscalCases(),
+    queryKey: fiscalKeys.cases(municipalityId),
+    queryFn: () => fiscalService.listFiscalCases(municipalityId),
+    enabled: Boolean(municipalityId),
   });
   const chat = useQuery({
     queryKey: fiscalKeys.chat(municipalityId),
@@ -52,20 +54,23 @@ function DashboardFiscal() {
     enabled: Boolean(municipalityId),
   });
   const notifications = useQuery({
-    queryKey: fiscalKeys.notifications,
-    queryFn: () => fiscalService.listNotificationCandidates(),
+    queryKey: fiscalKeys.notifications(municipalityId),
+    queryFn: () => fiscalService.listNotificationCandidates(municipalityId),
+    enabled: Boolean(municipalityId),
   });
   const health = useQuery({
     queryKey: fiscalKeys.health,
     queryFn: () => fiscalService.listProcessingHealth(),
   });
   const blockers = useQuery({
-    queryKey: fiscalKeys.blockers,
-    queryFn: () => fiscalService.listProductionBlockers(),
+    queryKey: fiscalKeys.blockers(municipalityId),
+    queryFn: () => fiscalService.listProductionBlockers(municipalityId),
+    enabled: Boolean(municipalityId),
   });
   const events = useQuery({
-    queryKey: fiscalKeys.events,
-    queryFn: () => fiscalService.listAuditEvents(),
+    queryKey: fiscalKeys.events(municipalityId),
+    queryFn: () => fiscalService.listAuditEvents(municipalityId),
+    enabled: Boolean(municipalityId),
   });
 
   return (

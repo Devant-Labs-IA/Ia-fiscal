@@ -24,9 +24,15 @@ import type {
 } from "@/types/read-models";
 
 const LATENCY_MS = 180;
+const DEMO_MUNICIPALITY_ID = "demo-cordeiropolis";
 
 function resolve<T>(value: T): Promise<T> {
   return new Promise((done) => setTimeout(() => done(value), LATENCY_MS));
+}
+
+function hasDemoMunicipality(municipalityId: string): boolean {
+  if (!municipalityId.trim()) throw new Error("invalid_municipality_id");
+  return municipalityId === DEMO_MUNICIPALITY_ID;
 }
 
 function summaryFromTaxpayer(index: number): Taxpayer360Summary {
@@ -35,7 +41,7 @@ function summaryFromTaxpayer(index: number): Taxpayer360Summary {
   const taxpayerCases = fiscalCases.filter((item) => item.taxpayer.id === taxpayer.id);
   const openBalance = taxpayerDebts.reduce((total, debt) => total + debt.amount, 0);
   return {
-    municipalityId: "demo-cordeiropolis",
+    municipalityId: DEMO_MUNICIPALITY_ID,
     taxpayerId: taxpayer.id,
     municipalRegistration: `HML-${String(index + 1).padStart(5, "0")}`,
     taxId: taxpayer.cnpj,
@@ -71,7 +77,7 @@ function summaryFromTaxpayer(index: number): Taxpayer360Summary {
 const summaries = taxpayers.map((_, index) => summaryFromTaxpayer(index));
 
 const debtPeriods: DebtPeriod[] = debts.map((debt) => ({
-  municipalityId: "demo-cordeiropolis",
+  municipalityId: DEMO_MUNICIPALITY_ID,
   taxpayerId: debt.taxpayerId,
   competence: debt.competences[0] ?? "",
   assessedAmount: debt.amount,
@@ -90,7 +96,7 @@ const debtPeriods: DebtPeriod[] = debts.map((debt) => ({
 }));
 
 const divergences: DivergenceReadModel[] = fiscalCases.map((item, index) => ({
-  municipalityId: "demo-cordeiropolis",
+  municipalityId: DEMO_MUNICIPALITY_ID,
   divergenceId: `demo-divergence-${index + 1}`,
   taxpayerId: item.taxpayer.id,
   taxId: item.taxpayer.cnpj,
@@ -109,7 +115,7 @@ const divergences: DivergenceReadModel[] = fiscalCases.map((item, index) => ({
 }));
 
 const caseRows: FiscalCaseReadModel[] = fiscalCases.map((item, index) => ({
-  municipalityId: "demo-cordeiropolis",
+  municipalityId: DEMO_MUNICIPALITY_ID,
   caseId: item.id,
   caseNumber: `HML-${item.id.toUpperCase()}`,
   divergenceId: `demo-divergence-${index + 1}`,
@@ -128,7 +134,7 @@ const caseRows: FiscalCaseReadModel[] = fiscalCases.map((item, index) => ({
 }));
 
 const recipientRows: NotificationRecipientReadModel[] = notificationCandidates.map((item) => ({
-  municipalityId: "demo-cordeiropolis",
+  municipalityId: DEMO_MUNICIPALITY_ID,
   taxpayerId: item.id,
   candidateId: item.id,
   proposedFor: "initial_notice",
@@ -145,7 +151,7 @@ const recipientRows: NotificationRecipientReadModel[] = notificationCandidates.m
 
 const knowledgeRows: KnowledgeArticleReadModel[] = [
   {
-    municipalityId: "demo-cordeiropolis",
+    municipalityId: DEMO_MUNICIPALITY_ID,
     articleId: "demo-knowledge-1",
     intentKey: "consulta_debito",
     semanticVersion: 1,
@@ -182,47 +188,86 @@ const portalRows: PortalCaseReadModel[] = caseRows.slice(0, 2).map((item) => ({
   threadStatus: null,
 }));
 
-function report(): OperationalReport {
+function report(municipalityId: string): OperationalReport {
+  const visible = hasDemoMunicipality(municipalityId);
+  const scopedSummaries = visible ? summaries : [];
+  const scopedDebts = visible ? debtPeriods : [];
+  const scopedDivergences = visible ? divergences : [];
+  const scopedCases = visible ? caseRows : [];
+  const scopedQueue = visible ? chatQueue : [];
   return {
-    taxpayerCount: summaries.length,
-    overduePeriodCount: debtPeriods.filter((item) => item.status === "vencido").length,
-    openBalanceTotal: debtPeriods.reduce((total, item) => total + item.openBalance, 0),
-    activeDivergenceCount: divergences.length,
-    divergenceAmountTotal: divergences.reduce((total, item) => total + item.differenceAmount, 0),
-    activeCaseCount: caseRows.length,
-    blockedCalculationCount: 24,
-    waitingQuestionCount: chatQueue.length,
-    recipientCandidateCount: 86,
+    taxpayerCount: scopedSummaries.length,
+    overduePeriodCount: scopedDebts.filter((item) => item.status === "vencido").length,
+    openBalanceTotal: scopedDebts.reduce((total, item) => total + item.openBalance, 0),
+    activeDivergenceCount: scopedDivergences.length,
+    divergenceAmountTotal: scopedDivergences.reduce(
+      (total, item) => total + item.differenceAmount,
+      0,
+    ),
+    activeCaseCount: scopedCases.length,
+    blockedCalculationCount: visible ? 24 : 0,
+    waitingQuestionCount: scopedQueue.length,
+    recipientCandidateCount: visible ? 86 : 0,
     deliveryReadyCount: 0,
     externalDeliveryCount: 0,
   };
 }
 
 export const mockFiscalService: FiscalService = {
-  getDashboardSummary: () => resolve(dashboardSummary),
-  listFiscalCases: () => resolve(fiscalCases),
+  getDashboardSummary: (municipalityId) =>
+    resolve(
+      hasDemoMunicipality(municipalityId) ? dashboardSummary : { ...dashboardSummary, metrics: [] },
+    ),
+  listFiscalCases: (municipalityId) =>
+    resolve(hasDemoMunicipality(municipalityId) ? fiscalCases : []),
   listChatQueue: (municipalityId) =>
-    resolve(chatQueue.filter((item) => item.municipalityId === municipalityId)),
-  listNotificationCandidates: () => resolve(notificationCandidates),
+    resolve(
+      hasDemoMunicipality(municipalityId)
+        ? chatQueue.filter((item) => item.municipalityId === municipalityId)
+        : [],
+    ),
+  listNotificationCandidates: (municipalityId) =>
+    resolve(hasDemoMunicipality(municipalityId) ? notificationCandidates : []),
   listProcessingHealth: () => resolve(processingHealth),
-  listProductionBlockers: () => resolve(productionBlockers),
-  listAuditEvents: () => resolve(auditEvents),
-  listTaxpayers: () => resolve(taxpayers),
-  listTaxpayerSummaries: () => resolve(summaries),
-  listDebtPeriods: (taxpayerId) =>
+  listProductionBlockers: (municipalityId) =>
+    resolve(hasDemoMunicipality(municipalityId) ? productionBlockers : []),
+  listAuditEvents: (municipalityId) =>
+    resolve(hasDemoMunicipality(municipalityId) ? auditEvents : []),
+  listTaxpayers: (municipalityId) => resolve(hasDemoMunicipality(municipalityId) ? taxpayers : []),
+  listTaxpayerSummaries: (municipalityId) =>
+    resolve(hasDemoMunicipality(municipalityId) ? summaries : []),
+  listDebtPeriods: (municipalityId, taxpayerId) =>
     resolve(
-      taxpayerId ? debtPeriods.filter((item) => item.taxpayerId === taxpayerId) : debtPeriods,
+      hasDemoMunicipality(municipalityId)
+        ? taxpayerId
+          ? debtPeriods.filter((item) => item.taxpayerId === taxpayerId)
+          : debtPeriods
+        : [],
     ),
-  listDivergences: (taxpayerId) =>
+  listDivergences: (municipalityId, taxpayerId) =>
     resolve(
-      taxpayerId ? divergences.filter((item) => item.taxpayerId === taxpayerId) : divergences,
+      hasDemoMunicipality(municipalityId)
+        ? taxpayerId
+          ? divergences.filter((item) => item.taxpayerId === taxpayerId)
+          : divergences
+        : [],
     ),
-  listFiscalCaseRows: (taxpayerId) =>
-    resolve(taxpayerId ? caseRows.filter((item) => item.taxpayerId === taxpayerId) : caseRows),
-  listNotificationRecipients: () => resolve(recipientRows),
-  listKnowledgeArticles: () => resolve(knowledgeRows),
-  listPortalCases: () => resolve(portalRows),
+  listFiscalCaseRows: (municipalityId, taxpayerId) =>
+    resolve(
+      hasDemoMunicipality(municipalityId)
+        ? taxpayerId
+          ? caseRows.filter((item) => item.taxpayerId === taxpayerId)
+          : caseRows
+        : [],
+    ),
+  listNotificationRecipients: (municipalityId) =>
+    resolve(hasDemoMunicipality(municipalityId) ? recipientRows : []),
+  listKnowledgeArticles: (municipalityId) =>
+    resolve(hasDemoMunicipality(municipalityId) ? knowledgeRows : []),
+  listPortalCases: (municipalityId) =>
+    resolve(hasDemoMunicipality(municipalityId) ? portalRows : []),
   listCaseMessages: (municipalityId, caseId) => {
+    if (!hasDemoMunicipality(municipalityId)) return resolve([]);
     const item = chatQueue.find(
       (question) => question.municipalityId === municipalityId && question.caseId === caseId,
     );
@@ -243,14 +288,15 @@ export const mockFiscalService: FiscalService = {
       : [];
     return resolve(messages);
   },
-  getOperationalReport: () => resolve(report()),
+  getOperationalReport: (municipalityId) => resolve(report(municipalityId)),
   async claimCaseQuestion() {
     throw new Error("demo_write_disabled");
   },
   async submitCaseQuestion() {
     throw new Error("demo_write_disabled");
   },
-  searchFiscal(query) {
+  searchFiscal(query, municipalityId) {
+    if (!hasDemoMunicipality(municipalityId)) return resolve([]);
     const normalized = query.toLocaleLowerCase("pt-BR");
     const results: SearchResultItem[] = summaries
       .filter(

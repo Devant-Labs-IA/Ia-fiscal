@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { BookOpenCheck, FlaskConical, LibraryBig, Search, ShieldCheck } from "lucide-react";
 
+import { useAuth } from "@/auth/AuthContext";
 import {
   EmptyState,
   ErrorState,
@@ -105,10 +106,13 @@ function KnowledgeCard({ item }: { item: KnowledgeArticleReadModel }) {
 }
 
 function KnowledgePage() {
+  const auth = useAuth();
+  const municipalityId = auth.access?.municipalityId ?? "";
   const [search, setSearch] = useState("");
   const knowledge = useQuery({
-    queryKey: fiscalKeys.knowledge,
-    queryFn: () => fiscalService.listKnowledgeArticles(),
+    queryKey: fiscalKeys.knowledge(municipalityId),
+    queryFn: () => fiscalService.listKnowledgeArticles(municipalityId),
+    enabled: Boolean(municipalityId),
   });
 
   const articles = useMemo(() => knowledge.data ?? [], [knowledge.data]);

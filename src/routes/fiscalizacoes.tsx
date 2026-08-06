@@ -3,6 +3,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { AlertTriangle, FileSearch, Scale } from "lucide-react";
 import { useState } from "react";
 
+import { useAuth } from "@/auth/AuthContext";
 import {
   EmptyState,
   ErrorState,
@@ -55,16 +56,18 @@ function safeDate(value: string | null): string {
 }
 
 function InspectionsPage() {
+  const auth = useAuth();
+  const municipalityId = auth.access?.municipalityId ?? "";
   const [activeTab, setActiveTab] = useState<InspectionTab>("divergencias");
   const divergences = useQuery({
-    queryKey: fiscalKeys.divergences(),
-    queryFn: () => fiscalService.listDivergences(),
-    enabled: activeTab === "divergencias",
+    queryKey: fiscalKeys.divergences(municipalityId),
+    queryFn: () => fiscalService.listDivergences(municipalityId),
+    enabled: Boolean(municipalityId) && activeTab === "divergencias",
   });
   const cases = useQuery({
-    queryKey: fiscalKeys.caseRows(),
-    queryFn: () => fiscalService.listFiscalCaseRows(),
-    enabled: activeTab === "casos",
+    queryKey: fiscalKeys.caseRows(municipalityId),
+    queryFn: () => fiscalService.listFiscalCaseRows(municipalityId),
+    enabled: Boolean(municipalityId) && activeTab === "casos",
   });
 
   return (

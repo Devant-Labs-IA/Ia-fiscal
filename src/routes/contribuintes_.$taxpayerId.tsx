@@ -3,6 +3,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { ArrowLeft, Building2, CircleAlert, FileSearch, ReceiptText } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
+import { useAuth } from "@/auth/AuthContext";
 import {
   EmptyState,
   ErrorState,
@@ -60,27 +61,30 @@ function formatTaxId(value: string): string {
 }
 
 function Taxpayer360Page() {
+  const auth = useAuth();
+  const municipalityId = auth.access?.municipalityId ?? "";
   const { taxpayerId } = Route.useParams();
   const [activeTab, setActiveTab] = useState<DetailTab>("resumo");
 
   const summaries = useQuery({
-    queryKey: fiscalKeys.taxpayers,
-    queryFn: () => fiscalService.listTaxpayerSummaries(),
+    queryKey: fiscalKeys.taxpayers(municipalityId),
+    queryFn: () => fiscalService.listTaxpayerSummaries(municipalityId),
+    enabled: Boolean(municipalityId),
   });
   const debts = useQuery({
-    queryKey: fiscalKeys.debts(taxpayerId),
-    queryFn: () => fiscalService.listDebtPeriods(taxpayerId),
-    enabled: activeTab === "debitos",
+    queryKey: fiscalKeys.debts(municipalityId, taxpayerId),
+    queryFn: () => fiscalService.listDebtPeriods(municipalityId, taxpayerId),
+    enabled: Boolean(municipalityId) && activeTab === "debitos",
   });
   const divergences = useQuery({
-    queryKey: fiscalKeys.divergences(taxpayerId),
-    queryFn: () => fiscalService.listDivergences(taxpayerId),
-    enabled: activeTab === "divergencias",
+    queryKey: fiscalKeys.divergences(municipalityId, taxpayerId),
+    queryFn: () => fiscalService.listDivergences(municipalityId, taxpayerId),
+    enabled: Boolean(municipalityId) && activeTab === "divergencias",
   });
   const cases = useQuery({
-    queryKey: fiscalKeys.caseRows(taxpayerId),
-    queryFn: () => fiscalService.listFiscalCaseRows(taxpayerId),
-    enabled: activeTab === "casos",
+    queryKey: fiscalKeys.caseRows(municipalityId, taxpayerId),
+    queryFn: () => fiscalService.listFiscalCaseRows(municipalityId, taxpayerId),
+    enabled: Boolean(municipalityId) && activeTab === "casos",
   });
   const taxpayer = summaries.data?.find((item) => item.taxpayerId === taxpayerId);
 
