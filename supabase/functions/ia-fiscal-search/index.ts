@@ -8,6 +8,10 @@ type SearchRequest = {
   offset?: unknown;
 };
 
+const BUILT_IN_ALLOWED_ORIGINS = new Set([
+  "https://ia-fiscal-homologacao-diego-4685-diego-4685s-projects.vercel.app",
+]);
+
 function requiredEnv(name: string): string {
   const value = Deno.env.get(name)?.trim();
   if (!value) throw new Error(`missing_env:${name}`);
@@ -16,10 +20,13 @@ function requiredEnv(name: string): string {
 
 function corsHeaders(request: Request): Record<string, string> {
   const origin = request.headers.get("origin")?.trim();
-  const allowed = (Deno.env.get("IA_ALLOWED_ORIGINS") ?? "")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
+  const allowed = new Set([
+    ...BUILT_IN_ALLOWED_ORIGINS,
+    ...(Deno.env.get("IA_ALLOWED_ORIGINS") ?? "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean),
+  ]);
 
   const headers: Record<string, string> = {
     "access-control-allow-headers":
@@ -28,7 +35,7 @@ function corsHeaders(request: Request): Record<string, string> {
     "vary": "Origin",
   };
 
-  if (origin && allowed.includes(origin)) {
+  if (origin && allowed.has(origin)) {
     headers["access-control-allow-origin"] = origin;
   }
   return headers;
