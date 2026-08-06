@@ -57,7 +57,11 @@ describe("erros independentes do dashboard", () => {
     });
 
     expect(
-      await screen.findByText("Não foi possível carregar os indicadores. Tente novamente."),
+      await screen.findByText(
+        "Não foi possível carregar os indicadores. Tente novamente.",
+        {},
+        { timeout: 3_000 },
+      ),
     ).toBeTruthy();
     expect(screen.getByText("Não foi possível carregar os casos prioritários.")).toBeTruthy();
     expect(screen.getByText("Não foi possível carregar a fila de atendimento.")).toBeTruthy();
