@@ -23,6 +23,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  blockReasonLabel,
+  debtClassificationRuleLabel,
+  divergenceTypeDetails,
+  fiscalRuleDetails,
+} from "@/lib/fiscal-labels";
 import { formatCnpj, formatCurrency, formatDate } from "@/lib/format";
 import { fiscalKeys, fiscalService } from "@/services/fiscal-service";
 import type { DebtPeriod, DivergenceReadModel, FiscalCaseReadModel } from "@/types/read-models";
@@ -331,7 +337,8 @@ function DebtTab({ data, isLoading, isError }: QueryTabProps<DebtPeriod>) {
                     {formatCurrency(item.openBalance)}
                   </TableCell>
                   <TableCell className="text-xs">
-                    {item.ruleVersion} · {item.eligible ? "elegível" : "não elegível"}
+                    {debtClassificationRuleLabel(item.ruleVersion)} ·{" "}
+                    {item.eligible ? "elegível" : "não elegível"}
                   </TableCell>
                 </TableRow>
               ))}
@@ -371,7 +378,14 @@ function DivergenceTab({ data, isLoading, isError }: QueryTabProps<DivergenceRea
             <TableBody>
               {data.map((item) => (
                 <TableRow key={item.divergenceId}>
-                  <TableCell className="min-w-48 font-medium">{item.divergenceType}</TableCell>
+                  <TableCell className="min-w-56">
+                    <span className="block font-medium">
+                      {divergenceTypeDetails(item.divergenceType).label}
+                    </span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      {divergenceTypeDetails(item.divergenceType).description}
+                    </span>
+                  </TableCell>
                   <TableCell className="whitespace-nowrap text-xs tabular-nums">
                     {safeDate(item.periodStart)} a {safeDate(item.periodEnd)}
                   </TableCell>
@@ -381,11 +395,19 @@ function DivergenceTab({ data, isLoading, isError }: QueryTabProps<DivergenceRea
                   <TableCell>
                     <StatusBadge status={item.status} />
                   </TableCell>
-                  <TableCell className="text-xs">
-                    {item.ruleCode} · v{item.ruleVersion ?? "—"}
+                  <TableCell className="min-w-64 text-xs">
+                    <span className="block font-medium">
+                      {item.ruleName ?? fiscalRuleDetails(item.ruleCode, item.ruleVersion).label}
+                    </span>
+                    <span className="mt-0.5 block text-muted-foreground">
+                      {item.ruleDescription ??
+                        fiscalRuleDetails(item.ruleCode, item.ruleVersion).description}
+                    </span>
                   </TableCell>
                   <TableCell className="max-w-64 text-xs text-muted-foreground">
-                    {item.blockReasons.length ? item.blockReasons.join(" · ") : "Sem bloqueio"}
+                    {item.blockReasons.length
+                      ? item.blockReasons.map(blockReasonLabel).join(" · ")
+                      : "Sem bloqueio"}
                   </TableCell>
                 </TableRow>
               ))}
