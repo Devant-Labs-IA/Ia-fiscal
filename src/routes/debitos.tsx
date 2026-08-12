@@ -30,7 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { fiscalStatusLabel } from "@/lib/fiscal-labels";
+import { debtClassificationRuleLabel, fiscalStatusLabel } from "@/lib/fiscal-labels";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { fiscalKeys, fiscalService } from "@/services/fiscal-service";
 
@@ -243,7 +243,9 @@ function DebtsPage() {
                         {formatCurrency(item.openBalance)}
                       </TableCell>
                       <TableCell>
-                        <span className="block text-xs font-medium">{item.ruleVersion}</span>
+                        <span className="block text-xs font-medium">
+                          {debtClassificationRuleLabel(item.ruleVersion)}
+                        </span>
                         <span className="block text-xs text-muted-foreground">
                           {item.eligible ? "Elegível" : "Não elegível"}
                         </span>
