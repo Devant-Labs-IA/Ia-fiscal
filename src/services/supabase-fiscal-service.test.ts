@@ -17,13 +17,21 @@ function readChain(data: Record<string, unknown>[]) {
     eq: vi.fn(),
     in: vi.fn(),
     order: vi.fn(),
-    limit: vi.fn().mockResolvedValue({ data, error: null }),
+    limit: vi.fn(),
+    abortSignal: vi.fn().mockResolvedValue({ data, error: null }),
   };
   chain.select.mockReturnValue(chain);
   chain.eq.mockReturnValue(chain);
   chain.in.mockReturnValue(chain);
   chain.order.mockReturnValue(chain);
+  chain.limit.mockReturnValue(chain);
   return chain;
+}
+
+function rpcChain(data: unknown) {
+  return {
+    abortSignal: vi.fn().mockResolvedValue({ data, error: null }),
+  };
 }
 
 beforeEach(() => {
@@ -32,6 +40,62 @@ beforeEach(() => {
 });
 
 describe("contrato Supabase do atendimento", () => {
+  it("consulta o relatório operacional agregado por município", async () => {
+    const chain = rpcChain({ taxpayer_count: 3, open_balance_total: "151.40" });
+    mocks.rpc.mockReturnValue(chain);
+
+    await expect(
+      supabaseFiscalService.getOperationalReport("municipality-1"),
+    ).resolves.toMatchObject({
+      taxpayerCount: 3,
+      openBalanceTotal: 151.4,
+    });
+    expect(mocks.rpc).toHaveBeenCalledWith("ia_operational_report", {
+      p_municipality_id: "municipality-1",
+    });
+    expect(chain.abortSignal).toHaveBeenCalledTimes(1);
+  });
+
+  it("compartilha o relatório enquanto a mesma consulta municipal está em andamento", async () => {
+    let release: ((value: { data: unknown; error: null }) => void) | undefined;
+    const pending = new Promise<{ data: unknown; error: null }>((resolve) => {
+      release = resolve;
+    });
+    mocks.rpc.mockReturnValue({ abortSignal: vi.fn(() => pending) });
+
+    const first = supabaseFiscalService.getOperationalReport("municipality-dedup");
+    const second = supabaseFiscalService.getOperationalReport("municipality-dedup");
+
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
+    release?.({ data: { taxpayer_count: 2 }, error: null });
+    await expect(Promise.all([first, second])).resolves.toEqual([
+      expect.objectContaining({ taxpayerCount: 2 }),
+      expect.objectContaining({ taxpayerCount: 2 }),
+    ]);
+  });
+
+  it("mapeia regra explicativa e motivos de bloqueio em JSON", async () => {
+    const chain = readChain([
+      {
+        municipality_id: "municipality-1",
+        divergence_id: "divergence-1",
+        rule_code: "CURRENT_ACCOUNT_BALANCE_HOMOLOGATION_V1",
+        rule_name: "Conferência do saldo da conta corrente",
+        rule_description: "Compara lançamentos, pagamentos e saldo em aberto.",
+        block_reasons: '[{"code":"unverification"}]',
+      },
+    ]);
+    mocks.from.mockReturnValue(chain);
+
+    await expect(supabaseFiscalService.listDivergences("municipality-1")).resolves.toEqual([
+      expect.objectContaining({
+        ruleName: "Conferência do saldo da conta corrente",
+        ruleDescription: "Compara lançamentos, pagamentos e saldo em aberto.",
+        blockReasons: ["unverification"],
+      }),
+    ]);
+  });
+
   it.each([
     [
       "resumos de contribuinte",
