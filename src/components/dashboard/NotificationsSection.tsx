@@ -17,6 +17,7 @@ import {
 import { StatusBadge } from "@/components/common/StatusBadges";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { blockReasonSummary, notificationPurposeLabel } from "@/lib/fiscal-labels";
 import { maskCnpj } from "@/lib/format";
 import type { NotificationCandidate } from "@/types/fiscal";
 
@@ -30,9 +31,17 @@ interface NotificationsSectionProps {
   items: NotificationCandidate[] | undefined;
   isLoading: boolean;
   isError: boolean;
+  onRetry?: () => void;
+  retrying?: boolean;
 }
 
-export function NotificationsSection({ items, isLoading, isError }: NotificationsSectionProps) {
+export function NotificationsSection({
+  items,
+  isLoading,
+  isError,
+  onRetry,
+  retrying,
+}: NotificationsSectionProps) {
   const visibleCount = items?.length ?? 0;
 
   return (
@@ -55,7 +64,11 @@ export function NotificationsSection({ items, isLoading, isError }: Notification
       }
     >
       {isError ? (
-        <ErrorState message="Não foi possível carregar os candidatos de notificação." />
+        <ErrorState
+          message="Não foi possível carregar os candidatos de notificação."
+          onRetry={onRetry}
+          retrying={retrying}
+        />
       ) : isLoading ? (
         <SectionSkeleton rows={3} />
       ) : (items ?? []).length === 0 ? (
@@ -74,7 +87,9 @@ export function NotificationsSection({ items, isLoading, isError }: Notification
                     </span>
                     <StatusBadge status={item.status} />
                   </div>
-                  <p className="mt-1 text-sm text-muted-foreground">{item.templateName}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {notificationPurposeLabel(item.templateName)}
+                  </p>
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-1">
                       <ChannelIcon className="size-3.5" aria-hidden />
@@ -90,7 +105,7 @@ export function NotificationsSection({ items, isLoading, isError }: Notification
                     )}
                   </div>
                   <p className="mt-1.5 text-xs text-muted-foreground">
-                    Bloqueio: {item.blockedReason}
+                    Bloqueio: {blockReasonSummary(item.blockedReason)}
                   </p>
                 </div>
 
