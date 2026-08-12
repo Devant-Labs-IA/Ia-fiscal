@@ -1,5 +1,17 @@
 import { runtimeConfig } from "@/config/runtime";
-import { divergenceTypeLabel, parseBlockReasons } from "@/lib/fiscal-labels";
+import { formatDateTime } from "@/lib/format";
+import {
+  blockReasonSummary,
+  divergenceTypeLabel,
+  fiscalEventTypeLabel,
+  fiscalStatusLabel,
+  notificationPurposeLabel,
+  parseBlockReasons,
+  processingWorkerLabel,
+  visibilityLabel,
+  workerHealthStatus,
+  workerStatusLabel,
+} from "@/lib/fiscal-labels";
 import { FISCAL_READ_TIMEOUT_MS } from "@/lib/query-policy";
 import { getSupabaseClient } from "@/lib/supabase";
 import { validateTaxpayerInput } from "@/lib/taxpayer-validation";
@@ -732,20 +744,28 @@ async function listProcessingHealth(): Promise<ProcessingHealthIndicator[]> {
     return [
       {
         id: "worker-not-observed",
-        label: "Worker sandbox",
+        label: "Processador do ambiente de homologação",
         status: "pausado",
         detail: "Nenhuma execução observável foi registrada",
         metric: "homologação bloqueada",
       },
     ];
   }
-  return (data as Row[]).map((row) => ({
-    id: stringValue(row["worker_name"]),
-    label: stringValue(row["worker_name"]),
-    status: stringValue(row["status"]) === "healthy" ? "operacional" : "atencao",
-    detail: `Pendentes: ${numberValue(row["pending_jobs"])} · dead letter: ${numberValue(row["dead_letter_jobs"])}`,
-    metric: nullableString(row["last_success_at"]) ?? "sem sucesso registrado",
-  }));
+  return (data as Row[]).map((row) => {
+    const status = stringValue(row["status"], "unknown");
+    const workerName = stringValue(row["worker_name"]);
+    const lastSuccessAt = nullableString(row["last_success_at"]);
+    const lastSuccessTime = lastSuccessAt ? Date.parse(lastSuccessAt) : Number.NaN;
+    return {
+      id: workerName,
+      label: processingWorkerLabel(workerName),
+      status: workerHealthStatus(status),
+      detail: `Situação: ${workerStatusLabel(status)} · Pendentes: ${numberValue(row["pending_jobs"])} · Falhas definitivas: ${numberValue(row["dead_letter_jobs"])}`,
+      metric: Number.isFinite(lastSuccessTime)
+        ? `Último processamento: ${formatDateTime(lastSuccessAt!)}`
+        : "Nenhum processamento concluído",
+    };
+  });
 }
 
 async function listAuditEvents(municipalityId: string): Promise<AuditEvent[]> {
@@ -761,8 +781,8 @@ async function listAuditEvents(municipalityId: string): Promise<AuditEvent[]> {
   return ((data as Row[] | null) ?? []).map((row) => ({
     id: identifierValue(row["id"]),
     type: "escalonamento",
-    title: stringValue(row["event_type"], "Evento do processo"),
-    description: `Evento auditável com visibilidade ${stringValue(row["visibility"], "restrita")}.`,
+    title: fiscalEventTypeLabel(stringValue(row["event_type"])),
+    description: `Evento auditável visível para ${visibilityLabel(stringValue(row["visibility"]))}.`,
     occurredAt: stringValue(row["occurred_at"]),
     actor: "Identidade registrada na trilha de auditoria",
   }));
@@ -786,13 +806,17 @@ async function searchFiscal(query: string, municipalityId: string): Promise<Sear
     const taxpayerId = stringValue(row["taxpayer_id"]);
     const caseId = stringValue(row["case_id"]);
     const title = stringValue(row["legal_name"] ?? row["case_number"], "Resultado fiscal");
+    const maskedTaxId = nullableString(row["masked_tax_id"]);
+    const divergenceType = nullableString(row["divergence_type"]);
+    const status = nullableString(row["status"]);
     return {
       resultType: intent,
       title,
-      subtitle: stringValue(
-        row["masked_tax_id"] ?? row["divergence_type"] ?? row["status"],
-        "Resultado governado",
-      ),
+      subtitle:
+        maskedTaxId ??
+        (divergenceType ? divergenceTypeLabel(divergenceType) : null) ??
+        (status ? fiscalStatusLabel(status) : null) ??
+        "Resultado fiscal conferido",
       route: taxpayerId ? `/contribuintes/${taxpayerId}` : caseId ? "/fiscalizacoes" : null,
       metadata: row,
     };
@@ -822,9 +846,9 @@ export const supabaseFiscalService: FiscalService = {
       channel: "e-mail",
       contact: item.maskedEmail,
       contactValidated: item.readyPendingExternalAuthorization,
-      templateName: item.proposedFor || "Aviso inicial de cortesia",
+      templateName: notificationPurposeLabel(item.proposedFor),
       status: item.safeForDelivery ? "preparado" : "bloqueado",
-      blockedReason: item.deliveryBlockReason,
+      blockedReason: blockReasonSummary(item.deliveryBlockReason),
       draftMessage: "Conteúdo disponível apenas após seleção de template governado.",
     }));
   },
