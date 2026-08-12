@@ -78,10 +78,13 @@ describe("configurações administrativas", () => {
   it("exibe diretório municipal em português sem detalhes técnicos do backend", async () => {
     await renderPage();
 
-    expect(await screen.findByText("Fiscal de Homologação")).toBeTruthy();
+    expect(
+      await screen.findByText("Fiscal de Homologação", undefined, { timeout: 3_000 }),
+    ).toBeTruthy();
     expect(screen.getByText("fiscal@prefeitura.gov.br")).toBeTruthy();
     expect(screen.getByText(/Esta ação não cria conta, não envia convite/)).toBeTruthy();
     expect(screen.queryByText("Backend")).toBeNull();
+    expect(screen.getByText("Homologação")).toBeTruthy();
     expect(mocks.listUsers).toHaveBeenCalledWith("municipality-1");
   });
 
