@@ -1,5 +1,6 @@
 -- Transactional regression for internal municipal administration and the
 -- taxpayer-maintenance column boundary. Every synthetic fixture is rolled back.
+-- Validated against the homologation database on 2026-08-12.
 
 begin;
 
