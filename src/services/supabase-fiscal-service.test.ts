@@ -153,6 +153,71 @@ describe("contrato Supabase do atendimento", () => {
     expect(chain.eq).not.toHaveBeenCalled();
   });
 
+  it("apresenta o status do worker em português", async () => {
+    const chain = readChain([
+      {
+        worker_name: "divergence-worker",
+        status: "unhealthy",
+        pending_jobs: 4,
+        dead_letter_jobs: 2,
+        last_success_at: "2026-08-11T15:30:00Z",
+      },
+    ]);
+    mocks.from.mockReturnValue(chain);
+
+    await expect(supabaseFiscalService.listProcessingHealth()).resolves.toEqual([
+      expect.objectContaining({
+        label: "Processador de divergências fiscais",
+        status: "critico",
+        detail: "Situação: Crítico · Pendentes: 4 · Falhas definitivas: 2",
+        metric: expect.stringMatching(/^Último processamento: 11\/08\/2026/),
+      }),
+    ]);
+  });
+
+  it("traduz o tipo e a visibilidade dos eventos", async () => {
+    const chain = readChain([
+      {
+        id: 10,
+        event_type: "case_question_claimed",
+        visibility: "staff",
+        occurred_at: "2026-08-11T12:00:00Z",
+      },
+    ]);
+    mocks.from.mockReturnValue(chain);
+
+    await expect(supabaseFiscalService.listAuditEvents("municipality-1")).resolves.toEqual([
+      expect.objectContaining({
+        title: "Atendimento assumido pela equipe fiscal",
+        description: "Evento auditável visível para equipe fiscal.",
+      }),
+    ]);
+  });
+
+  it("normaliza finalidade e bloqueio das notificações do dashboard", async () => {
+    const chain = readChain([
+      {
+        municipality_id: "municipality-1",
+        candidate_id: "candidate-1",
+        proposed_for: "initial_notice",
+        candidate_status: "blocked_unverified",
+        delivery_block_reason: "relationship_unverified;external_delivery_not_authorized",
+        safe_for_delivery: false,
+      },
+    ]);
+    mocks.from.mockReturnValue(chain);
+
+    await expect(
+      supabaseFiscalService.listNotificationCandidates("municipality-1"),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        templateName: "Aviso inicial de conferência",
+        blockedReason:
+          "Vínculo com o contribuinte ainda não verificado · Envio externo não autorizado",
+      }),
+    ]);
+  });
+
   it("rejeita leitura municipal sem contexto explícito", async () => {
     await expect(supabaseFiscalService.listTaxpayerSummaries(" ")).rejects.toThrow(
       "invalid_municipality_id",
