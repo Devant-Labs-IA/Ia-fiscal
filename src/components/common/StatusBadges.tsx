@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { fiscalStatusLabel } from "@/lib/fiscal-labels";
 import { cn } from "@/lib/utils";
 import type { HealthStatus, RiskLevel } from "@/types/fiscal";
 
@@ -24,27 +25,10 @@ export function RiskBadge({ risk }: { risk: RiskLevel }) {
   );
 }
 
-const caseStatusLabels: Record<string, string> = {
-  novo: "Novo",
-  em_analise: "Em análise",
-  aguardando_documento: "Aguardando documento",
-  concluido: "Concluído",
-  vencido: "Vencido",
-  a_vencer: "A vencer",
-  parcelado: "Parcelado",
-  em_discussao: "Em discussão",
-  preparado: "Preparado",
-  aguardando_validacao: "Aguardando validação",
-  bloqueado: "Bloqueado",
-  ativo: "Ativo",
-  suspenso: "Suspenso",
-  baixado: "Baixado",
-};
-
 export function StatusBadge({ status }: { status: string }) {
   return (
     <Badge variant="secondary" className="font-medium">
-      {caseStatusLabels[status] ?? status}
+      {fiscalStatusLabel(status)}
     </Badge>
   );
 }
