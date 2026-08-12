@@ -7,6 +7,8 @@ import {
   divergenceTypeDetails,
   environmentLabel,
   fiscalEventTypeLabel,
+  fiscalOperationalReasonLabel,
+  fiscalRulePresentation,
   fiscalRuleDetails,
   fiscalStatusLabel,
   parseBlockReasons,
@@ -27,6 +29,7 @@ describe("catálogo fiscal em português", () => {
     expect(blockReasonLabel("Unverification")).toBe("Contato ainda não verificado");
     expect(blockReasonSummary('{"code":"Unverification"}')).toBe("Contato ainda não verificado");
     expect(fiscalStatusLabel("blocked_unverified")).toBe("Bloqueado por validação pendente");
+    expect(fiscalStatusLabel("converted")).toBe("Convertida em procedimento fiscal");
     expect(environmentLabel("homologation")).toBe("Homologação");
     expect(taxpayerTypeLabel("company")).toBe("Pessoa jurídica");
     expect(taxpayerTypeLabel("individual")).toBe("Pessoa física");
@@ -39,6 +42,23 @@ describe("catálogo fiscal em português", () => {
     });
     expect(debtClassificationRuleLabel("current-account-maturity-v3")).toBe(
       "Classificação de vencimentos da conta corrente — versão 3",
+    );
+    expect(
+      fiscalRulePresentation(
+        "current-account-balance-homologation-v1",
+        1,
+        "current-account-balance-homologation-v1",
+        null,
+      ),
+    ).toEqual({
+      label: "Conferência do saldo da conta corrente — versão 1",
+      description: "Regra de homologação que compara lançamentos, pagamentos e saldo em aberto.",
+    });
+  });
+
+  it("explica motivos operacionais sem expor códigos internos", () => {
+    expect(fiscalOperationalReasonLabel("no_current_approved_exact_knowledge")).toBe(
+      "Ainda não existe uma resposta aprovada na base de conhecimento para este questionamento.",
     );
   });
 
