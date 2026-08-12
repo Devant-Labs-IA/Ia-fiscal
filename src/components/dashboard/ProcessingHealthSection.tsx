@@ -11,12 +11,16 @@ interface ProcessingHealthSectionProps {
   items: ProcessingHealthIndicator[] | undefined;
   isLoading: boolean;
   isError: boolean;
+  onRetry?: () => void;
+  retrying?: boolean;
 }
 
 export function ProcessingHealthSection({
   items,
   isLoading,
   isError,
+  onRetry,
+  retrying,
 }: ProcessingHealthSectionProps) {
   return (
     <SectionCard
@@ -24,7 +28,11 @@ export function ProcessingHealthSection({
       description="Situação dos componentes que sustentam a apuração automatizada."
     >
       {isError ? (
-        <ErrorState message="Não foi possível consultar a saúde do processamento." />
+        <ErrorState
+          message="Não foi possível consultar a saúde do processamento."
+          onRetry={onRetry}
+          retrying={retrying}
+        />
       ) : isLoading ? (
         <SectionSkeleton rows={3} />
       ) : (items ?? []).length === 0 ? (
