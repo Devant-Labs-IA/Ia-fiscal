@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   blockReasonLabel,
   blockReasonSummary,
+  debtClassificationRuleLabel,
   divergenceTypeDetails,
   environmentLabel,
   fiscalEventTypeLabel,
@@ -10,6 +11,7 @@ import {
   fiscalStatusLabel,
   parseBlockReasons,
   processingWorkerLabel,
+  taxpayerTypeLabel,
   visibilityLabel,
   workerHealthStatus,
   workerStatusLabel,
@@ -26,6 +28,8 @@ describe("catálogo fiscal em português", () => {
     expect(blockReasonSummary('{"code":"Unverification"}')).toBe("Contato ainda não verificado");
     expect(fiscalStatusLabel("blocked_unverified")).toBe("Bloqueado por validação pendente");
     expect(environmentLabel("homologation")).toBe("Homologação");
+    expect(taxpayerTypeLabel("company")).toBe("Pessoa jurídica");
+    expect(taxpayerTypeLabel("individual")).toBe("Pessoa física");
   });
 
   it("explica a regra e sua versão sem expor o código interno", () => {
@@ -33,6 +37,9 @@ describe("catálogo fiscal em português", () => {
       label: "Conferência do saldo da conta corrente — versão 1",
       description: "Regra de homologação que compara lançamentos, pagamentos e saldo em aberto.",
     });
+    expect(debtClassificationRuleLabel("current-account-maturity-v3")).toBe(
+      "Classificação de vencimentos da conta corrente — versão 3",
+    );
   });
 
   it("traduz status do worker e metadados dos eventos", () => {
