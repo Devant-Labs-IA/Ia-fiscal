@@ -33,6 +33,8 @@ interface PriorityCasesSectionProps {
   cases: FiscalCase[] | undefined;
   isLoading: boolean;
   isError: boolean;
+  onRetry?: () => void;
+  retrying?: boolean;
 }
 
 const PRIORITY_RANK: Record<RiskLevel, number> = {
@@ -42,7 +44,13 @@ const PRIORITY_RANK: Record<RiskLevel, number> = {
   critico: 4,
 };
 
-export function PriorityCasesSection({ cases, isLoading, isError }: PriorityCasesSectionProps) {
+export function PriorityCasesSection({
+  cases,
+  isLoading,
+  isError,
+  onRetry,
+  retrying,
+}: PriorityCasesSectionProps) {
   const [query, setQuery] = useState("");
   const [risk, setRisk] = useState<RiskLevel | "todos">("todos");
   const [selected, setSelected] = useState<FiscalCase | null>(null);
@@ -99,7 +107,11 @@ export function PriorityCasesSection({ cases, isLoading, isError }: PriorityCase
         }
       >
         {isError ? (
-          <ErrorState message="Não foi possível carregar os casos prioritários." />
+          <ErrorState
+            message="Não foi possível carregar os casos prioritários."
+            onRetry={onRetry}
+            retrying={retrying}
+          />
         ) : isLoading ? (
           <SectionSkeleton rows={5} />
         ) : filtered.length === 0 ? (

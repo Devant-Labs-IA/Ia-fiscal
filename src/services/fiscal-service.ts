@@ -4,12 +4,14 @@ import { supabaseFiscalService } from "@/services/supabase-fiscal-service";
 import type {
   AuditEvent,
   ChatQueueItem,
+  CreateTaxpayerInput,
   DashboardSummary,
   FiscalCase,
   NotificationCandidate,
   ProcessingHealthIndicator,
   ProductionBlocker,
   Taxpayer,
+  UpdateTaxpayerInput,
 } from "@/types/fiscal";
 import type {
   CaseMessageReadModel,
@@ -18,6 +20,9 @@ import type {
   FiscalCaseReadModel,
   KnowledgeArticleReadModel,
   NotificationRecipientReadModel,
+  MunicipalityMembershipStatus,
+  MunicipalityUser,
+  MunicipalityUserRole,
   OperationalReport,
   PortalCaseReadModel,
   SearchResultItem,
@@ -34,6 +39,13 @@ export interface FiscalService {
   listAuditEvents(municipalityId: string): Promise<AuditEvent[]>;
   listTaxpayers(municipalityId: string): Promise<Taxpayer[]>;
   listTaxpayerSummaries(municipalityId: string): Promise<Taxpayer360Summary[]>;
+  createTaxpayer(municipalityId: string, input: CreateTaxpayerInput): Promise<string>;
+  updateTaxpayer(
+    municipalityId: string,
+    taxpayerId: string,
+    input: UpdateTaxpayerInput,
+  ): Promise<void>;
+  archiveTaxpayer(municipalityId: string, taxpayerId: string): Promise<void>;
   listDebtPeriods(municipalityId: string, taxpayerId?: string): Promise<DebtPeriod[]>;
   listDivergences(municipalityId: string, taxpayerId?: string): Promise<DivergenceReadModel[]>;
   listFiscalCaseRows(municipalityId: string, taxpayerId?: string): Promise<FiscalCaseReadModel[]>;
@@ -42,6 +54,18 @@ export interface FiscalService {
   listPortalCases(municipalityId: string): Promise<PortalCaseReadModel[]>;
   listCaseMessages(municipalityId: string, caseId: string): Promise<CaseMessageReadModel[]>;
   getOperationalReport(municipalityId: string): Promise<OperationalReport>;
+  listMunicipalityUsers(municipalityId: string): Promise<MunicipalityUser[]>;
+  addExistingMunicipalityUser(
+    municipalityId: string,
+    email: string,
+    role: MunicipalityUserRole,
+  ): Promise<string>;
+  updateMunicipalityMembership(
+    municipalityId: string,
+    membershipId: string,
+    role: MunicipalityUserRole,
+    status: MunicipalityMembershipStatus,
+  ): Promise<string>;
   claimCaseQuestion(
     questionId: string,
     municipalityId: string,
@@ -68,6 +92,11 @@ export const fiscalService: FiscalService = {
   listAuditEvents: (municipalityId) => activeService().listAuditEvents(municipalityId),
   listTaxpayers: (municipalityId) => activeService().listTaxpayers(municipalityId),
   listTaxpayerSummaries: (municipalityId) => activeService().listTaxpayerSummaries(municipalityId),
+  createTaxpayer: (municipalityId, input) => activeService().createTaxpayer(municipalityId, input),
+  updateTaxpayer: (municipalityId, taxpayerId, input) =>
+    activeService().updateTaxpayer(municipalityId, taxpayerId, input),
+  archiveTaxpayer: (municipalityId, taxpayerId) =>
+    activeService().archiveTaxpayer(municipalityId, taxpayerId),
   listDebtPeriods: (municipalityId, taxpayerId) =>
     activeService().listDebtPeriods(municipalityId, taxpayerId),
   listDivergences: (municipalityId, taxpayerId) =>
@@ -81,6 +110,11 @@ export const fiscalService: FiscalService = {
   listCaseMessages: (municipalityId, caseId) =>
     activeService().listCaseMessages(municipalityId, caseId),
   getOperationalReport: (municipalityId) => activeService().getOperationalReport(municipalityId),
+  listMunicipalityUsers: (municipalityId) => activeService().listMunicipalityUsers(municipalityId),
+  addExistingMunicipalityUser: (municipalityId, email, role) =>
+    activeService().addExistingMunicipalityUser(municipalityId, email, role),
+  updateMunicipalityMembership: (municipalityId, membershipId, role, status) =>
+    activeService().updateMunicipalityMembership(municipalityId, membershipId, role, status),
   claimCaseQuestion: (questionId, municipalityId, membershipId, handlingMode) =>
     activeService().claimCaseQuestion(questionId, municipalityId, membershipId, handlingMode),
   submitCaseQuestion: (caseId, body, clientRequestId) =>
@@ -117,4 +151,5 @@ export const fiscalKeys = {
     ["municipality", municipalityId, "case-messages", caseId] as const,
   report: (municipalityId: string) =>
     ["municipality", municipalityId, "operational-report"] as const,
+  municipalityUsers: (municipalityId: string) => ["municipality", municipalityId, "users"] as const,
 };

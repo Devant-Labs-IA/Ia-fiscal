@@ -33,6 +33,7 @@ const ROLE_LABELS = {
   supervisor: "Supervisão fiscal",
   fiscal_auditor: "Fiscalização",
   legal_reviewer: "Revisão jurídica",
+  support_readonly: "Suporte — somente leitura",
   taxpayer: "Contribuinte",
   accountant: "Contabilidade",
 } as const;

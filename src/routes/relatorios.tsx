@@ -59,7 +59,12 @@ function ReportsPage() {
       {report.isLoading ? (
         <SectionSkeleton rows={4} />
       ) : report.isError ? (
-        <ErrorState message="Não foi possível consolidar os indicadores." />
+        <ErrorState
+          message="Não foi possível consolidar os indicadores."
+          error={report.error}
+          onRetry={() => void report.refetch()}
+          retrying={report.isFetching}
+        />
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

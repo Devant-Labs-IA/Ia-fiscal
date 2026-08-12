@@ -58,6 +58,33 @@ describe("serviço fiscal demonstrativo", () => {
     ).rejects.toThrow("demo_write_disabled");
   });
 
+  it("cadastra, edita e arquiva contribuinte fictício sem apagar o histórico", async () => {
+    const taxpayerId = await mockFiscalService.createTaxpayer(MUNICIPALITY_ID, {
+      municipalRegistration: "HML-CRUD-001",
+      taxId: "12345678000190",
+      legalName: "Contribuinte CRUD de Demonstração Ltda.",
+      tradeName: "CRUD Demonstração",
+      taxpayerType: "company",
+    });
+
+    await mockFiscalService.updateTaxpayer(MUNICIPALITY_ID, taxpayerId, {
+      municipalRegistration: "HML-CRUD-001",
+      taxId: "12345678000190",
+      legalName: "Contribuinte CRUD Atualizado Ltda.",
+      tradeName: "CRUD Atualizado",
+      taxpayerType: "company",
+    });
+    await mockFiscalService.archiveTaxpayer(MUNICIPALITY_ID, taxpayerId);
+
+    const archived = (await mockFiscalService.listTaxpayerSummaries(MUNICIPALITY_ID)).find(
+      (item) => item.taxpayerId === taxpayerId,
+    );
+    expect(archived).toMatchObject({
+      legalName: "Contribuinte CRUD Atualizado Ltda.",
+      taxpayerStatus: "inactive",
+    });
+  });
+
   it("expõe a conversa fictícia somente para leitura", async () => {
     const queue = await mockFiscalService.listChatQueue(MUNICIPALITY_ID);
     const messages = await mockFiscalService.listCaseMessages(

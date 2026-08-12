@@ -41,6 +41,18 @@ export interface Taxpayer {
   monitoredSince: string;
 }
 
+/** Dados editáveis do cadastro municipal do contribuinte. */
+export interface CreateTaxpayerInput {
+  municipalRegistration: string;
+  taxId: string;
+  legalName: string;
+  tradeName: string;
+  taxpayerType: "company" | "individual" | "other";
+}
+
+/** A edição substitui o conjunto de campos cadastrais, sem alterar o município ou o identificador. */
+export type UpdateTaxpayerInput = CreateTaxpayerInput;
+
 export interface Debt {
   id: string;
   taxpayerId: string;

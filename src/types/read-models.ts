@@ -1,5 +1,10 @@
 export type StaffRole =
-  "platform_admin" | "municipal_admin" | "supervisor" | "fiscal_auditor" | "legal_reviewer";
+  | "platform_admin"
+  | "municipal_admin"
+  | "supervisor"
+  | "fiscal_auditor"
+  | "legal_reviewer"
+  | "support_readonly";
 
 export type PortalRole = "taxpayer" | "accountant";
 export type AppRole = StaffRole | PortalRole;
@@ -90,6 +95,8 @@ export interface DivergenceReadModel {
   status: string;
   executionMode: string;
   ruleCode: string;
+  ruleName: string | null;
+  ruleDescription: string | null;
   ruleVersion: number | null;
   blockReasons: string[];
   hasCaseFinding: boolean;
@@ -190,6 +197,23 @@ export interface OperationalReport {
   recipientCandidateCount: number;
   deliveryReadyCount: number;
   externalDeliveryCount: number;
+}
+
+export type MunicipalityUserRole =
+  "municipal_admin" | "supervisor" | "fiscal_auditor" | "legal_reviewer" | "support_readonly";
+
+export type MunicipalityMembershipStatus = "active" | "suspended" | "revoked";
+
+export interface MunicipalityUser {
+  membershipId: string;
+  userId: string;
+  fullName: string;
+  email: string;
+  role: MunicipalityUserRole;
+  status: MunicipalityMembershipStatus;
+  validFrom: string;
+  validUntil: string | null;
+  lastSeenAt: string | null;
 }
 
 export interface SearchResultItem {

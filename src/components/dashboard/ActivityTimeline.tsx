@@ -20,16 +20,28 @@ interface ActivityTimelineProps {
   items: AuditEvent[] | undefined;
   isLoading: boolean;
   isError: boolean;
+  onRetry?: () => void;
+  retrying?: boolean;
 }
 
-export function ActivityTimeline({ items, isLoading, isError }: ActivityTimelineProps) {
+export function ActivityTimeline({
+  items,
+  isLoading,
+  isError,
+  onRetry,
+  retrying,
+}: ActivityTimelineProps) {
   return (
     <SectionCard
       title="Atividade recente"
       description="Eventos registrados no ambiente de homologação."
     >
       {isError ? (
-        <ErrorState message="Não foi possível carregar a atividade recente." />
+        <ErrorState
+          message="Não foi possível carregar a atividade recente."
+          onRetry={onRetry}
+          retrying={retrying}
+        />
       ) : isLoading ? (
         <SectionSkeleton rows={4} />
       ) : (items ?? []).length === 0 ? (

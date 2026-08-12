@@ -48,7 +48,7 @@ export const fiscalNav: NavItem[] = [
     title: "Notificações",
     url: "/notificacoes",
     icon: Send,
-    description: "Rascunhos, validação de contatos e autorização de envio.",
+    description: "Simulação interna e validação de contatos, sem envio externo.",
   },
   {
     title: "Atendimento",
@@ -72,7 +72,7 @@ export const fiscalNav: NavItem[] = [
     title: "Configurações",
     url: "/configuracoes",
     icon: Settings,
-    description: "Parâmetros do município, perfis de acesso e integrações.",
+    description: "Ambiente de homologação e perfis de acesso do município.",
   },
 ];
 

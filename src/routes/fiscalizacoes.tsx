@@ -23,6 +23,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  blockReasonLabel,
+  confidentialityLabel,
+  divergenceTypeDetails,
+  fiscalRuleDetails,
+} from "@/lib/fiscal-labels";
 import { formatCurrency, formatDate, maskCnpj } from "@/lib/format";
 import { fiscalKeys, fiscalService } from "@/services/fiscal-service";
 
@@ -113,7 +119,12 @@ function InspectionsPage() {
             {divergences.isLoading ? (
               <SectionSkeleton rows={6} />
             ) : divergences.isError ? (
-              <ErrorState message="Não foi possível carregar as divergências fiscais." />
+              <ErrorState
+                message="Não foi possível carregar as divergências fiscais."
+                error={divergences.error}
+                onRetry={() => void divergences.refetch()}
+                retrying={divergences.isFetching}
+              />
             ) : !divergences.data?.length ? (
               <EmptyState message="Nenhuma divergência está visível para esta sessão." />
             ) : (
@@ -140,7 +151,14 @@ function InspectionsPage() {
                             {maskCnpj(item.taxId)}
                           </span>
                         </TableCell>
-                        <TableCell className="min-w-48 text-sm">{item.divergenceType}</TableCell>
+                        <TableCell className="min-w-56">
+                          <span className="block text-sm font-medium">
+                            {divergenceTypeDetails(item.divergenceType).label}
+                          </span>
+                          <span className="mt-0.5 block text-xs text-muted-foreground">
+                            {divergenceTypeDetails(item.divergenceType).description}
+                          </span>
+                        </TableCell>
                         <TableCell className="whitespace-nowrap text-xs tabular-nums">
                           {safeDate(item.periodStart)} a {safeDate(item.periodEnd)}
                         </TableCell>
@@ -150,15 +168,19 @@ function InspectionsPage() {
                         <TableCell>
                           <StatusBadge status={item.status} />
                         </TableCell>
-                        <TableCell>
-                          <span className="block text-xs font-medium">{item.ruleCode}</span>
-                          <span className="block text-xs text-muted-foreground">
-                            versão {item.ruleVersion ?? "—"}
+                        <TableCell className="min-w-64">
+                          <span className="block text-xs font-medium">
+                            {item.ruleName ??
+                              fiscalRuleDetails(item.ruleCode, item.ruleVersion).label}
+                          </span>
+                          <span className="mt-0.5 block text-xs text-muted-foreground">
+                            {item.ruleDescription ??
+                              fiscalRuleDetails(item.ruleCode, item.ruleVersion).description}
                           </span>
                         </TableCell>
                         <TableCell className="max-w-64 text-xs text-muted-foreground">
                           {item.blockReasons.length > 0
-                            ? item.blockReasons.join(" · ")
+                            ? item.blockReasons.map(blockReasonLabel).join(" · ")
                             : "Sem bloqueio registrado"}
                         </TableCell>
                         <TableCell className="text-right">
@@ -193,7 +215,12 @@ function InspectionsPage() {
             {cases.isLoading || cases.fetchStatus === "idle" ? (
               <SectionSkeleton rows={5} />
             ) : cases.isError ? (
-              <ErrorState message="Não foi possível carregar os procedimentos fiscais." />
+              <ErrorState
+                message="Não foi possível carregar os procedimentos fiscais."
+                error={cases.error}
+                onRetry={() => void cases.refetch()}
+                retrying={cases.isFetching}
+              />
             ) : !cases.data?.length ? (
               <EmptyState message="Nenhum procedimento fiscal está visível para esta sessão." />
             ) : (
@@ -216,7 +243,7 @@ function InspectionsPage() {
                         <TableCell>
                           <span className="block font-medium tabular-nums">{item.caseNumber}</span>
                           <span className="block text-xs text-muted-foreground">
-                            {item.confidentiality}
+                            {confidentialityLabel(item.confidentiality)}
                           </span>
                         </TableCell>
                         <TableCell className="min-w-60 font-medium">{item.taxpayerName}</TableCell>

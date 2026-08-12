@@ -9,9 +9,17 @@ interface BlockersSectionProps {
   items: ProductionBlocker[] | undefined;
   isLoading: boolean;
   isError: boolean;
+  onRetry?: () => void;
+  retrying?: boolean;
 }
 
-export function BlockersSection({ items, isLoading, isError }: BlockersSectionProps) {
+export function BlockersSection({
+  items,
+  isLoading,
+  isError,
+  onRetry,
+  retrying,
+}: BlockersSectionProps) {
   const concluded = (items ?? []).filter((item) => item.done).length;
 
   return (
@@ -29,7 +37,11 @@ export function BlockersSection({ items, isLoading, isError }: BlockersSectionPr
       }
     >
       {isError ? (
-        <ErrorState message="Não foi possível carregar os bloqueios de produção." />
+        <ErrorState
+          message="Não foi possível carregar os bloqueios de produção."
+          onRetry={onRetry}
+          retrying={retrying}
+        />
       ) : isLoading ? (
         <SectionSkeleton rows={4} />
       ) : (

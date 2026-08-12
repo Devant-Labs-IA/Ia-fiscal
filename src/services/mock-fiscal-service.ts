@@ -9,7 +9,9 @@ import {
   productionBlockers,
   taxpayers,
 } from "@/data/mocks";
+import { validateTaxpayerInput } from "@/lib/taxpayer-validation";
 import type { FiscalService } from "@/services/fiscal-service";
+import type { CreateTaxpayerInput, Taxpayer, UpdateTaxpayerInput } from "@/types/fiscal";
 import type {
   CaseMessageReadModel,
   DebtPeriod,
@@ -75,6 +77,35 @@ function summaryFromTaxpayer(index: number): Taxpayer360Summary {
 }
 
 const summaries = taxpayers.map((_, index) => summaryFromTaxpayer(index));
+let demoTaxpayerSequence = summaries.length;
+
+function requireDemoWriteMunicipality(municipalityId: string): void {
+  if (!hasDemoMunicipality(municipalityId)) {
+    throw new Error("write_not_available_for_municipality");
+  }
+}
+
+function requireValidTaxpayerInput(
+  input: CreateTaxpayerInput | UpdateTaxpayerInput,
+): CreateTaxpayerInput {
+  const validation = validateTaxpayerInput(input);
+  if (!validation.valid) throw new Error("invalid_taxpayer_input");
+  return validation.data;
+}
+
+function taxpayerFromSummary(item: Taxpayer360Summary): Taxpayer {
+  return {
+    id: item.taxpayerId,
+    name: item.legalName,
+    cnpj: item.taxId,
+    tradeName: item.tradeName,
+    segment: item.taxpayerType,
+    city: "Cordeirópolis/SP",
+    registrationStatus:
+      item.taxpayerStatus === "active" || item.taxpayerStatus === "ativo" ? "ativo" : "suspenso",
+    monitoredSince: item.oldestOpenDueOn ?? new Date().toISOString(),
+  };
+}
 
 const debtPeriods: DebtPeriod[] = debts.map((debt) => ({
   municipalityId: DEMO_MUNICIPALITY_ID,
@@ -109,6 +140,8 @@ const divergences: DivergenceReadModel[] = fiscalCases.map((item, index) => ({
   status: item.status,
   executionMode: "sandbox",
   ruleCode: "demo-only",
+  ruleName: "Regra de demonstração",
+  ruleDescription: "Regra fictícia usada somente para validar a interface de homologação.",
   ruleVersion: 1,
   blockReasons: [],
   hasCaseFinding: true,
@@ -190,7 +223,9 @@ const portalRows: PortalCaseReadModel[] = caseRows.slice(0, 2).map((item) => ({
 
 function report(municipalityId: string): OperationalReport {
   const visible = hasDemoMunicipality(municipalityId);
-  const scopedSummaries = visible ? summaries : [];
+  const scopedSummaries = visible
+    ? summaries.filter((item) => item.taxpayerStatus !== "inactive")
+    : [];
   const scopedDebts = visible ? debtPeriods : [];
   const scopedDivergences = visible ? divergences : [];
   const scopedCases = visible ? caseRows : [];
@@ -233,9 +268,75 @@ export const mockFiscalService: FiscalService = {
     resolve(hasDemoMunicipality(municipalityId) ? productionBlockers : []),
   listAuditEvents: (municipalityId) =>
     resolve(hasDemoMunicipality(municipalityId) ? auditEvents : []),
-  listTaxpayers: (municipalityId) => resolve(hasDemoMunicipality(municipalityId) ? taxpayers : []),
+  listTaxpayers: (municipalityId) =>
+    resolve(hasDemoMunicipality(municipalityId) ? summaries.map(taxpayerFromSummary) : []),
   listTaxpayerSummaries: (municipalityId) =>
     resolve(hasDemoMunicipality(municipalityId) ? summaries : []),
+  createTaxpayer(municipalityId, input) {
+    requireDemoWriteMunicipality(municipalityId);
+    const data = requireValidTaxpayerInput(input);
+    demoTaxpayerSequence += 1;
+    const taxpayerId = `demo-taxpayer-${demoTaxpayerSequence}`;
+    summaries.push({
+      municipalityId,
+      taxpayerId,
+      municipalRegistration: data.municipalRegistration,
+      taxId: data.taxId,
+      legalName: data.legalName,
+      tradeName: data.tradeName,
+      taxpayerType: data.taxpayerType,
+      taxpayerStatus: "active",
+      debtPeriodCount: 0,
+      overduePeriodCount: 0,
+      incompleteDebtPeriodCount: 0,
+      openBalanceTotal: 0,
+      oldestOpenDueOn: null,
+      divergenceCount: 0,
+      activeDivergenceCount: 0,
+      blockedDivergenceCount: 0,
+      divergenceAmountTotal: 0,
+      caseCount: 0,
+      activeCaseCount: 0,
+      blockedCalculationCount: 0,
+      contactCount: 0,
+      verifiedContactCount: 0,
+      responsibleCount: 0,
+      deliveryReadyResponsibleCount: 0,
+      waitingQuestionCount: 0,
+      operationalAttentionLevel: "normal",
+      primaryActionLabel: null,
+      primaryActionReason: null,
+      primaryActionPriority: null,
+      primaryActionDueAt: null,
+    });
+    return resolve(taxpayerId);
+  },
+  updateTaxpayer(municipalityId, taxpayerId, input) {
+    requireDemoWriteMunicipality(municipalityId);
+    const data = requireValidTaxpayerInput(input);
+    const index = summaries.findIndex(
+      (item) => item.municipalityId === municipalityId && item.taxpayerId === taxpayerId,
+    );
+    if (index < 0) throw new Error("taxpayer_not_found");
+    summaries[index] = {
+      ...summaries[index]!,
+      municipalRegistration: data.municipalRegistration,
+      taxId: data.taxId,
+      legalName: data.legalName,
+      tradeName: data.tradeName,
+      taxpayerType: data.taxpayerType,
+    };
+    return resolve(undefined);
+  },
+  archiveTaxpayer(municipalityId, taxpayerId) {
+    requireDemoWriteMunicipality(municipalityId);
+    const index = summaries.findIndex(
+      (item) => item.municipalityId === municipalityId && item.taxpayerId === taxpayerId,
+    );
+    if (index < 0) throw new Error("taxpayer_not_found");
+    summaries[index] = { ...summaries[index]!, taxpayerStatus: "inactive" };
+    return resolve(undefined);
+  },
   listDebtPeriods: (municipalityId, taxpayerId) =>
     resolve(
       hasDemoMunicipality(municipalityId)
@@ -289,6 +390,13 @@ export const mockFiscalService: FiscalService = {
     return resolve(messages);
   },
   getOperationalReport: (municipalityId) => resolve(report(municipalityId)),
+  listMunicipalityUsers: () => resolve([]),
+  async addExistingMunicipalityUser() {
+    throw new Error("demo_write_disabled");
+  },
+  async updateMunicipalityMembership() {
+    throw new Error("demo_write_disabled");
+  },
   async claimCaseQuestion() {
     throw new Error("demo_write_disabled");
   },

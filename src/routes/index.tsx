@@ -95,7 +95,12 @@ function DashboardFiscal() {
       </header>
 
       {summary.isError ? (
-        <ErrorState message="Não foi possível carregar os indicadores. Tente novamente." />
+        <ErrorState
+          message="Não foi possível carregar os indicadores. Tente novamente."
+          error={summary.error}
+          onRetry={() => void summary.refetch()}
+          retrying={summary.isFetching}
+        />
       ) : summary.isLoading ? (
         <SectionSkeleton rows={3} />
       ) : (
@@ -106,14 +111,24 @@ function DashboardFiscal() {
         cases={cases.data}
         isLoading={cases.isLoading}
         isError={cases.isError}
+        onRetry={() => void cases.refetch()}
+        retrying={cases.isFetching}
       />
 
       <div className="grid gap-5 2xl:grid-cols-2">
-        <ChatQueueSection items={chat.data} isLoading={chat.isLoading} isError={chat.isError} />
+        <ChatQueueSection
+          items={chat.data}
+          isLoading={chat.isLoading}
+          isError={chat.isError}
+          onRetry={() => void chat.refetch()}
+          retrying={chat.isFetching}
+        />
         <NotificationsSection
           items={notifications.data}
           isLoading={notifications.isLoading}
           isError={notifications.isError}
+          onRetry={() => void notifications.refetch()}
+          retrying={notifications.isFetching}
         />
       </div>
 
@@ -121,6 +136,8 @@ function DashboardFiscal() {
         items={health.data}
         isLoading={health.isLoading}
         isError={health.isError}
+        onRetry={() => void health.refetch()}
+        retrying={health.isFetching}
       />
 
       <div className="grid gap-5 xl:grid-cols-2">
@@ -128,11 +145,15 @@ function DashboardFiscal() {
           items={blockers.data}
           isLoading={blockers.isLoading}
           isError={blockers.isError}
+          onRetry={() => void blockers.refetch()}
+          retrying={blockers.isFetching}
         />
         <ActivityTimeline
           items={events.data}
           isLoading={events.isLoading}
           isError={events.isError}
+          onRetry={() => void events.refetch()}
+          retrying={events.isFetching}
         />
       </div>
     </div>
