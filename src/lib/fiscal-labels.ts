@@ -38,6 +38,7 @@ const statusLabels: Record<string, string> = {
   aguardando_validacao: "Aguardando validação",
   a_vencer: "A vencer",
   blocked: "Bloqueado",
+  blocked_unverified: "Bloqueado por validação pendente",
   bloqueado: "Bloqueado",
   baixado: "Baixado",
   cancelled: "Cancelado",
@@ -144,11 +145,13 @@ const blockReasonLabels: Record<string, string> = {
   contact_unverified: "Contato ainda não verificado",
   delivery_not_authorized: "Envio externo não autorizado",
   external_delivery_disabled: "Envio externo desativado na homologação",
+  external_delivery_not_authorized: "Envio externo não autorizado",
   invalid_contact: "Contato inválido",
   missing_contact: "Contato não cadastrado",
   missing_email: "E-mail não cadastrado",
   missing_verified_contact: "Nenhum contato verificado",
   pending_revalidation: "Aguardando nova conferência",
+  relationship_unverified: "Vínculo com o contribuinte ainda não verificado",
   unverified: "Contato ainda não verificado",
   unverification: "Contato ainda não verificado",
   validation_pending: "Validação interna pendente",
@@ -208,12 +211,109 @@ export function confidentialityLabel(value: string): string {
   return confidentialityLabels[normalizeFiscalCode(value)] ?? "Acesso controlado";
 }
 
+const workerStatusLabels: Record<string, string> = {
+  critical: "Crítico",
+  degraded: "Com atenção",
+  disabled: "Desativado",
+  error: "Com falha",
+  failed: "Com falha",
+  healthy: "Operacional",
+  operational: "Operacional",
+  paused: "Pausado",
+  ready: "Operacional",
+  running: "Em execução",
+  stale: "Sem atualização recente",
+  stopped: "Parado",
+  unhealthy: "Crítico",
+  unknown: "Situação não informada",
+  warning: "Com atenção",
+};
+
+export function workerStatusLabel(value: string): string {
+  return workerStatusLabels[normalizeFiscalCode(value)] ?? "Situação não reconhecida";
+}
+
+const processingWorkerLabels: Record<string, string> = {
+  calculation_worker: "Processador de cálculos fiscais",
+  delivery_worker: "Processador de comunicações internas",
+  divergence_worker: "Processador de divergências fiscais",
+  fiscal_worker: "Processador fiscal",
+  notification_worker: "Processador de simulações de notificação",
+  sandbox_worker: "Processador do ambiente de homologação",
+  worker_sandbox: "Processador do ambiente de homologação",
+};
+
+export function processingWorkerLabel(value: string): string {
+  return processingWorkerLabels[normalizeFiscalCode(value)] ?? "Processador fiscal interno";
+}
+
+const environmentLabels: Record<string, string> = {
+  development: "Desenvolvimento",
+  homologation: "Homologação",
+  production: "Produção",
+  staging: "Homologação",
+  test: "Testes",
+};
+
+export function environmentLabel(value: string): string {
+  return environmentLabels[normalizeFiscalCode(value)] ?? "Ambiente controlado";
+}
+
+export function workerHealthStatus(
+  value: string,
+): "operacional" | "atencao" | "critico" | "pausado" {
+  const normalized = normalizeFiscalCode(value);
+  if (["healthy", "operational", "ready", "running"].includes(normalized)) {
+    return "operacional";
+  }
+  if (["critical", "error", "failed", "unhealthy"].includes(normalized)) return "critico";
+  if (["disabled", "paused", "stopped"].includes(normalized)) return "pausado";
+  return "atencao";
+}
+
+const eventTypeLabels: Record<string, string> = {
+  approved_response_published: "Resposta aprovada registrada",
+  case_created: "Procedimento criado",
+  case_opened: "Procedimento aberto",
+  case_question_claimed: "Atendimento assumido pela equipe fiscal",
+  document_added: "Documento incluído",
+  manual_response_published: "Resposta manual registrada",
+  question_submitted: "Pergunta recebida",
+  status_changed: "Situação do procedimento atualizada",
+};
+
+export function fiscalEventTypeLabel(value: string): string {
+  return eventTypeLabels[normalizeFiscalCode(value)] ?? "Evento do procedimento fiscal";
+}
+
+const visibilityLabels: Record<string, string> = {
+  confidential: "acesso restrito",
+  internal: "uso interno",
+  participants: "participantes do procedimento",
+  public: "acesso público",
+  restricted: "acesso restrito",
+  staff: "equipe fiscal",
+  taxpayer: "contribuinte vinculado",
+};
+
+export function visibilityLabel(value: string): string {
+  return visibilityLabels[normalizeFiscalCode(value)] ?? "acesso controlado";
+}
+
 function collectBlockReasons(value: unknown, output: string[], depth: number): void {
   if (depth > 5 || output.length >= 20 || value == null || value === false) return;
 
   if (typeof value === "string") {
     const text = value.trim();
     if (!text) return;
+    if (text.includes(";")) {
+      text
+        .split(";")
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .forEach((item) => collectBlockReasons(item, output, depth + 1));
+      return;
+    }
     if (
       (text.startsWith("[") && text.endsWith("]")) ||
       (text.startsWith("{") && text.endsWith("}"))
