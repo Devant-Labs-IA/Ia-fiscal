@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Ban, CheckCircle2, Clock3, MailCheck, ShieldAlert } from "lucide-react";
+import { useState } from "react";
 
 import { useAuth } from "@/auth/AuthContext";
 import {
@@ -11,6 +12,20 @@ import {
 } from "@/components/common/SectionCard";
 import { HomologationBanner } from "@/components/layout/HomologationBanner";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  blockReasonSummary,
+  fiscalStatusLabel,
+  notificationPurposeLabel,
+  recipientTypeLabel,
+} from "@/lib/fiscal-labels";
 import { formatDateTime } from "@/lib/format";
 import { fiscalKeys, fiscalService } from "@/services/fiscal-service";
 import type { NotificationRecipientReadModel } from "@/types/read-models";
@@ -35,44 +50,26 @@ export const Route = createFileRoute("/notificacoes")({
   component: NotificationsPage,
 });
 
-const recipientLabels: Record<string, string> = {
-  taxpayer: "Contribuinte",
-  accountant: "Contador",
-  legal_representative: "Representante legal",
-};
-
-const candidateLabels: Record<string, string> = {
-  pending: "Pendente",
-  prepared: "Preparado",
-  blocked: "Bloqueado",
-  rejected: "Rejeitado",
-  awaiting_validation: "Aguardando validação",
-  aguardando_validacao: "Aguardando validação",
-  bloqueado: "Bloqueado",
-};
-
-function readableToken(value: string, labels: Record<string, string> = {}): string {
-  return (
-    labels[value] ?? value.replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase())
-  );
-}
-
 function safeDateTime(value: string): string {
   const parsed = Date.parse(value);
   return Number.isNaN(parsed) ? "Data não informada" : formatDateTime(value);
 }
 
-function RecipientCard({ item }: { item: NotificationRecipientReadModel }) {
+function RecipientCard({
+  item,
+  onSimulate,
+}: {
+  item: NotificationRecipientReadModel;
+  onSimulate: () => void;
+}) {
   return (
     <li className="rounded-lg border border-border p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-medium">
-              {readableToken(item.recipientType, recipientLabels)}
-            </span>
+            <span className="font-medium">{recipientTypeLabel(item.recipientType)}</span>
             <Badge variant="secondary" className="font-medium">
-              {readableToken(item.candidateStatus, candidateLabels)}
+              {fiscalStatusLabel(item.candidateStatus)}
             </Badge>
           </div>
           <p className="mt-1 break-all text-sm text-muted-foreground">{item.maskedEmail}</p>
@@ -89,7 +86,7 @@ function RecipientCard({ item }: { item: NotificationRecipientReadModel }) {
           <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Finalidade proposta
           </dt>
-          <dd className="mt-1">{readableToken(item.proposedFor)}</dd>
+          <dd className="mt-1">{notificationPurposeLabel(item.proposedFor)}</dd>
         </div>
         <div>
           <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -110,11 +107,14 @@ function RecipientCard({ item }: { item: NotificationRecipientReadModel }) {
             <span className="font-medium">
               {item.safeForDelivery ? "Validações internas concluídas." : "Entrega bloqueada."}
             </span>{" "}
-            {item.deliveryBlockReason ||
-              "Nenhuma justificativa adicional foi registrada para este candidato."}
+            {blockReasonSummary(item.deliveryBlockReason)}
           </span>
         </p>
       </div>
+
+      <Button type="button" variant="outline" size="sm" className="mt-4" onClick={onSimulate}>
+        Visualizar simulação
+      </Button>
     </li>
   );
 }
@@ -122,6 +122,7 @@ function RecipientCard({ item }: { item: NotificationRecipientReadModel }) {
 function NotificationsPage() {
   const auth = useAuth();
   const municipalityId = auth.access?.municipalityId ?? "";
+  const [simulation, setSimulation] = useState<NotificationRecipientReadModel | null>(null);
   const recipients = useQuery({
     queryKey: fiscalKeys.recipients(municipalityId),
     queryFn: () => fiscalService.listNotificationRecipients(municipalityId),
@@ -179,7 +180,12 @@ function NotificationsPage() {
         description="Endereços permanecem mascarados; detalhes fiscais não são expostos em e-mail."
       >
         {recipients.isError ? (
-          <ErrorState message="Não foi possível carregar os candidatos a destinatário." />
+          <ErrorState
+            message="Não foi possível carregar os candidatos a destinatário."
+            error={recipients.error}
+            onRetry={() => void recipients.refetch()}
+            retrying={recipients.isFetching}
+          />
         ) : recipients.isLoading ? (
           <SectionSkeleton rows={5} />
         ) : items.length === 0 ? (
@@ -187,11 +193,44 @@ function NotificationsPage() {
         ) : (
           <ul className="space-y-3">
             {items.map((item) => (
-              <RecipientCard key={item.candidateId} item={item} />
+              <RecipientCard
+                key={item.candidateId}
+                item={item}
+                onSimulate={() => setSimulation(item)}
+              />
             ))}
           </ul>
         )}
       </SectionCard>
+
+      <Dialog open={Boolean(simulation)} onOpenChange={(open) => !open && setSimulation(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Simulação da notificação</DialogTitle>
+            <DialogDescription>
+              Prévia local para conferência interna. Nenhuma mensagem será enviada ou agendada.
+            </DialogDescription>
+          </DialogHeader>
+          {simulation && (
+            <div className="space-y-4">
+              <div className="rounded-md border border-border bg-muted/50 p-4 text-sm">
+                <p>Olá,</p>
+                <p className="mt-3">
+                  Existe uma informação disponível para conferência no portal autenticado:{" "}
+                  {notificationPurposeLabel(simulation.proposedFor).toLocaleLowerCase("pt-BR")}.
+                </p>
+                <p className="mt-3">
+                  Acesse o ambiente oficial para consultar os detalhes. Esta prévia não inicia
+                  prazo, cobrança ou procedimento fiscal.
+                </p>
+              </div>
+              <div className="rounded-md border border-warning/40 bg-warning-soft p-3 text-sm text-warning-foreground">
+                Simulação somente leitura. Envio externo permanece desativado na homologação.
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
