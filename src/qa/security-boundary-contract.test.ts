@@ -11,6 +11,8 @@ const operationalMigrationPath =
   "supabase/migrations/20260804002339_harden_batch_and_response_boundaries.sql";
 const assignmentRoleMigrationPath =
   "supabase/migrations/20260804004659_revalidate_case_assignment_roles.sql";
+const internalAdminMigrationPath =
+  "supabase/migrations/20260812033000_harden_internal_admin_and_taxpayer_grants.sql";
 
 function source(path: string): string {
   return readFileSync(resolve(projectRoot, path), "utf8");
@@ -31,6 +33,7 @@ describe("contrato estático das fronteiras fiscais", () => {
   const migration = source(migrationPath);
   const operationalMigration = source(operationalMigrationPath);
   const assignmentRoleMigration = source(assignmentRoleMigrationPath);
+  const internalAdminMigration = source(internalAdminMigrationPath);
 
   it("não converte administração técnica em vínculo fiscal municipal", () => {
     const roleHelper = functionDefinition(migration, "private.has_municipality_role(");
@@ -113,6 +116,33 @@ describe("contrato estático das fronteiras fiscais", () => {
       expect(suite.status).toBe("pass");
       expect(sha256(source(suite.path))).toBe(suite.sha256);
     }
+  });
+
+  it("serializa administração municipal e restringe manutenção cadastral", () => {
+    const addExisting = functionDefinition(
+      internalAdminMigration,
+      "public.ia_add_existing_municipality_user(",
+    );
+    const updateMembership = functionDefinition(
+      internalAdminMigration,
+      "public.ia_update_municipality_membership(",
+    );
+    const regression = source("supabase/tests/internal_admin_regression.sql");
+
+    for (const definition of [addExisting, updateMembership]) {
+      expect(definition).toContain("from public.municipalities m");
+      expect(definition).toContain("for update");
+      expect(definition).toContain("private.has_municipality_role(");
+    }
+    expect(addExisting).not.toContain("on conflict");
+    expect(internalAdminMigration).toContain(
+      "revoke insert, update, delete on table public.taxpayers from authenticated",
+    );
+    expect(internalAdminMigration).toContain("grant update (");
+    expect(internalAdminMigration).not.toContain("grant delete");
+    expect(regression).toContain("self demotion through add-existing was accepted");
+    expect(regression).toContain("demoted administrator retained stale administration access");
+    expect(regression).toContain("authenticated may update taxpayer municipality_id");
   });
 
   it("propaga o modo do lote e rejeita replay ambíguo", () => {
