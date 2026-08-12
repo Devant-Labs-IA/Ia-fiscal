@@ -30,6 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { fiscalStatusLabel } from "@/lib/fiscal-labels";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { fiscalKeys, fiscalService } from "@/services/fiscal-service";
 
@@ -129,7 +130,12 @@ function DebtsPage() {
       {queryLoading ? (
         <SectionSkeleton rows={3} />
       ) : queryFailed ? (
-        <ErrorState message="Não foi possível carregar a consolidação de débitos." />
+        <ErrorState
+          message="Não foi possível carregar a consolidação de débitos."
+          error={debts.error ?? taxpayers.error}
+          onRetry={() => void Promise.all([debts.refetch(), taxpayers.refetch()])}
+          retrying={debts.isFetching || taxpayers.isFetching}
+        />
       ) : (
         <div className="grid gap-3 sm:grid-cols-3">
           <DebtMetric label="Saldo em aberto" value={formatCurrency(totals.open)} />
@@ -169,7 +175,7 @@ function DebtsPage() {
               <SelectItem value="todos">Todas as situações</SelectItem>
               {statuses.map((item) => (
                 <SelectItem key={item} value={item}>
-                  {item.replaceAll("_", " ")}
+                  {fiscalStatusLabel(item)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -179,7 +185,12 @@ function DebtsPage() {
         {queryLoading ? (
           <SectionSkeleton rows={6} />
         ) : queryFailed ? (
-          <ErrorState message="Os períodos de débito estão temporariamente indisponíveis." />
+          <ErrorState
+            message="Os períodos de débito estão temporariamente indisponíveis."
+            error={debts.error ?? taxpayers.error}
+            onRetry={() => void Promise.all([debts.refetch(), taxpayers.refetch()])}
+            retrying={debts.isFetching || taxpayers.isFetching}
+          />
         ) : filtered.length === 0 ? (
           <EmptyState message="Nenhum período de débito corresponde aos filtros aplicados." />
         ) : (
