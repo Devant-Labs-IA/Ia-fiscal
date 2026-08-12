@@ -52,6 +52,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/format";
+import { canManageMunicipalTaxpayers } from "@/lib/municipality-permissions";
 import {
   maskTaxpayerTaxId,
   validateTaxpayerInput,
@@ -82,12 +83,6 @@ export const Route = createFileRoute("/contribuintes")({
 type AttentionFilter = "todos" | "com_atencao" | "sem_atencao";
 type TaxpayerEditor = { mode: "create" } | { mode: "edit"; taxpayer: Taxpayer360Summary };
 
-const MANAGER_ROLES = new Set([
-  "platform_admin",
-  "municipal_admin",
-  "supervisor",
-]);
-
 function TaxpayersPage() {
   const auth = useAuth();
   const queryClient = useQueryClient();
@@ -96,8 +91,7 @@ function TaxpayersPage() {
   const [attention, setAttention] = useState<AttentionFilter>("todos");
   const [editor, setEditor] = useState<TaxpayerEditor | null>(null);
   const [archiveCandidate, setArchiveCandidate] = useState<Taxpayer360Summary | null>(null);
-  const canManage =
-    Boolean(auth.access?.platformAdmin) || MANAGER_ROLES.has(auth.access?.role ?? "");
+  const canManage = canManageMunicipalTaxpayers(auth.access?.role);
   const taxpayers = useQuery({
     queryKey: fiscalKeys.taxpayers(municipalityId),
     queryFn: () => fiscalService.listTaxpayerSummaries(municipalityId),
