@@ -59,6 +59,7 @@ const MUNICIPAL_STAFF_ROLES = new Set<StaffRole>([
   "supervisor",
   "fiscal_auditor",
   "legal_reviewer",
+  "support_readonly",
 ]);
 
 const MUNICIPALITY_CONTEXT_STORAGE_PREFIX = "ia-fiscal:municipality-context:v1:";
