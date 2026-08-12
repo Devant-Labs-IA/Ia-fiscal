@@ -46,6 +46,7 @@ const statusLabels: Record<string, string> = {
   claimed: "Em análise",
   closed: "Encerrado",
   concluido: "Concluído",
+  converted: "Convertida em procedimento fiscal",
   em_aberto: "Em aberto",
   em_analise: "Em análise",
   em_discussao: "Em discussão",
@@ -149,6 +150,37 @@ export function fiscalRuleDetails(
     label: `Regra fiscal configurada — ${versionLabel}`,
     description: "Critério automatizado que deve ser conferido antes de qualquer conclusão fiscal.",
   };
+}
+
+export function fiscalRulePresentation(
+  code: string,
+  version: number | string | null,
+  configuredName: string | null,
+  configuredDescription: string | null,
+): FiscalLabelDetails {
+  const fallback = fiscalRuleDetails(code, version);
+  return {
+    label: configuredName
+      ? (readablePortugueseText(configuredName) ?? fallback.label)
+      : fallback.label,
+    description: configuredDescription
+      ? (readablePortugueseText(configuredDescription) ?? fallback.description)
+      : fallback.description,
+  };
+}
+
+const operationalReasonLabels: Record<string, string> = {
+  no_current_approved_exact_knowledge:
+    "Ainda não existe uma resposta aprovada na base de conhecimento para este questionamento.",
+};
+
+export function fiscalOperationalReasonLabel(value: string): string {
+  const normalized = normalizeFiscalCode(value);
+  return (
+    operationalReasonLabels[normalized] ??
+    readablePortugueseText(value) ??
+    "Motivo operacional pendente de validação pela equipe fiscal."
+  );
 }
 
 export function debtClassificationRuleLabel(value: string): string {

@@ -27,7 +27,7 @@ import {
   blockReasonLabel,
   confidentialityLabel,
   divergenceTypeDetails,
-  fiscalRuleDetails,
+  fiscalRulePresentation,
 } from "@/lib/fiscal-labels";
 import { formatCurrency, formatDate, maskCnpj } from "@/lib/format";
 import { fiscalKeys, fiscalService } from "@/services/fiscal-service";
@@ -143,58 +143,62 @@ function InspectionsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {divergences.data.map((item) => (
-                      <TableRow key={item.divergenceId}>
-                        <TableCell className="min-w-60">
-                          <span className="block font-medium">{item.taxpayerName}</span>
-                          <span className="block text-xs tabular-nums text-muted-foreground">
-                            {maskCnpj(item.taxId)}
-                          </span>
-                        </TableCell>
-                        <TableCell className="min-w-56">
-                          <span className="block text-sm font-medium">
-                            {divergenceTypeDetails(item.divergenceType).label}
-                          </span>
-                          <span className="mt-0.5 block text-xs text-muted-foreground">
-                            {divergenceTypeDetails(item.divergenceType).description}
-                          </span>
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap text-xs tabular-nums">
-                          {safeDate(item.periodStart)} a {safeDate(item.periodEnd)}
-                        </TableCell>
-                        <TableCell className="text-right font-medium tabular-nums">
-                          {formatCurrency(item.differenceAmount)}
-                        </TableCell>
-                        <TableCell>
-                          <StatusBadge status={item.status} />
-                        </TableCell>
-                        <TableCell className="min-w-64">
-                          <span className="block text-xs font-medium">
-                            {item.ruleName ??
-                              fiscalRuleDetails(item.ruleCode, item.ruleVersion).label}
-                          </span>
-                          <span className="mt-0.5 block text-xs text-muted-foreground">
-                            {item.ruleDescription ??
-                              fiscalRuleDetails(item.ruleCode, item.ruleVersion).description}
-                          </span>
-                        </TableCell>
-                        <TableCell className="max-w-64 text-xs text-muted-foreground">
-                          {item.blockReasons.length > 0
-                            ? item.blockReasons.map(blockReasonLabel).join(" · ")
-                            : "Sem bloqueio registrado"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button asChild variant="outline" size="sm">
-                            <Link
-                              to="/contribuintes/$taxpayerId"
-                              params={{ taxpayerId: item.taxpayerId }}
-                            >
-                              Ver 360
-                            </Link>
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {divergences.data.map((item) => {
+                      const rule = fiscalRulePresentation(
+                        item.ruleCode,
+                        item.ruleVersion,
+                        item.ruleName,
+                        item.ruleDescription,
+                      );
+                      return (
+                        <TableRow key={item.divergenceId}>
+                          <TableCell className="min-w-60">
+                            <span className="block font-medium">{item.taxpayerName}</span>
+                            <span className="block text-xs tabular-nums text-muted-foreground">
+                              {maskCnpj(item.taxId)}
+                            </span>
+                          </TableCell>
+                          <TableCell className="min-w-56">
+                            <span className="block text-sm font-medium">
+                              {divergenceTypeDetails(item.divergenceType).label}
+                            </span>
+                            <span className="mt-0.5 block text-xs text-muted-foreground">
+                              {divergenceTypeDetails(item.divergenceType).description}
+                            </span>
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap text-xs tabular-nums">
+                            {safeDate(item.periodStart)} a {safeDate(item.periodEnd)}
+                          </TableCell>
+                          <TableCell className="text-right font-medium tabular-nums">
+                            {formatCurrency(item.differenceAmount)}
+                          </TableCell>
+                          <TableCell>
+                            <StatusBadge status={item.status} />
+                          </TableCell>
+                          <TableCell className="min-w-64">
+                            <span className="block text-xs font-medium">{rule.label}</span>
+                            <span className="mt-0.5 block text-xs text-muted-foreground">
+                              {rule.description}
+                            </span>
+                          </TableCell>
+                          <TableCell className="max-w-64 text-xs text-muted-foreground">
+                            {item.blockReasons.length > 0
+                              ? item.blockReasons.map(blockReasonLabel).join(" · ")
+                              : "Sem bloqueio registrado"}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button asChild variant="outline" size="sm">
+                              <Link
+                                to="/contribuintes/$taxpayerId"
+                                params={{ taxpayerId: item.taxpayerId }}
+                              >
+                                Ver 360
+                              </Link>
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
