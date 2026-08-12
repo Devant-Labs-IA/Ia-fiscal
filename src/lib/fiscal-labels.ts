@@ -115,6 +115,16 @@ export function divergenceTypeLabel(value: string): string {
   return divergenceTypeDetails(value).label;
 }
 
+const taxpayerTypeLabels: Record<string, string> = {
+  company: "Pessoa jurídica",
+  individual: "Pessoa física",
+  other: "Outro tipo de contribuinte",
+};
+
+export function taxpayerTypeLabel(value: string): string {
+  return taxpayerTypeLabels[normalizeFiscalCode(value)] ?? "Tipo cadastral não informado";
+}
+
 export function fiscalRuleDetails(
   value: string,
   version: number | string | null,
@@ -139,6 +149,21 @@ export function fiscalRuleDetails(
     label: `Regra fiscal configurada — ${versionLabel}`,
     description: "Critério automatizado que deve ser conferido antes de qualquer conclusão fiscal.",
   };
+}
+
+export function debtClassificationRuleLabel(value: string): string {
+  const normalized = normalizeFiscalCode(value);
+  const version = /_v(\d+)$/.exec(normalized)?.[1];
+
+  if (normalized.includes("current_account_maturity")) {
+    return `Classificação de vencimentos da conta corrente — ${
+      version ? `versão ${version}` : "versão configurada"
+    }`;
+  }
+  if (normalized.includes("demo")) {
+    return "Classificação demonstrativa de vencimentos";
+  }
+  return "Regra municipal de classificação de débito";
 }
 
 const blockReasonLabels: Record<string, string> = {
