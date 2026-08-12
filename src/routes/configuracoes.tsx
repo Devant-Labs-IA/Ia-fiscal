@@ -43,6 +43,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { runtimeConfig } from "@/config/runtime";
+import { environmentLabel } from "@/lib/fiscal-labels";
 import { fiscalKeys, fiscalService } from "@/services/fiscal-service";
 import type {
   MunicipalityMembershipStatus,
@@ -289,7 +290,7 @@ function SettingsPage() {
       <div className="grid gap-5 lg:grid-cols-2">
         <SectionCard
           title="Ambiente"
-          action={<Badge variant="outline">{runtimeConfig.environment}</Badge>}
+          action={<Badge variant="outline">{environmentLabel(runtimeConfig.environment)}</Badge>}
         >
           <dl className="space-y-3 text-sm">
             <div className="flex justify-between gap-4">
