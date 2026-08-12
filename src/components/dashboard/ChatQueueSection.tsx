@@ -17,16 +17,28 @@ interface ChatQueueSectionProps {
   items: ChatQueueItem[] | undefined;
   isLoading: boolean;
   isError: boolean;
+  onRetry?: () => void;
+  retrying?: boolean;
 }
 
-export function ChatQueueSection({ items, isLoading, isError }: ChatQueueSectionProps) {
+export function ChatQueueSection({
+  items,
+  isLoading,
+  isError,
+  onRetry,
+  retrying,
+}: ChatQueueSectionProps) {
   return (
     <SectionCard
       title="Atendimentos aguardando ação"
       description="Fila de contribuintes com resposta pendente do fiscal. As ações ficam concentradas na fila de atendimento."
     >
       {isError ? (
-        <ErrorState message="Não foi possível carregar a fila de atendimento." />
+        <ErrorState
+          message="Não foi possível carregar a fila de atendimento."
+          onRetry={onRetry}
+          retrying={retrying}
+        />
       ) : isLoading ? (
         <SectionSkeleton rows={3} />
       ) : (items ?? []).length === 0 ? (
