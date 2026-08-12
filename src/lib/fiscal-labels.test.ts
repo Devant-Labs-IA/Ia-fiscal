@@ -4,9 +4,15 @@ import {
   blockReasonLabel,
   blockReasonSummary,
   divergenceTypeDetails,
+  environmentLabel,
+  fiscalEventTypeLabel,
   fiscalRuleDetails,
   fiscalStatusLabel,
   parseBlockReasons,
+  processingWorkerLabel,
+  visibilityLabel,
+  workerHealthStatus,
+  workerStatusLabel,
 } from "@/lib/fiscal-labels";
 
 describe("catálogo fiscal em português", () => {
@@ -18,6 +24,8 @@ describe("catálogo fiscal em português", () => {
     expect(fiscalStatusLabel("Pending Revalidation")).toBe("Aguardando nova conferência");
     expect(blockReasonLabel("Unverification")).toBe("Contato ainda não verificado");
     expect(blockReasonSummary('{"code":"Unverification"}')).toBe("Contato ainda não verificado");
+    expect(fiscalStatusLabel("blocked_unverified")).toBe("Bloqueado por validação pendente");
+    expect(environmentLabel("homologation")).toBe("Homologação");
   });
 
   it("explica a regra e sua versão sem expor o código interno", () => {
@@ -25,6 +33,17 @@ describe("catálogo fiscal em português", () => {
       label: "Conferência do saldo da conta corrente — versão 1",
       description: "Regra de homologação que compara lançamentos, pagamentos e saldo em aberto.",
     });
+  });
+
+  it("traduz status do worker e metadados dos eventos", () => {
+    expect(workerStatusLabel("healthy")).toBe("Operacional");
+    expect(workerHealthStatus("unhealthy")).toBe("critico");
+    expect(fiscalEventTypeLabel("case_question_claimed")).toBe(
+      "Atendimento assumido pela equipe fiscal",
+    );
+    expect(visibilityLabel("participants")).toBe("participantes do procedimento");
+    expect(processingWorkerLabel("worker_sandbox")).toBe("Processador do ambiente de homologação");
+    expect(processingWorkerLabel("unknown_processor_v2")).toBe("Processador fiscal interno");
   });
 });
 
@@ -41,5 +60,8 @@ describe("motivos de bloqueio estruturados", () => {
       "unverification",
       "missing_verified_contact",
     ]);
+    expect(blockReasonSummary("relationship_unverified;external_delivery_not_authorized")).toBe(
+      "Vínculo com o contribuinte ainda não verificado · Envio externo não autorizado",
+    );
   });
 });
