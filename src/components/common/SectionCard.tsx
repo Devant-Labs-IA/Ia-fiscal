@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { Button } from "@/components/ui/button";
+import { fiscalQueryErrorMessage } from "@/lib/query-policy";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
@@ -44,13 +46,32 @@ export function EmptyState({ message }: { message: string }) {
   );
 }
 
-export function ErrorState({ message }: { message: string }) {
+interface ErrorStateProps {
+  message: string;
+  error?: unknown | undefined;
+  onRetry?: (() => void) | undefined;
+  retrying?: boolean | undefined;
+}
+
+export function ErrorState({ message, error, onRetry, retrying = false }: ErrorStateProps) {
   return (
-    <p
+    <div
       role="alert"
       className="rounded-md border border-critical/40 bg-critical-soft px-4 py-6 text-center text-sm text-critical"
     >
-      {message}
-    </p>
+      <p>{fiscalQueryErrorMessage(error, message)}</p>
+      {onRetry && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="mt-3 border-critical/30 bg-background text-foreground"
+          disabled={retrying}
+          onClick={onRetry}
+        >
+          {retrying ? "Tentando novamente…" : "Tentar novamente"}
+        </Button>
+      )}
+    </div>
   );
 }
