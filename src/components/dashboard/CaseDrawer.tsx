@@ -12,6 +12,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { fiscalStatusLabel, taxpayerTypeLabel } from "@/lib/fiscal-labels";
 import { formatCurrency, formatDate, maskCnpj } from "@/lib/format";
 import type { FiscalCase } from "@/types/fiscal";
 
@@ -40,7 +41,8 @@ export function CaseDrawer({ fiscalCase, onOpenChange }: CaseDrawerProps) {
             <SheetHeader className="space-y-1 text-left">
               <SheetTitle className="text-lg">{fiscalCase.taxpayer.name}</SheetTitle>
               <SheetDescription>
-                CNPJ {maskCnpj(fiscalCase.taxpayer.cnpj)} · {fiscalCase.taxpayer.segment}
+                CNPJ {maskCnpj(fiscalCase.taxpayer.cnpj)} ·{" "}
+                {taxpayerTypeLabel(fiscalCase.taxpayer.segment)}
               </SheetDescription>
             </SheetHeader>
 
@@ -92,7 +94,7 @@ export function CaseDrawer({ fiscalCase, onOpenChange }: CaseDrawerProps) {
                 </h3>
                 <dl className="mt-3 grid grid-cols-2 gap-3">
                   <Field label="Escopo" value={fiscalCase.debt.tax} />
-                  <Field label="Situação" value={fiscalCase.debt.status.replace("_", " ")} />
+                  <Field label="Situação" value={fiscalStatusLabel(fiscalCase.debt.status)} />
                   <Field
                     label="Fim do período"
                     value={
