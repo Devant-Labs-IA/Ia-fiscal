@@ -69,7 +69,9 @@ describe("erros independentes do dashboard", () => {
       screen.getByText("Não foi possível carregar os candidatos de notificação."),
     ).toBeTruthy();
     expect(screen.getByText("Não foi possível consultar a saúde do processamento.")).toBeTruthy();
-    expect(screen.getByText("Não foi possível carregar os bloqueios de produção.")).toBeTruthy();
+    expect(
+      screen.getByText("Não foi possível carregar as pendências de liberação externa."),
+    ).toBeTruthy();
     expect(screen.getByText("Não foi possível carregar a atividade recente.")).toBeTruthy();
     expect(screen.getByText("Contagem indisponível. Nenhum envio foi liberado.")).toBeTruthy();
     expect(screen.getByText("contagem indisponível")).toBeTruthy();

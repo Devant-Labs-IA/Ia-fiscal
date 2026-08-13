@@ -17,13 +17,18 @@ function normalizeFiscalCode(value: string): string {
 function readablePortugueseText(value: string): string | null {
   const text = value.trim();
   if (!text) return null;
+  if (/^[a-z0-9]+(?:[_-][a-z0-9]+)+$/i.test(text)) return null;
   if (
     /[áàãâéêíóôõúç]/i.test(text) ||
-    /\b(aguardando|contato|contribuinte|dados|diferença|documento|envio|externo|fiscal|não|pendente|sem|validação|valor)\b/i.test(
+    /\b(aguardando|aviso|conta|contato|contribuinte|dados|diferença|documento|envio|externo|fiscal|municipal|não|orientação|pendente|procedimento|regra|resposta|saldo|sem|tema|validação|valor)\b/i.test(
       text,
     )
   ) {
-    return text.replace(/^./, (letter) => letter.toLocaleUpperCase("pt-BR"));
+    return text
+      .replace(/ambiente de homologação/gi, "operação assistida")
+      .replace(/de homologação/gi, "da operação assistida")
+      .replace(/homologação/gi, "operação assistida")
+      .replace(/^./, (letter) => letter.toLocaleUpperCase("pt-BR"));
   }
   return null;
 }
@@ -47,19 +52,26 @@ const statusLabels: Record<string, string> = {
   closed: "Encerrado",
   concluido: "Concluído",
   converted: "Convertida em procedimento fiscal",
+  draft: "Em preparação",
   em_aberto: "Em aberto",
   em_analise: "Em análise",
   em_discussao: "Em discussão",
+  eligible_after_verification: "Apto após validação",
+  expired: "Cadastro substituído ou expirado",
   failed: "Falhou",
   future: "A vencer",
   incomplete: "Dados incompletos",
   inactive: "Inativo",
+  initial_notice_pending: "Aviso inicial pendente",
+  initial_notice_sent: "Aviso inicial registrado como enviado",
+  in_review: "Em revisão",
   novo: "Novo",
   open: "Em aberto",
   overdue: "Vencido",
   paid: "Pago",
   parcelado: "Parcelado",
   pending: "Pendente",
+  pending_regulation: "Aguardando regulamentação",
   pending_revalidation: "Aguardando nova conferência",
   prepared: "Preparado",
   preparado: "Preparado",
@@ -73,6 +85,7 @@ const statusLabels: Record<string, string> = {
   submitted: "Recebido",
   suspended: "Suspenso",
   suspenso: "Suspenso",
+  under_review: "Em revisão",
   unknown: "Situação não informada",
   vencido: "Vencido",
   waiting: "Aguardando atendimento",
@@ -137,13 +150,14 @@ export function fiscalRuleDetails(
   if (normalized.includes("current_account_balance")) {
     return {
       label: `Conferência do saldo da conta corrente — ${versionLabel}`,
-      description: "Regra de homologação que compara lançamentos, pagamentos e saldo em aberto.",
+      description:
+        "Compara lançamentos, pagamentos e saldo em aberto; requer conferência da equipe fiscal.",
     };
   }
   if (normalized.includes("homologation")) {
     return {
-      label: `Regra de homologação — ${versionLabel}`,
-      description: "Regra usada somente para conferir o comportamento no ambiente de testes.",
+      label: `Regra da operação assistida — ${versionLabel}`,
+      description: "Critério automatizado em conferência pela equipe fiscal.",
     };
   }
   return {
@@ -183,25 +197,41 @@ export function fiscalOperationalReasonLabel(value: string): string {
   );
 }
 
-export function debtClassificationRuleLabel(value: string): string {
+export function debtClassificationRuleDetails(value: string): FiscalLabelDetails {
   const normalized = normalizeFiscalCode(value);
   const version = /_v(\d+)$/.exec(normalized)?.[1];
 
   if (normalized.includes("current_account_maturity")) {
-    return `Classificação de vencimentos da conta corrente — ${
-      version ? `versão ${version}` : "versão configurada"
-    }`;
+    return {
+      label: `Classificação de vencimentos da conta corrente — ${
+        version ? `versão ${version}` : "versão configurada"
+      }`,
+      description:
+        "Classifica cada competência conforme o vencimento e o saldo que permanece em aberto.",
+    };
   }
   if (normalized.includes("demo")) {
-    return "Classificação demonstrativa de vencimentos";
+    return {
+      label: "Classificação demonstrativa de vencimentos",
+      description: "Critério demonstrativo; exige conferência antes de qualquer uso fiscal.",
+    };
   }
-  return "Regra municipal de classificação de débito";
+  return {
+    label: "Regra municipal de classificação de débito",
+    description: "Critério municipal usado para organizar a situação do débito por competência.",
+  };
+}
+
+export function debtClassificationRuleLabel(value: string): string {
+  return debtClassificationRuleDetails(value).label;
 }
 
 const blockReasonLabels: Record<string, string> = {
+  assisted_external_delivery_locked: "Envio externo bloqueado na operação assistida",
   contact_unverified: "Contato ainda não verificado",
   delivery_not_authorized: "Envio externo não autorizado",
-  external_delivery_disabled: "Envio externo desativado na homologação",
+  external_delivery_disabled: "Envio externo desativado na operação assistida",
+  external_delivery_locked: "Envio externo bloqueado na operação assistida",
   external_delivery_not_authorized: "Envio externo não autorizado",
   invalid_contact: "Contato inválido",
   missing_contact: "Contato não cadastrado",
@@ -209,6 +239,7 @@ const blockReasonLabels: Record<string, string> = {
   missing_verified_contact: "Nenhum contato verificado",
   pending_revalidation: "Aguardando nova conferência",
   relationship_unverified: "Vínculo com o contribuinte ainda não verificado",
+  superseded_contact_or_relationship: "Contato ou vínculo substituído por cadastro mais recente",
   unverified: "Contato ainda não verificado",
   unverification: "Contato ainda não verificado",
   validation_pending: "Validação interna pendente",
@@ -245,9 +276,21 @@ const notificationPurposeLabels: Record<string, string> = {
   debt_reminder: "Lembrete de débito",
   divergence_notice: "Aviso sobre divergência para conferência",
   document_request: "Solicitação de documento",
+  initial_inspection_alert: "Aviso inicial para conferência fiscal",
+  initial_inspection_alert_sandbox: "Aviso inicial para conferência fiscal",
   initial_notice: "Aviso inicial de conferência",
   revalidation_notice: "Pedido de nova conferência",
 };
+
+const notificationChannelLabels: Record<string, string> = {
+  email: "E-mail",
+  portal: "Portal protegido",
+  whatsapp: "WhatsApp",
+};
+
+export function notificationChannelLabel(value: string): string {
+  return notificationChannelLabels[normalizeFiscalCode(value)] ?? "Canal protegido";
+}
 
 export function notificationPurposeLabel(value: string): string {
   return (
@@ -296,8 +339,8 @@ const processingWorkerLabels: Record<string, string> = {
   divergence_worker: "Processador de divergências fiscais",
   fiscal_worker: "Processador fiscal",
   notification_worker: "Processador de simulações de notificação",
-  sandbox_worker: "Processador do ambiente de homologação",
-  worker_sandbox: "Processador do ambiente de homologação",
+  sandbox_worker: "Processador da operação assistida",
+  worker_sandbox: "Processador da operação assistida",
 };
 
 export function processingWorkerLabel(value: string): string {
@@ -305,10 +348,11 @@ export function processingWorkerLabel(value: string): string {
 }
 
 const environmentLabels: Record<string, string> = {
+  assisted_operation: "Operação assistida",
   development: "Desenvolvimento",
-  homologation: "Homologação",
+  homologation: "Operação assistida",
   production: "Produção",
-  staging: "Homologação",
+  staging: "Operação assistida",
   test: "Testes",
 };
 
@@ -355,6 +399,69 @@ const visibilityLabels: Record<string, string> = {
 
 export function visibilityLabel(value: string): string {
   return visibilityLabels[normalizeFiscalCode(value)] ?? "acesso controlado";
+}
+
+const operationalFieldLabels: Record<string, string> = {
+  candidate_status: "Situação do destinatário",
+  contact_number: "Número de contato",
+  delivery_block_reason: "Motivo do bloqueio",
+  execution_mode: "Modo de execução",
+  location: "Localização",
+  proposed_for: "Finalidade da comunicação",
+  recipient_type: "Tipo de destinatário",
+  rule_code: "Regra aplicada",
+  rule_version: "Versão da regra",
+  state: "Situação",
+  state_key: "Identificador da situação",
+};
+
+export function operationalFieldLabel(value: string): string {
+  return operationalFieldLabels[normalizeFiscalCode(value)] ?? "Informação operacional";
+}
+
+const knowledgeTaxScopeLabels: Record<string, string> = {
+  fiscal_case_answer: "Resposta de procedimento fiscal",
+  iss: "ISS",
+  issqn: "ISSQN",
+  simple_national: "Simples Nacional",
+};
+
+export function knowledgeTaxScopeLabel(value: string): string {
+  return (
+    knowledgeTaxScopeLabels[normalizeFiscalCode(value)] ??
+    readablePortugueseText(value) ??
+    "Tema tributário cadastrado"
+  );
+}
+
+const knowledgeDivergenceScopeLabels: Record<string, string> = {
+  case_chat: "Atendimento do procedimento",
+  current_account_balance: "Saldo da conta corrente municipal",
+  document_amount_mismatch: "Diferença entre documento e valor declarado",
+  missing_declaration: "Declaração não localizada",
+  payment_mismatch: "Diferença de pagamento",
+};
+
+export function knowledgeDivergenceScopeLabel(value: string): string {
+  return (
+    knowledgeDivergenceScopeLabels[normalizeFiscalCode(value)] ??
+    readablePortugueseText(value) ??
+    "Tema fiscal cadastrado"
+  );
+}
+
+const knowledgeIntentLabels: Record<string, string> = {
+  why_overdue_iss_may_trigger_inspection: "Fiscalização relacionada a débito de ISS vencido",
+};
+
+export function knowledgeIntentLabel(value: string): string {
+  const normalized = normalizeFiscalCode(value);
+  if (/^qa_[a-f0-9]{8,}$/.test(normalized)) return "Pergunta fiscal revisada";
+  return (
+    knowledgeIntentLabels[normalized] ??
+    readablePortugueseText(value) ??
+    "Orientação fiscal cadastrada"
+  );
 }
 
 function collectBlockReasons(value: unknown, output: string[], depth: number): void {

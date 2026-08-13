@@ -1,4 +1,4 @@
-import { BellOff, Check, LoaderCircle, MapPin, Search } from "lucide-react";
+import { BellOff, Check, CircleHelp, LoaderCircle, MapPin, Search } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 
@@ -44,7 +44,7 @@ function initials(value: string): string {
   return `${parts[0]?.[0] ?? ""}${parts.length > 1 ? (parts.at(-1)?.[0] ?? "") : ""}`.toUpperCase();
 }
 
-export function Topbar() {
+export function Topbar({ onOpenTutorial }: { onOpenTutorial?: (() => void) | undefined }) {
   const auth = useAuth();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResultItem[]>([]);
@@ -231,15 +231,30 @@ export function Topbar() {
           </Badge>
         )}
 
+        {onOpenTutorial ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="shrink-0"
+            aria-label="Abrir treinamento de uso do sistema"
+            title="Ajuda e treinamento"
+            onClick={onOpenTutorial}
+          >
+            <CircleHelp className="size-4" aria-hidden />
+          </Button>
+        ) : null}
+
         <Button
+          type="button"
           variant="ghost"
           size="icon"
           className="shrink-0"
-          aria-label="Envios externos desabilitados em homologação"
+          aria-label="Comunicações externas bloqueadas"
           onClick={() =>
-            toast.info("Envios externos desabilitados", {
+            toast.info("Comunicações externas bloqueadas", {
               description:
-                "Nenhum e-mail, WhatsApp ou notificação formal é disparado neste ambiente.",
+                "Nenhum e-mail, WhatsApp ou notificação formal é disparado enquanto este controle estiver ativo.",
             })
           }
         >

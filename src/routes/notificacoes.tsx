@@ -11,6 +11,7 @@ import {
   SectionSkeleton,
 } from "@/components/common/SectionCard";
 import { HomologationBanner } from "@/components/layout/HomologationBanner";
+import { ExternalDeliveryReadinessPanel } from "@/components/notifications/ExternalDeliveryReadinessPanel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,13 +38,13 @@ export const Route = createFileRoute("/notificacoes")({
       {
         name: "description",
         content:
-          "Consulta de destinatários, validações e bloqueios de comunicação no ambiente de homologação.",
+          "Consulta de destinatários, validações e bloqueios de comunicação na operação assistida.",
       },
       { property: "og:title", content: "Notificações — IA Fiscal" },
       {
         property: "og:description",
         content:
-          "Consulta de destinatários, validações e bloqueios de comunicação no ambiente de homologação.",
+          "Consulta de destinatários, validações e bloqueios de comunicação na operação assistida.",
       },
     ],
   }),
@@ -151,6 +152,8 @@ function NotificationsPage() {
         </p>
       </header>
 
+      <ExternalDeliveryReadinessPanel municipalityId={municipalityId} />
+
       <div className="grid gap-3 sm:grid-cols-3" aria-label="Resumo das notificações">
         <div className="surface-card p-4">
           <MailCheck className="size-5 text-primary" aria-hidden />
@@ -225,7 +228,8 @@ function NotificationsPage() {
                 </p>
               </div>
               <div className="rounded-md border border-warning/40 bg-warning-soft p-3 text-sm text-warning-foreground">
-                Simulação somente leitura. Envio externo permanece desativado na homologação.
+                Simulação somente leitura. O envio externo permanece bloqueado na operação
+                assistida.
               </div>
             </div>
           )}

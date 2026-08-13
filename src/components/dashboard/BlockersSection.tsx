@@ -24,7 +24,7 @@ export function BlockersSection({
 
   return (
     <SectionCard
-      title="Pendências que bloqueiam produção"
+      title="Pendências para liberação externa"
       description="Itens obrigatórios antes de qualquer liberação de envio."
       action={
         <Badge variant="secondary" className="tabular-nums">
@@ -38,7 +38,7 @@ export function BlockersSection({
     >
       {isError ? (
         <ErrorState
-          message="Não foi possível carregar os bloqueios de produção."
+          message="Não foi possível carregar as pendências de liberação externa."
           onRetry={onRetry}
           retrying={retrying}
         />

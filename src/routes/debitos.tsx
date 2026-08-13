@@ -30,7 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { debtClassificationRuleLabel, fiscalStatusLabel } from "@/lib/fiscal-labels";
+import { debtClassificationRuleDetails, fiscalStatusLabel } from "@/lib/fiscal-labels";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { fiscalKeys, fiscalService } from "@/services/fiscal-service";
 
@@ -211,6 +211,7 @@ function DebtsPage() {
               <TableBody>
                 {filtered.map((item) => {
                   const taxpayer = taxpayerById.get(item.taxpayerId);
+                  const rule = debtClassificationRuleDetails(item.ruleVersion);
                   return (
                     <TableRow key={`${item.taxpayerId}-${item.competence}-${item.ruleVersion}`}>
                       <TableCell className="min-w-60">
@@ -242,12 +243,13 @@ function DebtsPage() {
                       <TableCell className="text-right font-medium tabular-nums">
                         {formatCurrency(item.openBalance)}
                       </TableCell>
-                      <TableCell>
-                        <span className="block text-xs font-medium">
-                          {debtClassificationRuleLabel(item.ruleVersion)}
+                      <TableCell className="min-w-72">
+                        <span className="block text-xs font-medium">{rule.label}</span>
+                        <span className="mt-0.5 block text-xs text-muted-foreground">
+                          {rule.description}
                         </span>
                         <span className="block text-xs text-muted-foreground">
-                          {item.eligible ? "Elegível" : "Não elegível"}
+                          Resultado: {item.eligible ? "elegível para conferência" : "não elegível"}
                         </span>
                       </TableCell>
                     </TableRow>

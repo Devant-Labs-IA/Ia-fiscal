@@ -123,7 +123,7 @@ function LoginScreen() {
           </div>
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-              Ambiente de homologação
+              Operação assistida
             </p>
             <h1 id="login-title" className="text-2xl font-semibold">
               IA Fiscal

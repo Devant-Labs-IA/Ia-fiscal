@@ -12,6 +12,7 @@ import {
   SectionSkeleton,
 } from "@/components/common/SectionCard";
 import { HomologationBanner } from "@/components/layout/HomologationBanner";
+import { ExternalDeliveryReadinessPanel } from "@/components/notifications/ExternalDeliveryReadinessPanel";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -283,9 +284,11 @@ function SettingsPage() {
           Configurações e acessos
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Gerencie quem pode trabalhar no município e mantenha a homologação sob controle.
+          Gerencie quem pode trabalhar no município e mantenha a operação assistida sob controle.
         </p>
       </header>
+
+      <ExternalDeliveryReadinessPanel municipalityId={municipalityId} />
 
       <div className="grid gap-5 lg:grid-cols-2">
         <SectionCard
@@ -308,7 +311,7 @@ function SettingsPage() {
             <div className="flex justify-between gap-4">
               <dt className="text-muted-foreground">Dados exibidos</dt>
               <dd className="text-right font-medium">
-                {auth.demo ? "Demonstração fictícia" : "Base municipal de homologação"}
+                {auth.demo ? "Demonstração fictícia" : "Base municipal em operação assistida"}
               </dd>
             </div>
           </dl>

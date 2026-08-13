@@ -199,6 +199,21 @@ export interface OperationalReport {
   externalDeliveryCount: number;
 }
 
+/**
+ * Snapshot somente leitura das proteções que mantêm a comunicação externa fechada.
+ * Este contrato não representa autorização nem prontidão para enviar mensagens.
+ */
+export interface AssistedOperationSafetyStatus {
+  verified: boolean;
+  externalDeliveryBlocked: boolean;
+  masterLock: boolean;
+  externalEmailEnabled: boolean;
+  openEmailChannel: boolean;
+  automaticNoticeEnabled: boolean;
+  pendingExternalJobs: number;
+  checkedAt: string | null;
+}
+
 export type MunicipalityUserRole =
   "municipal_admin" | "supervisor" | "fiscal_auditor" | "legal_reviewer" | "support_readonly";
 

@@ -37,6 +37,7 @@ import type {
   UpdateTaxpayerInput,
 } from "@/types/fiscal";
 import type {
+  AssistedOperationSafetyStatus,
   CaseMessageReadModel,
   DebtPeriod,
   DivergenceReadModel,
@@ -53,6 +54,20 @@ import type {
 } from "@/types/read-models";
 
 type Row = Record<string, unknown>;
+
+type AssistedSafetyRpcResponse = {
+  data: unknown;
+  error: { code?: string; message?: string } | null;
+};
+
+type AssistedSafetyRpcClient = {
+  rpc(
+    functionName: "ia_get_assisted_operation_safety_status",
+    args: { p_municipality_id: string },
+  ): {
+    abortSignal(signal: AbortSignal): Promise<AssistedSafetyRpcResponse>;
+  };
+};
 
 class FiscalDataError extends Error {
   constructor(readonly code: string) {
@@ -518,6 +533,57 @@ function getOperationalReport(municipalityId: string): Promise<OperationalReport
   return request;
 }
 
+function requiredBoolean(row: Row, key: string): boolean {
+  const value = row[key];
+  if (typeof value !== "boolean") throw new FiscalDataError("safety_status_invalid");
+  return value;
+}
+
+function requiredNonNegativeNumber(row: Row, key: string): number {
+  const value = row[key];
+  const parsed =
+    typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new FiscalDataError("safety_status_invalid");
+  }
+  return parsed;
+}
+
+function mapAssistedOperationSafetyStatus(value: unknown): AssistedOperationSafetyStatus {
+  const row = objectValue(value);
+  if (Object.keys(row).length === 0) throw new FiscalDataError("safety_status_invalid");
+  const checkedAtValue = row["checked_at"];
+  if (checkedAtValue != null && typeof checkedAtValue !== "string") {
+    throw new FiscalDataError("safety_status_invalid");
+  }
+  return {
+    verified: requiredBoolean(row, "verified"),
+    externalDeliveryBlocked: requiredBoolean(row, "external_delivery_blocked"),
+    masterLock: requiredBoolean(row, "master_lock"),
+    externalEmailEnabled: requiredBoolean(row, "external_email_enabled"),
+    openEmailChannel: requiredBoolean(row, "open_email_channel"),
+    automaticNoticeEnabled: requiredBoolean(row, "automatic_notice_enabled"),
+    pendingExternalJobs: requiredNonNegativeNumber(row, "pending_external_jobs"),
+    checkedAt: checkedAtValue ?? null,
+  };
+}
+
+async function getAssistedOperationSafetyStatus(
+  municipalityId: string,
+): Promise<AssistedOperationSafetyStatus> {
+  const scopedMunicipalityId = requireMunicipalityId(municipalityId);
+  // A função já existe no banco, mas ainda não consta no tipo gerado local.
+  // O cast fica restrito a esta RPC de leitura para não afrouxar o cliente inteiro.
+  const safetyClient = getSupabaseClient() as unknown as AssistedSafetyRpcClient;
+  const { data, error } = await safetyClient
+    .rpc("ia_get_assisted_operation_safety_status", {
+      p_municipality_id: scopedMunicipalityId,
+    })
+    .abortSignal(fiscalReadSignal());
+  throwIfError(error);
+  return mapAssistedOperationSafetyStatus(data);
+}
+
 async function listMunicipalityUsers(municipalityId: string): Promise<MunicipalityUser[]> {
   const scopedMunicipalityId = requireMunicipalityId(municipalityId);
   const { data, error } = await getSupabaseClient().rpc("ia_list_municipality_users", {
@@ -718,7 +784,9 @@ async function listChatQueue(municipalityId: string): Promise<ChatQueueItem[]> {
         cnpj: "identificador protegido",
         lastMessage: stringValue(row["question_preview"]),
         waitingSince: stringValue(row["created_at"]),
-        waitingLabel: slaDueAt ? "SLA registrado" : "sem SLA configurado",
+        waitingLabel: slaDueAt
+          ? "Prazo de atendimento registrado"
+          : "Prazo de atendimento não configurado",
         slaDueAt,
         status,
         handlingMode: normalizeHandlingMode(row["handling_mode"]),
@@ -744,10 +812,10 @@ async function listProcessingHealth(): Promise<ProcessingHealthIndicator[]> {
     return [
       {
         id: "worker-not-observed",
-        label: "Processador do ambiente de homologação",
+        label: "Processador da operação assistida",
         status: "pausado",
         detail: "Nenhuma execução observável foi registrada",
-        metric: "homologação bloqueada",
+        metric: "envios externos bloqueados",
       },
     ];
   }
@@ -827,7 +895,7 @@ export const supabaseFiscalService: FiscalService = {
   async getDashboardSummary(municipalityId): Promise<DashboardSummary> {
     const report = await getOperationalReport(municipalityId);
     return {
-      environmentLabel: "Homologação — nenhum envio externo autorizado",
+      environmentLabel: "Operação assistida — envios externos bloqueados",
       greeting: "Painel do Fiscal",
       operationalSummary:
         "Prioridade operacional não representa risco jurídico, lançamento ou conclusão fiscal.",
@@ -838,19 +906,27 @@ export const supabaseFiscalService: FiscalService = {
   listFiscalCases: listFiscalCasesLegacy,
   listChatQueue,
   async listNotificationCandidates(municipalityId): Promise<NotificationCandidate[]> {
-    const recipients = await listNotificationRecipients(municipalityId);
-    return recipients.slice(0, 20).map((item) => ({
-      id: item.candidateId,
-      taxpayerName: "Contribuinte protegido",
-      cnpj: "identificador protegido",
-      channel: "e-mail",
-      contact: item.maskedEmail,
-      contactValidated: item.readyPendingExternalAuthorization,
-      templateName: notificationPurposeLabel(item.proposedFor),
-      status: item.safeForDelivery ? "preparado" : "bloqueado",
-      blockedReason: blockReasonSummary(item.deliveryBlockReason),
-      draftMessage: "Conteúdo disponível apenas após seleção de template governado.",
-    }));
+    const [recipients, summaries] = await Promise.all([
+      listNotificationRecipients(municipalityId),
+      listTaxpayerSummaries(municipalityId),
+    ]);
+    const summariesByTaxpayer = new Map(summaries.map((item) => [item.taxpayerId, item]));
+
+    return recipients.slice(0, 20).map((item) => {
+      const taxpayer = summariesByTaxpayer.get(item.taxpayerId);
+      return {
+        id: item.candidateId,
+        taxpayerName: taxpayer?.legalName ?? "Cadastro do contribuinte não disponível",
+        cnpj: taxpayer?.taxId || taxpayer?.municipalRegistration || "Inscrição não disponível",
+        channel: "e-mail",
+        contact: item.maskedEmail,
+        contactValidated: item.readyPendingExternalAuthorization,
+        templateName: notificationPurposeLabel(item.proposedFor),
+        status: item.safeForDelivery ? "preparado" : "bloqueado",
+        blockedReason: blockReasonSummary(item.deliveryBlockReason),
+        draftMessage: "Conteúdo disponível apenas após seleção de template governado.",
+      };
+    });
   },
   listProcessingHealth,
   async listProductionBlockers(municipalityId): Promise<ProductionBlocker[]> {
@@ -875,7 +951,7 @@ export const supabaseFiscalService: FiscalService = {
       {
         id: "external-delivery",
         title: "Envio externo",
-        description: "Permanece deliberadamente desabilitado no ambiente de homologação.",
+        description: "Permanece deliberadamente bloqueado durante a operação assistida.",
         done: false,
         owner: "Chefia fiscal + Procuradoria",
       },
@@ -907,6 +983,7 @@ export const supabaseFiscalService: FiscalService = {
   listPortalCases,
   listCaseMessages,
   getOperationalReport,
+  getAssistedOperationSafetyStatus,
   listMunicipalityUsers,
   addExistingMunicipalityUser,
   updateMunicipalityMembership,

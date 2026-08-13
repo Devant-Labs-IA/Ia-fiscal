@@ -56,6 +56,45 @@ describe("contrato Supabase do atendimento", () => {
     expect(chain.abortSignal).toHaveBeenCalledTimes(1);
   });
 
+  it("consulta e mapeia o estado de segurança da comunicação externa", async () => {
+    const chain = rpcChain({
+      verified: true,
+      external_delivery_blocked: true,
+      master_lock: true,
+      external_email_enabled: false,
+      open_email_channel: false,
+      automatic_notice_enabled: false,
+      pending_external_jobs: 0,
+      checked_at: "2026-08-13T12:00:00Z",
+    });
+    mocks.rpc.mockReturnValue(chain);
+
+    await expect(
+      supabaseFiscalService.getAssistedOperationSafetyStatus("municipality-1"),
+    ).resolves.toEqual({
+      verified: true,
+      externalDeliveryBlocked: true,
+      masterLock: true,
+      externalEmailEnabled: false,
+      openEmailChannel: false,
+      automaticNoticeEnabled: false,
+      pendingExternalJobs: 0,
+      checkedAt: "2026-08-13T12:00:00Z",
+    });
+    expect(mocks.rpc).toHaveBeenCalledWith("ia_get_assisted_operation_safety_status", {
+      p_municipality_id: "municipality-1",
+    });
+    expect(chain.abortSignal).toHaveBeenCalledTimes(1);
+  });
+
+  it("trata resposta incompleta de segurança como estado inválido", async () => {
+    mocks.rpc.mockReturnValue(rpcChain({ verified: true }));
+
+    await expect(
+      supabaseFiscalService.getAssistedOperationSafetyStatus("municipality-1"),
+    ).rejects.toThrow("safety_status_invalid");
+  });
+
   it("compartilha o relatório enquanto a mesma consulta municipal está em andamento", async () => {
     let release: ((value: { data: unknown; error: null }) => void) | undefined;
     const pending = new Promise<{ data: unknown; error: null }>((resolve) => {
@@ -195,9 +234,10 @@ describe("contrato Supabase do atendimento", () => {
   });
 
   it("normaliza finalidade e bloqueio das notificações do dashboard", async () => {
-    const chain = readChain([
+    const recipientChain = readChain([
       {
         municipality_id: "municipality-1",
+        taxpayer_id: "taxpayer-1",
         candidate_id: "candidate-1",
         proposed_for: "initial_notice",
         candidate_status: "blocked_unverified",
@@ -205,17 +245,57 @@ describe("contrato Supabase do atendimento", () => {
         safe_for_delivery: false,
       },
     ]);
-    mocks.from.mockReturnValue(chain);
+    const summaryChain = readChain([
+      {
+        municipality_id: "municipality-1",
+        taxpayer_id: "taxpayer-1",
+        legal_name: "Comercial Cordeirópolis Ltda.",
+        tax_id: "12345678000190",
+        municipal_registration: "12345",
+      },
+    ]);
+    mocks.from.mockImplementation((table: string) => {
+      if (table === "vw_notification_recipient_candidates") return recipientChain;
+      if (table === "vw_taxpayer_360_summary") return summaryChain;
+      throw new Error(`Tabela inesperada no teste: ${table}`);
+    });
 
     await expect(
       supabaseFiscalService.listNotificationCandidates("municipality-1"),
     ).resolves.toEqual([
       expect.objectContaining({
+        taxpayerName: "Comercial Cordeirópolis Ltda.",
+        cnpj: "12345678000190",
         templateName: "Aviso inicial de conferência",
         blockedReason:
           "Vínculo com o contribuinte ainda não verificado · Envio externo não autorizado",
       }),
     ]);
+    expect(recipientChain.eq).toHaveBeenCalledWith("municipality_id", "municipality-1");
+    expect(summaryChain.eq).toHaveBeenCalledWith("municipality_id", "municipality-1");
+  });
+
+  it("usa fallback claro sem expor o identificador interno quando não há cadastro visível", async () => {
+    const recipientChain = readChain([
+      {
+        municipality_id: "municipality-1",
+        taxpayer_id: "taxpayer-internal-uuid",
+        candidate_id: "candidate-1",
+        proposed_for: "initial_notice",
+      },
+    ]);
+    const summaryChain = readChain([]);
+    mocks.from.mockImplementation((table: string) =>
+      table === "vw_notification_recipient_candidates" ? recipientChain : summaryChain,
+    );
+
+    const [candidate] = await supabaseFiscalService.listNotificationCandidates("municipality-1");
+
+    expect(candidate).toMatchObject({
+      taxpayerName: "Cadastro do contribuinte não disponível",
+      cnpj: "Inscrição não disponível",
+    });
+    expect(JSON.stringify(candidate)).not.toContain("taxpayer-internal-uuid");
   });
 
   it("rejeita leitura municipal sem contexto explícito", async () => {

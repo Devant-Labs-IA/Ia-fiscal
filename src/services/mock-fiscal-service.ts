@@ -13,6 +13,7 @@ import { validateTaxpayerInput } from "@/lib/taxpayer-validation";
 import type { FiscalService } from "@/services/fiscal-service";
 import type { CreateTaxpayerInput, Taxpayer, UpdateTaxpayerInput } from "@/types/fiscal";
 import type {
+  AssistedOperationSafetyStatus,
   CaseMessageReadModel,
   DebtPeriod,
   DivergenceReadModel,
@@ -141,7 +142,7 @@ const divergences: DivergenceReadModel[] = fiscalCases.map((item, index) => ({
   executionMode: "sandbox",
   ruleCode: "demo-only",
   ruleName: "Regra de demonstração",
-  ruleDescription: "Regra fictícia usada somente para validar a interface de homologação.",
+  ruleDescription: "Regra fictícia usada somente para validar a interface na operação assistida.",
   ruleVersion: 1,
   blockReasons: [],
   hasCaseFinding: true,
@@ -245,6 +246,20 @@ function report(municipalityId: string): OperationalReport {
     recipientCandidateCount: visible ? 86 : 0,
     deliveryReadyCount: 0,
     externalDeliveryCount: 0,
+  };
+}
+
+function assistedOperationSafetyStatus(municipalityId: string): AssistedOperationSafetyStatus {
+  hasDemoMunicipality(municipalityId);
+  return {
+    verified: true,
+    externalDeliveryBlocked: true,
+    masterLock: true,
+    externalEmailEnabled: false,
+    openEmailChannel: false,
+    automaticNoticeEnabled: false,
+    pendingExternalJobs: 0,
+    checkedAt: dashboardSummary.referenceDate,
   };
 }
 
@@ -390,6 +405,8 @@ export const mockFiscalService: FiscalService = {
     return resolve(messages);
   },
   getOperationalReport: (municipalityId) => resolve(report(municipalityId)),
+  getAssistedOperationSafetyStatus: (municipalityId) =>
+    resolve(assistedOperationSafetyStatus(municipalityId)),
   listMunicipalityUsers: () => resolve([]),
   async addExistingMunicipalityUser() {
     throw new Error("demo_write_disabled");

@@ -34,7 +34,7 @@ export function ActivityTimeline({
   return (
     <SectionCard
       title="Atividade recente"
-      description="Eventos registrados no ambiente de homologação."
+      description="Eventos registrados durante a operação assistida."
     >
       {isError ? (
         <ErrorState

@@ -12,7 +12,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { fiscalStatusLabel, taxpayerTypeLabel } from "@/lib/fiscal-labels";
+import { divergenceTypeDetails, fiscalStatusLabel, taxpayerTypeLabel } from "@/lib/fiscal-labels";
 import { formatCurrency, formatDate, maskCnpj } from "@/lib/format";
 import type { FiscalCase } from "@/types/fiscal";
 
@@ -32,6 +32,7 @@ function Field({ label, value }: { label: string; value: string }) {
 
 export function CaseDrawer({ fiscalCase, onOpenChange }: CaseDrawerProps) {
   const hasFinancialReference = Boolean(fiscalCase?.competences.length);
+  const divergence = fiscalCase ? divergenceTypeDetails(fiscalCase.divergenceType) : null;
 
   return (
     <Sheet open={Boolean(fiscalCase)} onOpenChange={onOpenChange}>
@@ -78,7 +79,7 @@ export function CaseDrawer({ fiscalCase, onOpenChange }: CaseDrawerProps) {
                   <FileText className="size-4 text-primary" aria-hidden />
                   Divergência apurada
                 </h3>
-                <p className="mt-2 text-sm font-medium">{fiscalCase.divergenceType}</p>
+                <p className="mt-2 text-sm font-medium">{divergence?.label}</p>
                 <p className="mt-1 text-sm text-muted-foreground">{fiscalCase.divergenceDetail}</p>
                 <p className="mt-2 text-xs text-muted-foreground">
                   Competências: {fiscalCase.competences.join(", ")}

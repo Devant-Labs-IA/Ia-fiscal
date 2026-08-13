@@ -26,6 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { divergenceTypeDetails } from "@/lib/fiscal-labels";
 import { formatCurrency, maskCnpj } from "@/lib/format";
 import type { FiscalCase, RiskLevel } from "@/types/fiscal";
 
@@ -64,6 +65,9 @@ export function PriorityCasesSection({
           term.length === 0 ||
           item.taxpayer.name.toLowerCase().includes(term) ||
           item.divergenceType.toLowerCase().includes(term) ||
+          divergenceTypeDetails(item.divergenceType)
+            .label.toLocaleLowerCase("pt-BR")
+            .includes(term) ||
           item.taxpayer.cnpj.includes(term.replace(/\D/g, "")) ||
           item.assignee.toLowerCase().includes(term);
         return matchesRisk && matchesTerm;
@@ -140,7 +144,9 @@ export function PriorityCasesSection({
                         {maskCnpj(item.taxpayer.cnpj)}
                       </span>
                     </TableCell>
-                    <TableCell className="min-w-44 text-sm">{item.divergenceType}</TableCell>
+                    <TableCell className="min-w-44 text-sm">
+                      {divergenceTypeDetails(item.divergenceType).label}
+                    </TableCell>
                     <TableCell className="text-right font-medium tabular-nums">
                       {item.competences.length ? formatCurrency(item.amount) : "Não vinculado"}
                     </TableCell>

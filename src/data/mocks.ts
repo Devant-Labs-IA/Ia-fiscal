@@ -14,12 +14,13 @@ import type {
   Taxpayer,
 } from "@/types/fiscal";
 
-export const HOMOLOGATION_NOTICE = "Ambiente de homologação — nenhum envio externo autorizado";
+export const HOMOLOGATION_NOTICE =
+  "Operação assistida — consultas e testes internos liberados; envios externos bloqueados";
 
 export const MUNICIPALITY = "Cordeirópolis/SP";
 
 export const currentFiscal = {
-  name: "Fiscal de Homologação A",
+  name: "Fiscal de testes internos A",
   role: "Fiscal tributária",
   registration: "Matrícula HML-001",
   initials: "FH",
@@ -36,7 +37,7 @@ export const dashboardSummary: DashboardSummary = {
       id: "contribuintes",
       label: "Contribuintes monitorados",
       value: "43",
-      context: "Base carregada da malha fiscal de homologação",
+      context: "Base municipal disponível para testes internos",
       trend: { direction: "estavel", value: "sem alteração na semana" },
       tone: "neutro",
       icon: "contribuintes",
@@ -204,7 +205,7 @@ export const fiscalCases: FiscalCase[] = [
     amount: 18420.55,
     competences: ["01/2026", "02/2026", "03/2026"],
     risk: "critico",
-    assignee: "Fiscal de Homologação A",
+    assignee: "Equipe fiscal A",
     status: "em_analise",
     legalBasis: [
       "Lei Complementar 116/2003, art. 7º — base de cálculo do ISS",
@@ -221,7 +222,7 @@ export const fiscalCases: FiscalCase[] = [
     amount: 12760.4,
     competences: ["11/2025", "12/2025"],
     risk: "alto",
-    assignee: "Fiscal de Homologação B",
+    assignee: "Equipe fiscal B",
     status: "aguardando_documento",
     legalBasis: [
       "Lei Complementar 116/2003, art. 6º — responsabilidade tributária",
@@ -238,7 +239,7 @@ export const fiscalCases: FiscalCase[] = [
     amount: 7310.9,
     competences: ["02/2026", "03/2026"],
     risk: "medio",
-    assignee: "Fiscal de Homologação A",
+    assignee: "Equipe fiscal A",
     status: "novo",
     legalBasis: [
       "Decreto-Lei 406/1968, art. 9º, §3º — tributação fixa por profissional",
@@ -255,7 +256,7 @@ export const fiscalCases: FiscalCase[] = [
     amount: 9184.22,
     competences: ["09/2025", "10/2025", "11/2025"],
     risk: "alto",
-    assignee: "Fiscal de Homologação C",
+    assignee: "Equipe fiscal C",
     status: "em_analise",
     legalBasis: [
       "Lei Complementar 116/2003, item 7.02 da lista de serviços",
@@ -272,7 +273,7 @@ export const fiscalCases: FiscalCase[] = [
     amount: 3030.15,
     competences: ["01/2026"],
     risk: "baixo",
-    assignee: "Fiscal de Homologação B",
+    assignee: "Equipe fiscal B",
     status: "aguardando_documento",
     legalBasis: [
       "Código Tributário Municipal, art. 210 — taxas de licença",
@@ -392,7 +393,7 @@ export const notificationCandidates: NotificationCandidate[] = [
 export const processingHealth: ProcessingHealthIndicator[] = [
   {
     id: "ph-worker",
-    label: "Worker sandbox",
+    label: "Processador da operação assistida",
     status: "operacional",
     detail: "Execução isolada, sem saída para a internet",
     metric: "último ciclo às 08:52",
@@ -413,14 +414,14 @@ export const processingHealth: ProcessingHealthIndicator[] = [
   },
   {
     id: "ph-rls",
-    label: "Políticas RLS",
+    label: "Controle de acesso aos dados",
     status: "operacional",
     detail: "Acesso restrito por perfil e por município",
     metric: "12 políticas ativas",
   },
   {
     id: "ph-realtime",
-    label: "Realtime",
+    label: "Atualização em tempo real",
     status: "operacional",
     detail: "Assinaturas de atendimento e fila ativas",
     metric: "latência média 240 ms",
@@ -437,18 +438,18 @@ export const productionBlockers: ProductionBlocker[] = [
   },
   {
     id: "pb-2",
-    title: "Aprovação jurídica do template de notificação",
+    title: "Aprovação jurídica do modelo de notificação",
     description: "Texto da intimação aguarda parecer da procuradoria municipal.",
     done: false,
     owner: "Procuradoria",
   },
   {
     id: "pb-3",
-    title: "URL pública dos processos",
+    title: "Endereço público dos processos",
     description:
-      "Endereço definitivo dos processos administrativos já homologado em ambiente interno.",
+      "Endereço definitivo dos processos administrativos já validado em ambiente interno.",
     done: true,
-    owner: "TI da Prefeitura",
+    owner: "Tecnologia da Informação da Prefeitura",
   },
   {
     id: "pb-4",
@@ -459,10 +460,10 @@ export const productionBlockers: ProductionBlocker[] = [
   },
   {
     id: "pb-5",
-    title: "Homologação ponta a ponta",
+    title: "Validação operacional ponta a ponta",
     description: "Roteiro de teste completo executado em 3 de 8 fluxos previstos.",
     done: false,
-    owner: "Fiscalização + TI",
+    owner: "Fiscalização + Tecnologia da Informação",
   },
 ];
 
@@ -474,7 +475,7 @@ export const auditEvents: AuditEvent[] = [
     description:
       "ISS recalculado para Empresa Alfa de Demonstração nas competências 01/2026 a 03/2026, com diferença de R$ 18.420,55.",
     occurredAt: "2026-07-31T08:52:00-03:00",
-    actor: "Worker sandbox",
+    actor: "Processador da operação assistida",
   },
   {
     id: "ae-2",
@@ -501,6 +502,6 @@ export const auditEvents: AuditEvent[] = [
     description:
       "Notificação de divergência de base gerada para 86 destinatários e mantida em rascunho, sem envio.",
     occurredAt: "2026-07-30T16:10:00-03:00",
-    actor: "Fiscal de Homologação A",
+    actor: "Equipe fiscal A",
   },
 ];

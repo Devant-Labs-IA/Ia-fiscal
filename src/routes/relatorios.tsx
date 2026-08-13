@@ -52,7 +52,7 @@ function ReportsPage() {
       <header>
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Relatório operacional</h1>
         <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-          Indicadores de triagem em homologação. Valores não constituem lançamento, crédito
+          Indicadores de triagem na operação assistida. Valores não constituem lançamento, crédito
           tributário ou decisão fiscal.
         </p>
       </header>

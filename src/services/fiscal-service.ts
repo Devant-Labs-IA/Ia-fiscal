@@ -14,6 +14,7 @@ import type {
   UpdateTaxpayerInput,
 } from "@/types/fiscal";
 import type {
+  AssistedOperationSafetyStatus,
   CaseMessageReadModel,
   DebtPeriod,
   DivergenceReadModel,
@@ -54,6 +55,7 @@ export interface FiscalService {
   listPortalCases(municipalityId: string): Promise<PortalCaseReadModel[]>;
   listCaseMessages(municipalityId: string, caseId: string): Promise<CaseMessageReadModel[]>;
   getOperationalReport(municipalityId: string): Promise<OperationalReport>;
+  getAssistedOperationSafetyStatus(municipalityId: string): Promise<AssistedOperationSafetyStatus>;
   listMunicipalityUsers(municipalityId: string): Promise<MunicipalityUser[]>;
   addExistingMunicipalityUser(
     municipalityId: string,
@@ -110,6 +112,8 @@ export const fiscalService: FiscalService = {
   listCaseMessages: (municipalityId, caseId) =>
     activeService().listCaseMessages(municipalityId, caseId),
   getOperationalReport: (municipalityId) => activeService().getOperationalReport(municipalityId),
+  getAssistedOperationSafetyStatus: (municipalityId) =>
+    activeService().getAssistedOperationSafetyStatus(municipalityId),
   listMunicipalityUsers: (municipalityId) => activeService().listMunicipalityUsers(municipalityId),
   addExistingMunicipalityUser: (municipalityId, email, role) =>
     activeService().addExistingMunicipalityUser(municipalityId, email, role),
@@ -151,5 +155,7 @@ export const fiscalKeys = {
     ["municipality", municipalityId, "case-messages", caseId] as const,
   report: (municipalityId: string) =>
     ["municipality", municipalityId, "operational-report"] as const,
+  externalDeliverySafety: (municipalityId: string) =>
+    ["municipality", municipalityId, "external-delivery-safety"] as const,
   municipalityUsers: (municipalityId: string) => ["municipality", municipalityId, "users"] as const,
 };

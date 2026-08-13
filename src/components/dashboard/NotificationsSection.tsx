@@ -17,7 +17,11 @@ import {
 import { StatusBadge } from "@/components/common/StatusBadges";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { blockReasonSummary, notificationPurposeLabel } from "@/lib/fiscal-labels";
+import {
+  blockReasonSummary,
+  notificationChannelLabel,
+  notificationPurposeLabel,
+} from "@/lib/fiscal-labels";
 import { maskCnpj } from "@/lib/format";
 import type { NotificationCandidate } from "@/types/fiscal";
 
@@ -93,7 +97,7 @@ export function NotificationsSection({
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-1">
                       <ChannelIcon className="size-3.5" aria-hidden />
-                      {item.channel}: {item.contact}
+                      {notificationChannelLabel(item.channel)}: {item.contact}
                     </span>
                     {item.contactValidated ? (
                       <span className="inline-flex items-center gap-1 text-success">
@@ -119,13 +123,13 @@ export function NotificationsSection({
                       <ArrowRight className="size-4" aria-hidden />
                     </Link>
                   </Button>
-                  <Button
-                    size="sm"
-                    disabled
-                    title="A validação de contatos ainda não está habilitada nesta interface."
-                    aria-label={`Validação de contato indisponível para ${item.taxpayerName}`}
-                  >
-                    Validação indisponível
+                  <Button asChild size="sm">
+                    <Link
+                      to="/notificacoes"
+                      aria-label={`Revisar pendências da notificação de ${item.taxpayerName}`}
+                    >
+                      Revisar pendências
+                    </Link>
                   </Button>
                 </div>
               </li>

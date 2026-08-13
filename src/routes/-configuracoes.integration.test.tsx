@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Route } from "@/routes/configuracoes";
@@ -28,17 +28,24 @@ const mocks = vi.hoisted(() => ({
   listUsers: vi.fn(),
   addUser: vi.fn(),
   updateMembership: vi.fn(),
+  getSafetyStatus: vi.fn(),
 }));
 
 vi.mock("@/auth/AuthContext", () => ({ useAuth: () => mocks.auth }));
 vi.mock("@/services/fiscal-service", () => ({
   fiscalKeys: {
     municipalityUsers: (municipalityId: string) => ["municipality", municipalityId, "users"],
+    externalDeliverySafety: (municipalityId: string) => [
+      "municipality",
+      municipalityId,
+      "external-delivery-safety",
+    ],
   },
   fiscalService: {
     listMunicipalityUsers: mocks.listUsers,
     addExistingMunicipalityUser: mocks.addUser,
     updateMunicipalityMembership: mocks.updateMembership,
+    getAssistedOperationSafetyStatus: mocks.getSafetyStatus,
   },
 }));
 
@@ -57,6 +64,16 @@ beforeEach(() => {
       lastSeenAt: null,
     },
   ]);
+  mocks.getSafetyStatus.mockReset().mockResolvedValue({
+    verified: true,
+    externalDeliveryBlocked: true,
+    masterLock: true,
+    externalEmailEnabled: false,
+    openEmailChannel: false,
+    automaticNoticeEnabled: false,
+    pendingExternalJobs: 0,
+    checkedAt: "2026-08-13T12:00:00Z",
+  });
 });
 
 afterEach(() => cleanup());
@@ -84,8 +101,13 @@ describe("configurações administrativas", () => {
     expect(screen.getByText("fiscal@prefeitura.gov.br")).toBeTruthy();
     expect(screen.getByText(/Esta ação não cria conta, não envia convite/)).toBeTruthy();
     expect(screen.queryByText("Backend")).toBeNull();
-    expect(screen.getByText("Homologação")).toBeTruthy();
+    expect(screen.getAllByText(/operação assistida/i).length).toBeGreaterThan(0);
+    expect(await screen.findByText("Envios externos bloqueados com segurança")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Preparar envios externos" }));
+    expect(await screen.findByText("Preparação segura de envios externos")).toBeTruthy();
+    expect(screen.getByText(/não desbloqueia, agenda, autoriza ou envia/)).toBeTruthy();
     expect(mocks.listUsers).toHaveBeenCalledWith("municipality-1");
+    expect(mocks.getSafetyStatus).toHaveBeenCalledWith("municipality-1");
   });
 
   it("bloqueia a página para quem não é administrador municipal", async () => {

@@ -72,7 +72,7 @@ export const fiscalNav: NavItem[] = [
     title: "Configurações",
     url: "/configuracoes",
     icon: Settings,
-    description: "Ambiente de homologação e perfis de acesso do município.",
+    description: "Operação assistida e perfis de acesso do município.",
   },
 ];
 

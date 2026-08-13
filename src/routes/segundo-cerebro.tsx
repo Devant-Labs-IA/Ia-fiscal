@@ -13,6 +13,11 @@ import {
 import { HomologationBanner } from "@/components/layout/HomologationBanner";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import {
+  knowledgeDivergenceScopeLabel,
+  knowledgeIntentLabel,
+  knowledgeTaxScopeLabel,
+} from "@/lib/fiscal-labels";
 import { formatDate } from "@/lib/format";
 import { fiscalKeys, fiscalService } from "@/services/fiscal-service";
 import type { KnowledgeArticleReadModel } from "@/types/read-models";
@@ -37,11 +42,6 @@ export const Route = createFileRoute("/segundo-cerebro")({
   component: KnowledgePage,
 });
 
-function readableToken(value: string): string {
-  if (!value) return "Não informado";
-  return value.replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase());
-}
-
 function safeDate(value: string | null): string {
   if (!value || Number.isNaN(Date.parse(value))) return "Não informada";
   return formatDate(value);
@@ -53,8 +53,8 @@ function KnowledgeCard({ item }: { item: KnowledgeArticleReadModel }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="secondary">{readableToken(item.taxScope)}</Badge>
-            <Badge variant="outline">{readableToken(item.divergenceScope)}</Badge>
+            <Badge variant="secondary">{knowledgeTaxScopeLabel(item.taxScope)}</Badge>
+            <Badge variant="outline">{knowledgeDivergenceScopeLabel(item.divergenceScope)}</Badge>
             {item.isTest && (
               <Badge
                 variant="outline"
@@ -67,7 +67,7 @@ function KnowledgeCard({ item }: { item: KnowledgeArticleReadModel }) {
           </div>
           <h3 className="mt-3 text-base font-semibold">{item.canonicalQuestion}</h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            Intenção: {readableToken(item.intentKey)}
+            Tema da orientação: {knowledgeIntentLabel(item.intentKey)}
           </p>
         </div>
 

@@ -25,7 +25,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   blockReasonLabel,
-  debtClassificationRuleLabel,
+  debtClassificationRuleDetails,
   divergenceTypeDetails,
   fiscalOperationalReasonLabel,
   fiscalRulePresentation,
@@ -319,30 +319,36 @@ function DebtTab({ data, isLoading, isError }: QueryTabProps<DebtPeriod>) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.map((item) => (
-                <TableRow key={`${item.competence}-${item.ruleVersion}`}>
-                  <TableCell className="font-medium tabular-nums">
-                    {formatCompetence(item.competence)}
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge status={item.status} />
-                  </TableCell>
-                  <TableCell className="tabular-nums">{safeDate(item.firstDueOn)}</TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {formatCurrency(item.assessedAmount)}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {formatCurrency(item.overdueAmount)}
-                  </TableCell>
-                  <TableCell className="text-right font-medium tabular-nums">
-                    {formatCurrency(item.openBalance)}
-                  </TableCell>
-                  <TableCell className="text-xs">
-                    {debtClassificationRuleLabel(item.ruleVersion)} ·{" "}
-                    {item.eligible ? "elegível" : "não elegível"}
-                  </TableCell>
-                </TableRow>
-              ))}
+              {data.map((item) => {
+                const rule = debtClassificationRuleDetails(item.ruleVersion);
+                return (
+                  <TableRow key={`${item.competence}-${item.ruleVersion}`}>
+                    <TableCell className="font-medium tabular-nums">
+                      {formatCompetence(item.competence)}
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status={item.status} />
+                    </TableCell>
+                    <TableCell className="tabular-nums">{safeDate(item.firstDueOn)}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatCurrency(item.assessedAmount)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatCurrency(item.overdueAmount)}
+                    </TableCell>
+                    <TableCell className="text-right font-medium tabular-nums">
+                      {formatCurrency(item.openBalance)}
+                    </TableCell>
+                    <TableCell className="min-w-72 text-xs">
+                      <span className="block font-medium">{rule.label}</span>
+                      <span className="mt-0.5 block text-muted-foreground">{rule.description}</span>
+                      <span className="mt-0.5 block text-muted-foreground">
+                        Resultado: {item.eligible ? "elegível para conferência" : "não elegível"}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>

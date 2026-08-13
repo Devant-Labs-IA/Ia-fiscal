@@ -91,7 +91,7 @@ function InspectionsPage() {
       <div className="rounded-md border border-warning/40 bg-warning-soft px-4 py-3 text-sm text-warning-foreground">
         <p className="flex items-start gap-2">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
-          Nenhuma ação externa ou efeito jurídico é produzido nesta tela de homologação.
+          Na operação assistida, esta tela não produz ação externa nem efeito jurídico.
         </p>
       </div>
 
@@ -108,7 +108,7 @@ function InspectionsPage() {
         <TabsContent value="divergencias">
           <SectionCard
             title="Divergências fiscais"
-            description="Resultado determinístico das regras ativas no ambiente de homologação."
+            description="Resultados das regras ativas, disponíveis para conferência da equipe fiscal."
             action={
               <Badge variant="secondary" className="tabular-nums">
                 {divergences.data?.length ?? 0} registro

@@ -1,6 +1,6 @@
 const DEFAULT_SUPABASE_URL = "https://qvgenxcrdrqyiyozxtdt.supabase.co";
 const DEFAULT_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Frt254fLpExL7A52zWNCnw_ZXLP7k33";
-const APP_ENVIRONMENT = import.meta.env["VITE_APP_ENV"] ?? "homologation";
+const APP_ENVIRONMENT = import.meta.env["VITE_APP_ENV"] ?? "assisted_operation";
 
 export type DataMode = "supabase" | "mock";
 
@@ -15,7 +15,7 @@ export const runtimeConfig = {
   allowDemo: readBoolean(import.meta.env["VITE_ALLOW_DEMO"], false),
   allowSignup: readBoolean(
     import.meta.env["VITE_ALLOW_SIGNUP"],
-    APP_ENVIRONMENT === "homologation",
+    APP_ENVIRONMENT === "homologation" || APP_ENVIRONMENT === "assisted_operation",
   ),
   supabaseUrl: import.meta.env["VITE_SUPABASE_URL"] ?? DEFAULT_SUPABASE_URL,
   supabasePublishableKey:

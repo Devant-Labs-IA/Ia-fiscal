@@ -133,7 +133,7 @@ function QueueItem({
         {closed ? (
           <Badge variant="secondary">Atendimento encerrado</Badge>
         ) : claimedByMe ? (
-          <Badge className="bg-success-soft text-success-foreground hover:bg-success-soft">
+          <Badge className="bg-success-soft text-success hover:bg-success-soft">
             <CheckCircle2 className="mr-1 size-3.5" aria-hidden />
             Assumido por você
           </Badge>
@@ -178,8 +178,8 @@ function QueueItem({
           )}
           <p className="mt-3 text-xs text-muted-foreground">
             Exibindo até as 200 mensagens mais recentes, em ordem cronológica. Consulta somente
-            leitura; redação, revisão e publicação permanecem bloqueadas até a homologação ponta a
-            ponta.
+            leitura; redação, revisão e publicação permanecem bloqueadas durante a operação
+            assistida.
           </p>
         </div>
       </details>

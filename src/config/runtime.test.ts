@@ -28,8 +28,8 @@ describe("configuração pública", () => {
     expect(window.sessionStorage.getItem("ia-fiscal:demo-mode")).toBeNull();
   });
 
-  it("habilita cadastro somente no ambiente explícito de homologação", () => {
-    expect(runtimeConfig.environment).toBe("homologation");
+  it("habilita cadastro somente na operação assistida explicitamente configurada", () => {
+    expect(runtimeConfig.environment).toBe("assisted_operation");
     expect(runtimeConfig.allowSignup).toBe(true);
   });
 });

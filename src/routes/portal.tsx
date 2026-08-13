@@ -11,6 +11,7 @@ import {
   SectionCard,
   SectionSkeleton,
 } from "@/components/common/SectionCard";
+import { StatusBadge } from "@/components/common/StatusBadges";
 import { HomologationBanner } from "@/components/layout/HomologationBanner";
 import {
   AlertDialog,
@@ -138,7 +139,7 @@ function PortalPage() {
                 key={item.caseId}
                 title={item.title || item.caseNumber}
                 description={`Processo ${item.caseNumber}`}
-                action={<Badge variant="outline">{item.caseStatus}</Badge>}
+                action={<StatusBadge status={item.caseStatus} />}
               >
                 <div className="space-y-3 text-sm">
                   <p>{item.summary || "Resumo em preparação pela equipe fiscal."}</p>

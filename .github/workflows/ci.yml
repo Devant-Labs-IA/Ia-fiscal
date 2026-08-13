@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - agent/atendimento-supervisionado
 
 permissions:
   contents: read
@@ -70,7 +71,7 @@ jobs:
 
       - name: Production build (artifact validation only)
         env:
-          VITE_APP_ENV: homologation
+          VITE_APP_ENV: assisted_operation
           VITE_DATA_MODE: mock
           VITE_ALLOW_DEMO: "true"
           VITE_SUPABASE_URL: https://qvgenxcrdrqyiyozxtdt.supabase.co
