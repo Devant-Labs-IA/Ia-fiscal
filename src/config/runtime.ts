@@ -1,5 +1,6 @@
 const DEFAULT_SUPABASE_URL = "https://qvgenxcrdrqyiyozxtdt.supabase.co";
 const DEFAULT_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Frt254fLpExL7A52zWNCnw_ZXLP7k33";
+const APP_ENVIRONMENT = import.meta.env["VITE_APP_ENV"] ?? "assisted_operation";
 
 export type DataMode = "supabase" | "mock";
 
@@ -9,9 +10,13 @@ function readBoolean(value: string | undefined, fallback: boolean): boolean {
 }
 
 export const runtimeConfig = {
-  environment: import.meta.env["VITE_APP_ENV"] ?? "homologation",
+  environment: APP_ENVIRONMENT,
   dataMode: (import.meta.env["VITE_DATA_MODE"] ?? "supabase") as DataMode,
-  allowDemo: readBoolean(import.meta.env["VITE_ALLOW_DEMO"], true),
+  allowDemo: readBoolean(import.meta.env["VITE_ALLOW_DEMO"], false),
+  allowSignup: readBoolean(
+    import.meta.env["VITE_ALLOW_SIGNUP"],
+    APP_ENVIRONMENT === "homologation" || APP_ENVIRONMENT === "assisted_operation",
+  ),
   supabaseUrl: import.meta.env["VITE_SUPABASE_URL"] ?? DEFAULT_SUPABASE_URL,
   supabasePublishableKey:
     import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ?? DEFAULT_SUPABASE_PUBLISHABLE_KEY,
@@ -27,6 +32,7 @@ export function isBrowser(): boolean {
 }
 
 export function isDemoMode(): boolean {
+  if (!runtimeConfig.allowDemo) return false;
   if (runtimeConfig.dataMode === "mock") return true;
   if (!isBrowser()) return false;
   return window.sessionStorage.getItem(DEMO_STORAGE_KEY) === "true";
@@ -34,6 +40,10 @@ export function isDemoMode(): boolean {
 
 export function setDemoMode(enabled: boolean): void {
   if (!isBrowser()) return;
+  if (enabled && !runtimeConfig.allowDemo) {
+    window.sessionStorage.removeItem(DEMO_STORAGE_KEY);
+    return;
+  }
   if (enabled) window.sessionStorage.setItem(DEMO_STORAGE_KEY, "true");
   else window.sessionStorage.removeItem(DEMO_STORAGE_KEY);
 }

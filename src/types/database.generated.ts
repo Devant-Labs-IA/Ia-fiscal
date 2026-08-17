@@ -1163,6 +1163,7 @@ export type Database = {
           municipality_id: string
           opened_count: number
           policy_version_id: string
+          request_sha256: string | null
           requested_count: number
           status: string
           submitted_at: string | null
@@ -1184,6 +1185,7 @@ export type Database = {
           municipality_id: string
           opened_count?: number
           policy_version_id: string
+          request_sha256?: string | null
           requested_count?: number
           status?: string
           submitted_at?: string | null
@@ -1205,6 +1207,7 @@ export type Database = {
           municipality_id?: string
           opened_count?: number
           policy_version_id?: string
+          request_sha256?: string | null
           requested_count?: number
           status?: string
           submitted_at?: string | null
@@ -3749,6 +3752,7 @@ export type Database = {
           external_email_enabled: boolean
           municipality_id: string
           official_help_url: string | null
+          sandbox_response_publication_enabled: boolean
           sigiss_login_url: string
           updated_at: string
           updated_by: string | null
@@ -3759,6 +3763,7 @@ export type Database = {
           external_email_enabled?: boolean
           municipality_id: string
           official_help_url?: string | null
+          sandbox_response_publication_enabled?: boolean
           sigiss_login_url: string
           updated_at?: string
           updated_by?: string | null
@@ -3769,6 +3774,7 @@ export type Database = {
           external_email_enabled?: boolean
           municipality_id?: string
           official_help_url?: string | null
+          sandbox_response_publication_enabled?: boolean
           sigiss_login_url?: string
           updated_at?: string
           updated_by?: string | null
@@ -4790,6 +4796,36 @@ export type Database = {
           locale?: string
           phone?: string | null
           status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_onboarding_progress: {
+        Row: {
+          completed_at: string | null
+          current_step: number
+          onboarding_key: string
+          onboarding_version: number
+          started_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          current_step?: number
+          onboarding_key: string
+          onboarding_version: number
+          started_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          current_step?: number
+          onboarding_key?: string
+          onboarding_version?: number
+          started_at?: string
           updated_at?: string
           user_id?: string
         }
@@ -6406,6 +6442,7 @@ export type Database = {
           created_at: string | null
           handling_mode: string | null
           municipality_id: string | null
+          operational_priority: number | null
           priority: number | null
           question_id: string | null
           question_preview: string | null
@@ -6507,6 +6544,8 @@ export type Database = {
           period_start: string | null
           priority_score: number | null
           rule_code: string | null
+          rule_description: string | null
+          rule_name: string | null
           rule_version_id: string | null
           rule_version_number: number | null
           rule_version_status: string | null
@@ -7195,6 +7234,8 @@ export type Database = {
           period_start: string | null
           priority_score: number | null
           rule_code: string | null
+          rule_description: string | null
+          rule_name: string | null
           rule_version_id: string | null
           rule_version_number: number | null
           rule_version_status: string | null
@@ -7552,6 +7593,18 @@ export type Database = {
       }
     }
     Functions: {
+      ia_operational_report: {
+        Args: { p_municipality_id: string }
+        Returns: Json
+      }
+      ia_add_existing_municipality_user: {
+        Args: {
+          p_email: string
+          p_municipality_id: string
+          p_role: string
+        }
+        Returns: string
+      }
       ia_activate_ai_prompt: {
         Args: { p_confirmation: string; p_prompt_version_id: string }
         Returns: undefined
@@ -7586,7 +7639,12 @@ export type Database = {
         Returns: string
       }
       ia_claim_case_question: {
-        Args: { p_handling_mode?: string; p_question_id: string }
+        Args: {
+          p_expected_membership_id: string
+          p_expected_municipality_id: string
+          p_handling_mode?: string
+          p_question_id: string
+        }
         Returns: string
       }
       ia_claim_jobs: {
@@ -7642,6 +7700,20 @@ export type Database = {
         Returns: Json
       }
       ia_list_my_context: { Args: never; Returns: Json }
+      ia_list_municipality_users: {
+        Args: { p_municipality_id: string }
+        Returns: {
+          email: string
+          full_name: string
+          last_seen_at: string | null
+          membership_id: string
+          role: string
+          status: string
+          user_id: string
+          valid_from: string
+          valid_until: string | null
+        }[]
+      }
       ia_mark_ai_job_blocked: {
         Args: { p_job_id: number; p_reason: string }
         Returns: undefined
@@ -7818,6 +7890,15 @@ export type Database = {
       }
       ia_submit_case_question: {
         Args: { p_body: string; p_case_id: string; p_client_request_id: string }
+        Returns: string
+      }
+      ia_update_municipality_membership: {
+        Args: {
+          p_membership_id: string
+          p_municipality_id: string
+          p_role: string
+          p_status: string
+        }
         Returns: string
       }
     }

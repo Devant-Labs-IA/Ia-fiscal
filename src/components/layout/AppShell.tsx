@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useAuth } from "@/auth/AuthContext";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { Topbar } from "@/components/layout/Topbar";
+import { OnboardingGate } from "@/components/onboarding/OnboardingGate";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -48,21 +49,39 @@ export function AppShell({ children }: { children: ReactNode }) {
   const auth = useAuth();
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const isPortal = auth.access?.role === "taxpayer" || auth.access?.role === "accountant";
+  const isPlatformAdmin = auth.access?.role === "platform_admin";
 
   if (isPortal && !pathname.startsWith("/portal")) {
     return <Navigate to="/portal" replace />;
   }
+  if (isPlatformAdmin && !pathname.startsWith("/configuracoes")) {
+    return <Navigate to="/configuracoes" replace />;
+  }
 
-  return (
+  if (!auth.access) return null;
+
+  const shell = (openTutorial?: () => void) => (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background">
         <AppSidebar />
         <SidebarInset className="min-w-0 flex-1 bg-background">
-          <Topbar />
+          <Topbar onOpenTutorial={openTutorial} />
           <AppBreadcrumb />
-          <main className="px-3 pb-12 pt-3 sm:px-6">{children}</main>
+          <div className="px-3 pb-12 pt-3 sm:px-6">{children}</div>
         </SidebarInset>
       </div>
     </SidebarProvider>
+  );
+
+  if (!auth.user) return shell();
+
+  return (
+    <OnboardingGate
+      userId={auth.user.id}
+      role={auth.access.role}
+      onSignOut={() => void auth.signOut()}
+    >
+      {({ openTutorial }) => shell(openTutorial)}
+    </OnboardingGate>
   );
 }

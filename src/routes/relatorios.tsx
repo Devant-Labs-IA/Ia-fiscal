@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { AlertTriangle, CircleDollarSign, FileSearch, Users } from "lucide-react";
 
+import { useAuth } from "@/auth/AuthContext";
 import { ErrorState, SectionCard, SectionSkeleton } from "@/components/common/SectionCard";
 import { HomologationBanner } from "@/components/layout/HomologationBanner";
 import { formatCurrency, formatNumber } from "@/lib/format";
@@ -13,9 +14,12 @@ export const Route = createFileRoute("/relatorios")({
 });
 
 function ReportsPage() {
+  const auth = useAuth();
+  const municipalityId = auth.access?.municipalityId ?? "";
   const report = useQuery({
-    queryKey: fiscalKeys.report,
-    queryFn: () => fiscalService.getOperationalReport(),
+    queryKey: fiscalKeys.report(municipalityId),
+    queryFn: () => fiscalService.getOperationalReport(municipalityId),
+    enabled: Boolean(municipalityId),
   });
   const cards = report.data
     ? [
@@ -48,14 +52,19 @@ function ReportsPage() {
       <header>
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Relatório operacional</h1>
         <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-          Indicadores de triagem em homologação. Valores não constituem lançamento, crédito
+          Indicadores de triagem na operação assistida. Valores não constituem lançamento, crédito
           tributário ou decisão fiscal.
         </p>
       </header>
       {report.isLoading ? (
         <SectionSkeleton rows={4} />
       ) : report.isError ? (
-        <ErrorState message="Não foi possível consolidar os indicadores." />
+        <ErrorState
+          message="Não foi possível consolidar os indicadores."
+          error={report.error}
+          onRetry={() => void report.refetch()}
+          retrying={report.isFetching}
+        />
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

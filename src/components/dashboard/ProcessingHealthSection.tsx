@@ -1,20 +1,42 @@
-import { SectionCard, SectionSkeleton } from "@/components/common/SectionCard";
+import {
+  EmptyState,
+  ErrorState,
+  SectionCard,
+  SectionSkeleton,
+} from "@/components/common/SectionCard";
 import { HealthBadge } from "@/components/common/StatusBadges";
 import type { ProcessingHealthIndicator } from "@/types/fiscal";
 
 interface ProcessingHealthSectionProps {
   items: ProcessingHealthIndicator[] | undefined;
   isLoading: boolean;
+  isError: boolean;
+  onRetry?: () => void;
+  retrying?: boolean;
 }
 
-export function ProcessingHealthSection({ items, isLoading }: ProcessingHealthSectionProps) {
+export function ProcessingHealthSection({
+  items,
+  isLoading,
+  isError,
+  onRetry,
+  retrying,
+}: ProcessingHealthSectionProps) {
   return (
     <SectionCard
       title="Saúde do processamento"
       description="Situação dos componentes que sustentam a apuração automatizada."
     >
-      {isLoading ? (
+      {isError ? (
+        <ErrorState
+          message="Não foi possível consultar a saúde do processamento."
+          onRetry={onRetry}
+          retrying={retrying}
+        />
+      ) : isLoading ? (
         <SectionSkeleton rows={3} />
+      ) : (items ?? []).length === 0 ? (
+        <EmptyState message="Nenhum componente de processamento foi observado." />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {(items ?? []).map((item) => (

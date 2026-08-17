@@ -4,19 +4,26 @@ import { supabaseFiscalService } from "@/services/supabase-fiscal-service";
 import type {
   AuditEvent,
   ChatQueueItem,
+  CreateTaxpayerInput,
   DashboardSummary,
   FiscalCase,
   NotificationCandidate,
   ProcessingHealthIndicator,
   ProductionBlocker,
   Taxpayer,
+  UpdateTaxpayerInput,
 } from "@/types/fiscal";
 import type {
+  AssistedOperationSafetyStatus,
+  CaseMessageReadModel,
   DebtPeriod,
   DivergenceReadModel,
   FiscalCaseReadModel,
   KnowledgeArticleReadModel,
   NotificationRecipientReadModel,
+  MunicipalityMembershipStatus,
+  MunicipalityUser,
+  MunicipalityUserRole,
   OperationalReport,
   PortalCaseReadModel,
   SearchResultItem,
@@ -24,22 +31,49 @@ import type {
 } from "@/types/read-models";
 
 export interface FiscalService {
-  getDashboardSummary(): Promise<DashboardSummary>;
-  listFiscalCases(): Promise<FiscalCase[]>;
-  listChatQueue(): Promise<ChatQueueItem[]>;
-  listNotificationCandidates(): Promise<NotificationCandidate[]>;
+  getDashboardSummary(municipalityId: string): Promise<DashboardSummary>;
+  listFiscalCases(municipalityId: string): Promise<FiscalCase[]>;
+  listChatQueue(municipalityId: string): Promise<ChatQueueItem[]>;
+  listNotificationCandidates(municipalityId: string): Promise<NotificationCandidate[]>;
   listProcessingHealth(): Promise<ProcessingHealthIndicator[]>;
-  listProductionBlockers(): Promise<ProductionBlocker[]>;
-  listAuditEvents(): Promise<AuditEvent[]>;
-  listTaxpayers(): Promise<Taxpayer[]>;
-  listTaxpayerSummaries(): Promise<Taxpayer360Summary[]>;
-  listDebtPeriods(taxpayerId?: string): Promise<DebtPeriod[]>;
-  listDivergences(taxpayerId?: string): Promise<DivergenceReadModel[]>;
-  listFiscalCaseRows(taxpayerId?: string): Promise<FiscalCaseReadModel[]>;
-  listNotificationRecipients(): Promise<NotificationRecipientReadModel[]>;
-  listKnowledgeArticles(): Promise<KnowledgeArticleReadModel[]>;
-  listPortalCases(): Promise<PortalCaseReadModel[]>;
-  getOperationalReport(): Promise<OperationalReport>;
+  listProductionBlockers(municipalityId: string): Promise<ProductionBlocker[]>;
+  listAuditEvents(municipalityId: string): Promise<AuditEvent[]>;
+  listTaxpayers(municipalityId: string): Promise<Taxpayer[]>;
+  listTaxpayerSummaries(municipalityId: string): Promise<Taxpayer360Summary[]>;
+  createTaxpayer(municipalityId: string, input: CreateTaxpayerInput): Promise<string>;
+  updateTaxpayer(
+    municipalityId: string,
+    taxpayerId: string,
+    input: UpdateTaxpayerInput,
+  ): Promise<void>;
+  archiveTaxpayer(municipalityId: string, taxpayerId: string): Promise<void>;
+  listDebtPeriods(municipalityId: string, taxpayerId?: string): Promise<DebtPeriod[]>;
+  listDivergences(municipalityId: string, taxpayerId?: string): Promise<DivergenceReadModel[]>;
+  listFiscalCaseRows(municipalityId: string, taxpayerId?: string): Promise<FiscalCaseReadModel[]>;
+  listNotificationRecipients(municipalityId: string): Promise<NotificationRecipientReadModel[]>;
+  listKnowledgeArticles(municipalityId: string): Promise<KnowledgeArticleReadModel[]>;
+  listPortalCases(municipalityId: string): Promise<PortalCaseReadModel[]>;
+  listCaseMessages(municipalityId: string, caseId: string): Promise<CaseMessageReadModel[]>;
+  getOperationalReport(municipalityId: string): Promise<OperationalReport>;
+  getAssistedOperationSafetyStatus(municipalityId: string): Promise<AssistedOperationSafetyStatus>;
+  listMunicipalityUsers(municipalityId: string): Promise<MunicipalityUser[]>;
+  addExistingMunicipalityUser(
+    municipalityId: string,
+    email: string,
+    role: MunicipalityUserRole,
+  ): Promise<string>;
+  updateMunicipalityMembership(
+    municipalityId: string,
+    membershipId: string,
+    role: MunicipalityUserRole,
+    status: MunicipalityMembershipStatus,
+  ): Promise<string>;
+  claimCaseQuestion(
+    questionId: string,
+    municipalityId: string,
+    membershipId: string,
+    handlingMode: "human" | "ai_assist",
+  ): Promise<string>;
   submitCaseQuestion(caseId: string, body: string, clientRequestId: string): Promise<string>;
   searchFiscal(query: string, municipalityId: string): Promise<SearchResultItem[]>;
 }
@@ -49,22 +83,44 @@ function activeService(): FiscalService {
 }
 
 export const fiscalService: FiscalService = {
-  getDashboardSummary: () => activeService().getDashboardSummary(),
-  listFiscalCases: () => activeService().listFiscalCases(),
-  listChatQueue: () => activeService().listChatQueue(),
-  listNotificationCandidates: () => activeService().listNotificationCandidates(),
+  getDashboardSummary: (municipalityId) => activeService().getDashboardSummary(municipalityId),
+  listFiscalCases: (municipalityId) => activeService().listFiscalCases(municipalityId),
+  listChatQueue: (municipalityId) => activeService().listChatQueue(municipalityId),
+  listNotificationCandidates: (municipalityId) =>
+    activeService().listNotificationCandidates(municipalityId),
   listProcessingHealth: () => activeService().listProcessingHealth(),
-  listProductionBlockers: () => activeService().listProductionBlockers(),
-  listAuditEvents: () => activeService().listAuditEvents(),
-  listTaxpayers: () => activeService().listTaxpayers(),
-  listTaxpayerSummaries: () => activeService().listTaxpayerSummaries(),
-  listDebtPeriods: (taxpayerId) => activeService().listDebtPeriods(taxpayerId),
-  listDivergences: (taxpayerId) => activeService().listDivergences(taxpayerId),
-  listFiscalCaseRows: (taxpayerId) => activeService().listFiscalCaseRows(taxpayerId),
-  listNotificationRecipients: () => activeService().listNotificationRecipients(),
-  listKnowledgeArticles: () => activeService().listKnowledgeArticles(),
-  listPortalCases: () => activeService().listPortalCases(),
-  getOperationalReport: () => activeService().getOperationalReport(),
+  listProductionBlockers: (municipalityId) =>
+    activeService().listProductionBlockers(municipalityId),
+  listAuditEvents: (municipalityId) => activeService().listAuditEvents(municipalityId),
+  listTaxpayers: (municipalityId) => activeService().listTaxpayers(municipalityId),
+  listTaxpayerSummaries: (municipalityId) => activeService().listTaxpayerSummaries(municipalityId),
+  createTaxpayer: (municipalityId, input) => activeService().createTaxpayer(municipalityId, input),
+  updateTaxpayer: (municipalityId, taxpayerId, input) =>
+    activeService().updateTaxpayer(municipalityId, taxpayerId, input),
+  archiveTaxpayer: (municipalityId, taxpayerId) =>
+    activeService().archiveTaxpayer(municipalityId, taxpayerId),
+  listDebtPeriods: (municipalityId, taxpayerId) =>
+    activeService().listDebtPeriods(municipalityId, taxpayerId),
+  listDivergences: (municipalityId, taxpayerId) =>
+    activeService().listDivergences(municipalityId, taxpayerId),
+  listFiscalCaseRows: (municipalityId, taxpayerId) =>
+    activeService().listFiscalCaseRows(municipalityId, taxpayerId),
+  listNotificationRecipients: (municipalityId) =>
+    activeService().listNotificationRecipients(municipalityId),
+  listKnowledgeArticles: (municipalityId) => activeService().listKnowledgeArticles(municipalityId),
+  listPortalCases: (municipalityId) => activeService().listPortalCases(municipalityId),
+  listCaseMessages: (municipalityId, caseId) =>
+    activeService().listCaseMessages(municipalityId, caseId),
+  getOperationalReport: (municipalityId) => activeService().getOperationalReport(municipalityId),
+  getAssistedOperationSafetyStatus: (municipalityId) =>
+    activeService().getAssistedOperationSafetyStatus(municipalityId),
+  listMunicipalityUsers: (municipalityId) => activeService().listMunicipalityUsers(municipalityId),
+  addExistingMunicipalityUser: (municipalityId, email, role) =>
+    activeService().addExistingMunicipalityUser(municipalityId, email, role),
+  updateMunicipalityMembership: (municipalityId, membershipId, role, status) =>
+    activeService().updateMunicipalityMembership(municipalityId, membershipId, role, status),
+  claimCaseQuestion: (questionId, municipalityId, membershipId, handlingMode) =>
+    activeService().claimCaseQuestion(questionId, municipalityId, membershipId, handlingMode),
   submitCaseQuestion: (caseId, body, clientRequestId) =>
     activeService().submitCaseQuestion(caseId, body, clientRequestId),
   searchFiscal: (query, municipalityId) => activeService().searchFiscal(query, municipalityId),
@@ -72,19 +128,34 @@ export const fiscalService: FiscalService = {
 
 /** Chaves estáveis de cache do TanStack Query. */
 export const fiscalKeys = {
-  dashboard: ["dashboard", "summary"] as const,
-  cases: ["dashboard", "cases"] as const,
-  chat: ["dashboard", "chat"] as const,
-  notifications: ["dashboard", "notifications"] as const,
-  health: ["dashboard", "health"] as const,
-  blockers: ["dashboard", "blockers"] as const,
-  events: ["dashboard", "events"] as const,
-  taxpayers: ["taxpayers"] as const,
-  debts: (taxpayerId?: string) => ["debts", taxpayerId ?? "all"] as const,
-  divergences: (taxpayerId?: string) => ["divergences", taxpayerId ?? "all"] as const,
-  caseRows: (taxpayerId?: string) => ["case-rows", taxpayerId ?? "all"] as const,
-  recipients: ["notification-recipients"] as const,
-  knowledge: ["knowledge"] as const,
-  portal: ["portal-cases"] as const,
-  report: ["operational-report"] as const,
+  dashboard: (municipalityId: string) =>
+    ["municipality", municipalityId, "dashboard", "summary"] as const,
+  cases: (municipalityId: string) =>
+    ["municipality", municipalityId, "dashboard", "cases"] as const,
+  chat: (municipalityId: string) => ["municipality", municipalityId, "dashboard", "chat"] as const,
+  notifications: (municipalityId: string) =>
+    ["municipality", municipalityId, "dashboard", "notifications"] as const,
+  health: ["platform", "worker-health"] as const,
+  blockers: (municipalityId: string) =>
+    ["municipality", municipalityId, "dashboard", "blockers"] as const,
+  events: (municipalityId: string) =>
+    ["municipality", municipalityId, "dashboard", "events"] as const,
+  taxpayers: (municipalityId: string) => ["municipality", municipalityId, "taxpayers"] as const,
+  debts: (municipalityId: string, taxpayerId?: string) =>
+    ["municipality", municipalityId, "debts", taxpayerId ?? "all"] as const,
+  divergences: (municipalityId: string, taxpayerId?: string) =>
+    ["municipality", municipalityId, "divergences", taxpayerId ?? "all"] as const,
+  caseRows: (municipalityId: string, taxpayerId?: string) =>
+    ["municipality", municipalityId, "case-rows", taxpayerId ?? "all"] as const,
+  recipients: (municipalityId: string) =>
+    ["municipality", municipalityId, "notification-recipients"] as const,
+  knowledge: (municipalityId: string) => ["municipality", municipalityId, "knowledge"] as const,
+  portal: (municipalityId: string) => ["municipality", municipalityId, "portal-cases"] as const,
+  caseMessages: (municipalityId: string, caseId: string) =>
+    ["municipality", municipalityId, "case-messages", caseId] as const,
+  report: (municipalityId: string) =>
+    ["municipality", municipalityId, "operational-report"] as const,
+  externalDeliverySafety: (municipalityId: string) =>
+    ["municipality", municipalityId, "external-delivery-safety"] as const,
+  municipalityUsers: (municipalityId: string) => ["municipality", municipalityId, "users"] as const,
 };

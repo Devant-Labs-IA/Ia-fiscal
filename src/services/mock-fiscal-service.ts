@@ -9,8 +9,12 @@ import {
   productionBlockers,
   taxpayers,
 } from "@/data/mocks";
+import { validateTaxpayerInput } from "@/lib/taxpayer-validation";
 import type { FiscalService } from "@/services/fiscal-service";
+import type { CreateTaxpayerInput, Taxpayer, UpdateTaxpayerInput } from "@/types/fiscal";
 import type {
+  AssistedOperationSafetyStatus,
+  CaseMessageReadModel,
   DebtPeriod,
   DivergenceReadModel,
   FiscalCaseReadModel,
@@ -23,9 +27,15 @@ import type {
 } from "@/types/read-models";
 
 const LATENCY_MS = 180;
+const DEMO_MUNICIPALITY_ID = "demo-cordeiropolis";
 
 function resolve<T>(value: T): Promise<T> {
   return new Promise((done) => setTimeout(() => done(value), LATENCY_MS));
+}
+
+function hasDemoMunicipality(municipalityId: string): boolean {
+  if (!municipalityId.trim()) throw new Error("invalid_municipality_id");
+  return municipalityId === DEMO_MUNICIPALITY_ID;
 }
 
 function summaryFromTaxpayer(index: number): Taxpayer360Summary {
@@ -34,7 +44,7 @@ function summaryFromTaxpayer(index: number): Taxpayer360Summary {
   const taxpayerCases = fiscalCases.filter((item) => item.taxpayer.id === taxpayer.id);
   const openBalance = taxpayerDebts.reduce((total, debt) => total + debt.amount, 0);
   return {
-    municipalityId: "demo-cordeiropolis",
+    municipalityId: DEMO_MUNICIPALITY_ID,
     taxpayerId: taxpayer.id,
     municipalRegistration: `HML-${String(index + 1).padStart(5, "0")}`,
     taxId: taxpayer.cnpj,
@@ -68,9 +78,38 @@ function summaryFromTaxpayer(index: number): Taxpayer360Summary {
 }
 
 const summaries = taxpayers.map((_, index) => summaryFromTaxpayer(index));
+let demoTaxpayerSequence = summaries.length;
+
+function requireDemoWriteMunicipality(municipalityId: string): void {
+  if (!hasDemoMunicipality(municipalityId)) {
+    throw new Error("write_not_available_for_municipality");
+  }
+}
+
+function requireValidTaxpayerInput(
+  input: CreateTaxpayerInput | UpdateTaxpayerInput,
+): CreateTaxpayerInput {
+  const validation = validateTaxpayerInput(input);
+  if (!validation.valid) throw new Error("invalid_taxpayer_input");
+  return validation.data;
+}
+
+function taxpayerFromSummary(item: Taxpayer360Summary): Taxpayer {
+  return {
+    id: item.taxpayerId,
+    name: item.legalName,
+    cnpj: item.taxId,
+    tradeName: item.tradeName,
+    segment: item.taxpayerType,
+    city: "Cordeirópolis/SP",
+    registrationStatus:
+      item.taxpayerStatus === "active" || item.taxpayerStatus === "ativo" ? "ativo" : "suspenso",
+    monitoredSince: item.oldestOpenDueOn ?? new Date().toISOString(),
+  };
+}
 
 const debtPeriods: DebtPeriod[] = debts.map((debt) => ({
-  municipalityId: "demo-cordeiropolis",
+  municipalityId: DEMO_MUNICIPALITY_ID,
   taxpayerId: debt.taxpayerId,
   competence: debt.competences[0] ?? "",
   assessedAmount: debt.amount,
@@ -89,7 +128,7 @@ const debtPeriods: DebtPeriod[] = debts.map((debt) => ({
 }));
 
 const divergences: DivergenceReadModel[] = fiscalCases.map((item, index) => ({
-  municipalityId: "demo-cordeiropolis",
+  municipalityId: DEMO_MUNICIPALITY_ID,
   divergenceId: `demo-divergence-${index + 1}`,
   taxpayerId: item.taxpayer.id,
   taxId: item.taxpayer.cnpj,
@@ -102,15 +141,18 @@ const divergences: DivergenceReadModel[] = fiscalCases.map((item, index) => ({
   status: item.status,
   executionMode: "sandbox",
   ruleCode: "demo-only",
+  ruleName: "Regra de demonstração",
+  ruleDescription: "Regra fictícia usada somente para validar a interface na operação assistida.",
   ruleVersion: 1,
   blockReasons: [],
   hasCaseFinding: true,
 }));
 
-const caseRows: FiscalCaseReadModel[] = fiscalCases.map((item) => ({
-  municipalityId: "demo-cordeiropolis",
+const caseRows: FiscalCaseReadModel[] = fiscalCases.map((item, index) => ({
+  municipalityId: DEMO_MUNICIPALITY_ID,
   caseId: item.id,
   caseNumber: `HML-${item.id.toUpperCase()}`,
+  divergenceId: `demo-divergence-${index + 1}`,
   taxpayerId: item.taxpayer.id,
   taxpayerName: item.taxpayer.name,
   status: item.status,
@@ -126,7 +168,7 @@ const caseRows: FiscalCaseReadModel[] = fiscalCases.map((item) => ({
 }));
 
 const recipientRows: NotificationRecipientReadModel[] = notificationCandidates.map((item) => ({
-  municipalityId: "demo-cordeiropolis",
+  municipalityId: DEMO_MUNICIPALITY_ID,
   taxpayerId: item.id,
   candidateId: item.id,
   proposedFor: "initial_notice",
@@ -143,7 +185,7 @@ const recipientRows: NotificationRecipientReadModel[] = notificationCandidates.m
 
 const knowledgeRows: KnowledgeArticleReadModel[] = [
   {
-    municipalityId: "demo-cordeiropolis",
+    municipalityId: DEMO_MUNICIPALITY_ID,
     articleId: "demo-knowledge-1",
     intentKey: "consulta_debito",
     semanticVersion: 1,
@@ -180,50 +222,206 @@ const portalRows: PortalCaseReadModel[] = caseRows.slice(0, 2).map((item) => ({
   threadStatus: null,
 }));
 
-function report(): OperationalReport {
+function report(municipalityId: string): OperationalReport {
+  const visible = hasDemoMunicipality(municipalityId);
+  const scopedSummaries = visible
+    ? summaries.filter((item) => item.taxpayerStatus !== "inactive")
+    : [];
+  const scopedDebts = visible ? debtPeriods : [];
+  const scopedDivergences = visible ? divergences : [];
+  const scopedCases = visible ? caseRows : [];
+  const scopedQueue = visible ? chatQueue : [];
   return {
-    taxpayerCount: summaries.length,
-    overduePeriodCount: debtPeriods.filter((item) => item.status === "vencido").length,
-    openBalanceTotal: debtPeriods.reduce((total, item) => total + item.openBalance, 0),
-    activeDivergenceCount: divergences.length,
-    divergenceAmountTotal: divergences.reduce((total, item) => total + item.differenceAmount, 0),
-    activeCaseCount: caseRows.length,
-    blockedCalculationCount: 24,
-    waitingQuestionCount: chatQueue.length,
-    recipientCandidateCount: 86,
+    taxpayerCount: scopedSummaries.length,
+    overduePeriodCount: scopedDebts.filter((item) => item.status === "vencido").length,
+    openBalanceTotal: scopedDebts.reduce((total, item) => total + item.openBalance, 0),
+    activeDivergenceCount: scopedDivergences.length,
+    divergenceAmountTotal: scopedDivergences.reduce(
+      (total, item) => total + item.differenceAmount,
+      0,
+    ),
+    activeCaseCount: scopedCases.length,
+    blockedCalculationCount: visible ? 24 : 0,
+    waitingQuestionCount: scopedQueue.length,
+    recipientCandidateCount: visible ? 86 : 0,
     deliveryReadyCount: 0,
     externalDeliveryCount: 0,
   };
 }
 
+function assistedOperationSafetyStatus(municipalityId: string): AssistedOperationSafetyStatus {
+  hasDemoMunicipality(municipalityId);
+  return {
+    verified: true,
+    externalDeliveryBlocked: true,
+    masterLock: true,
+    externalEmailEnabled: false,
+    openEmailChannel: false,
+    automaticNoticeEnabled: false,
+    pendingExternalJobs: 0,
+    checkedAt: dashboardSummary.referenceDate,
+  };
+}
+
 export const mockFiscalService: FiscalService = {
-  getDashboardSummary: () => resolve(dashboardSummary),
-  listFiscalCases: () => resolve(fiscalCases),
-  listChatQueue: () => resolve(chatQueue),
-  listNotificationCandidates: () => resolve(notificationCandidates),
+  getDashboardSummary: (municipalityId) =>
+    resolve(
+      hasDemoMunicipality(municipalityId) ? dashboardSummary : { ...dashboardSummary, metrics: [] },
+    ),
+  listFiscalCases: (municipalityId) =>
+    resolve(hasDemoMunicipality(municipalityId) ? fiscalCases : []),
+  listChatQueue: (municipalityId) =>
+    resolve(
+      hasDemoMunicipality(municipalityId)
+        ? chatQueue.filter((item) => item.municipalityId === municipalityId)
+        : [],
+    ),
+  listNotificationCandidates: (municipalityId) =>
+    resolve(hasDemoMunicipality(municipalityId) ? notificationCandidates : []),
   listProcessingHealth: () => resolve(processingHealth),
-  listProductionBlockers: () => resolve(productionBlockers),
-  listAuditEvents: () => resolve(auditEvents),
-  listTaxpayers: () => resolve(taxpayers),
-  listTaxpayerSummaries: () => resolve(summaries),
-  listDebtPeriods: (taxpayerId) =>
+  listProductionBlockers: (municipalityId) =>
+    resolve(hasDemoMunicipality(municipalityId) ? productionBlockers : []),
+  listAuditEvents: (municipalityId) =>
+    resolve(hasDemoMunicipality(municipalityId) ? auditEvents : []),
+  listTaxpayers: (municipalityId) =>
+    resolve(hasDemoMunicipality(municipalityId) ? summaries.map(taxpayerFromSummary) : []),
+  listTaxpayerSummaries: (municipalityId) =>
+    resolve(hasDemoMunicipality(municipalityId) ? summaries : []),
+  createTaxpayer(municipalityId, input) {
+    requireDemoWriteMunicipality(municipalityId);
+    const data = requireValidTaxpayerInput(input);
+    demoTaxpayerSequence += 1;
+    const taxpayerId = `demo-taxpayer-${demoTaxpayerSequence}`;
+    summaries.push({
+      municipalityId,
+      taxpayerId,
+      municipalRegistration: data.municipalRegistration,
+      taxId: data.taxId,
+      legalName: data.legalName,
+      tradeName: data.tradeName,
+      taxpayerType: data.taxpayerType,
+      taxpayerStatus: "active",
+      debtPeriodCount: 0,
+      overduePeriodCount: 0,
+      incompleteDebtPeriodCount: 0,
+      openBalanceTotal: 0,
+      oldestOpenDueOn: null,
+      divergenceCount: 0,
+      activeDivergenceCount: 0,
+      blockedDivergenceCount: 0,
+      divergenceAmountTotal: 0,
+      caseCount: 0,
+      activeCaseCount: 0,
+      blockedCalculationCount: 0,
+      contactCount: 0,
+      verifiedContactCount: 0,
+      responsibleCount: 0,
+      deliveryReadyResponsibleCount: 0,
+      waitingQuestionCount: 0,
+      operationalAttentionLevel: "normal",
+      primaryActionLabel: null,
+      primaryActionReason: null,
+      primaryActionPriority: null,
+      primaryActionDueAt: null,
+    });
+    return resolve(taxpayerId);
+  },
+  updateTaxpayer(municipalityId, taxpayerId, input) {
+    requireDemoWriteMunicipality(municipalityId);
+    const data = requireValidTaxpayerInput(input);
+    const index = summaries.findIndex(
+      (item) => item.municipalityId === municipalityId && item.taxpayerId === taxpayerId,
+    );
+    if (index < 0) throw new Error("taxpayer_not_found");
+    summaries[index] = {
+      ...summaries[index]!,
+      municipalRegistration: data.municipalRegistration,
+      taxId: data.taxId,
+      legalName: data.legalName,
+      tradeName: data.tradeName,
+      taxpayerType: data.taxpayerType,
+    };
+    return resolve(undefined);
+  },
+  archiveTaxpayer(municipalityId, taxpayerId) {
+    requireDemoWriteMunicipality(municipalityId);
+    const index = summaries.findIndex(
+      (item) => item.municipalityId === municipalityId && item.taxpayerId === taxpayerId,
+    );
+    if (index < 0) throw new Error("taxpayer_not_found");
+    summaries[index] = { ...summaries[index]!, taxpayerStatus: "inactive" };
+    return resolve(undefined);
+  },
+  listDebtPeriods: (municipalityId, taxpayerId) =>
     resolve(
-      taxpayerId ? debtPeriods.filter((item) => item.taxpayerId === taxpayerId) : debtPeriods,
+      hasDemoMunicipality(municipalityId)
+        ? taxpayerId
+          ? debtPeriods.filter((item) => item.taxpayerId === taxpayerId)
+          : debtPeriods
+        : [],
     ),
-  listDivergences: (taxpayerId) =>
+  listDivergences: (municipalityId, taxpayerId) =>
     resolve(
-      taxpayerId ? divergences.filter((item) => item.taxpayerId === taxpayerId) : divergences,
+      hasDemoMunicipality(municipalityId)
+        ? taxpayerId
+          ? divergences.filter((item) => item.taxpayerId === taxpayerId)
+          : divergences
+        : [],
     ),
-  listFiscalCaseRows: (taxpayerId) =>
-    resolve(taxpayerId ? caseRows.filter((item) => item.taxpayerId === taxpayerId) : caseRows),
-  listNotificationRecipients: () => resolve(recipientRows),
-  listKnowledgeArticles: () => resolve(knowledgeRows),
-  listPortalCases: () => resolve(portalRows),
-  getOperationalReport: () => resolve(report()),
+  listFiscalCaseRows: (municipalityId, taxpayerId) =>
+    resolve(
+      hasDemoMunicipality(municipalityId)
+        ? taxpayerId
+          ? caseRows.filter((item) => item.taxpayerId === taxpayerId)
+          : caseRows
+        : [],
+    ),
+  listNotificationRecipients: (municipalityId) =>
+    resolve(hasDemoMunicipality(municipalityId) ? recipientRows : []),
+  listKnowledgeArticles: (municipalityId) =>
+    resolve(hasDemoMunicipality(municipalityId) ? knowledgeRows : []),
+  listPortalCases: (municipalityId) =>
+    resolve(hasDemoMunicipality(municipalityId) ? portalRows : []),
+  listCaseMessages: (municipalityId, caseId) => {
+    if (!hasDemoMunicipality(municipalityId)) return resolve([]);
+    const item = chatQueue.find(
+      (question) => question.municipalityId === municipalityId && question.caseId === caseId,
+    );
+    const messages: CaseMessageReadModel[] = item
+      ? [
+          {
+            id: `demo-message:${item.id}`,
+            caseId,
+            body: item.lastMessage,
+            senderType: "taxpayer",
+            sourceType: "portal",
+            status: "published",
+            visibility: "participants",
+            createdAt: item.waitingSince,
+            publishedAt: item.waitingSince,
+          },
+        ]
+      : [];
+    return resolve(messages);
+  },
+  getOperationalReport: (municipalityId) => resolve(report(municipalityId)),
+  getAssistedOperationSafetyStatus: (municipalityId) =>
+    resolve(assistedOperationSafetyStatus(municipalityId)),
+  listMunicipalityUsers: () => resolve([]),
+  async addExistingMunicipalityUser() {
+    throw new Error("demo_write_disabled");
+  },
+  async updateMunicipalityMembership() {
+    throw new Error("demo_write_disabled");
+  },
+  async claimCaseQuestion() {
+    throw new Error("demo_write_disabled");
+  },
   async submitCaseQuestion() {
     throw new Error("demo_write_disabled");
   },
-  searchFiscal(query) {
+  searchFiscal(query, municipalityId) {
+    if (!hasDemoMunicipality(municipalityId)) return resolve([]);
     const normalized = query.toLocaleLowerCase("pt-BR");
     const results: SearchResultItem[] = summaries
       .filter(

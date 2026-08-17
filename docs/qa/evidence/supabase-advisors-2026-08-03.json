@@ -1,0 +1,187 @@
+{
+  "schema_version": 1,
+  "project_id": "qvgenxcrdrqyiyozxtdt",
+  "captured_at_utc": "2026-08-04T00:49:30Z",
+  "security": {
+    "total": 36,
+    "info_deny_all_tables": 18,
+    "warning_security_definer_authenticated": 17,
+    "warning_leaked_password_protection_disabled": 1,
+    "deny_all_interpretation": "intentional_private_and_audit_tables_without_client_policies",
+    "security_definer_review": "reviewed_individually_against_remote_catalog; matrix_below_records_signature_grants_guards_and_disposition",
+    "security_definer_common_controls": {
+      "owner": "postgres",
+      "security_definer": true,
+      "search_path": "",
+      "public_execute": false,
+      "anon_execute": false,
+      "authenticated_execute": true
+    },
+    "security_definer_functions": [
+      "ia_activate_ai_prompt",
+      "ia_activate_notification_template",
+      "ia_activate_policy_version",
+      "ia_activate_rule_version",
+      "ia_approve_case_opening_batch",
+      "ia_claim_case_question",
+      "ia_create_case_opening_batch",
+      "ia_edit_ai_draft",
+      "ia_preview_initial_notice",
+      "ia_publish_knowledge_article",
+      "ia_publish_knowledge_release",
+      "ia_publish_legal_source_version",
+      "ia_rebuild_simple_national_effective_rates",
+      "ia_review_ai_draft",
+      "ia_review_knowledge_article",
+      "ia_search_fiscal",
+      "ia_submit_case_question"
+    ],
+    "security_definer_review_matrix": [
+      {
+        "function": "ia_activate_ai_prompt",
+        "signature": "(uuid,text)",
+        "service_role_execute": true,
+        "guard": "UID+AAL2; row tenant; supervisor or legal_reviewer; ATIVAR confirmation; row lock, status and schema checks",
+        "disposition": "accepted_intentional_authenticated_rpc"
+      },
+      {
+        "function": "ia_activate_notification_template",
+        "signature": "(uuid,text)",
+        "service_role_execute": true,
+        "guard": "UID+AAL2; row tenant; supervisor or legal_reviewer; ATIVAR confirmation; row lock and status checks",
+        "disposition": "accepted_intentional_authenticated_rpc"
+      },
+      {
+        "function": "ia_activate_policy_version",
+        "signature": "(uuid,text)",
+        "service_role_execute": true,
+        "guard": "UID+AAL2; row tenant; supervisor; ATIVAR confirmation; deterministic preconditions",
+        "disposition": "accepted_intentional_authenticated_rpc"
+      },
+      {
+        "function": "ia_activate_rule_version",
+        "signature": "(uuid,text)",
+        "service_role_execute": true,
+        "guard": "UID+AAL2; row tenant; supervisor or legal_reviewer; ATIVAR confirmation; published legal basis",
+        "disposition": "accepted_intentional_authenticated_rpc"
+      },
+      {
+        "function": "ia_approve_case_opening_batch",
+        "signature": "(uuid,text)",
+        "service_role_execute": false,
+        "guard": "AAL2 supervisor in tenant; batch lock; live active municipality only; item and assignment revalidation; homologation rejected",
+        "disposition": "accepted_for_pr_production_closed"
+      },
+      {
+        "function": "ia_claim_case_question",
+        "signature": "(uuid,uuid,uuid,text)",
+        "service_role_execute": false,
+        "guard": "UID+AAL2; expected tenant and membership; current fiscal, supervisor or legal_reviewer; can_view_case_staff; row lock, idempotency and terminal-state checks",
+        "disposition": "accepted_intentional_authenticated_rpc"
+      },
+      {
+        "function": "ia_create_case_opening_batch",
+        "signature": "(uuid,uuid[],text,uuid)",
+        "service_role_execute": false,
+        "guard": "UID+AAL2 supervisor; tenant derived from run; compatible mode; current assigned fiscal; payload and owner idempotency; locks and active reservation",
+        "disposition": "accepted_for_pr_production_closed"
+      },
+      {
+        "function": "ia_edit_ai_draft",
+        "signature": "(uuid,text,text)",
+        "service_role_execute": true,
+        "guard": "UID+AAL2; can_review_case in tenant; row lock, status and bounded body",
+        "disposition": "accepted_intentional_authenticated_rpc"
+      },
+      {
+        "function": "ia_preview_initial_notice",
+        "signature": "(uuid,uuid)",
+        "service_role_execute": true,
+        "guard": "service_role branch or can_access_case with AAL2 for authenticated; preview only; blocker checks; no delivery",
+        "disposition": "accepted_read_only_preview_rpc"
+      },
+      {
+        "function": "ia_publish_knowledge_article",
+        "signature": "(uuid,text)",
+        "service_role_execute": false,
+        "guard": "UID+AAL2; current legal_reviewer in tenant; PUBLICAR confirmation; non-test article; approval hash and current sources",
+        "disposition": "accepted_intentional_authenticated_rpc"
+      },
+      {
+        "function": "ia_publish_knowledge_release",
+        "signature": "(uuid,text)",
+        "service_role_execute": true,
+        "guard": "UID+AAL2; legal_reviewer in tenant; PUBLICAR confirmation; published sources; row lock and hash",
+        "disposition": "accepted_intentional_authenticated_rpc"
+      },
+      {
+        "function": "ia_publish_legal_source_version",
+        "signature": "(uuid,text)",
+        "service_role_execute": true,
+        "guard": "UID+AAL2; legal_reviewer in tenant; PUBLICAR confirmation; sections, chunks and status checks",
+        "disposition": "accepted_intentional_authenticated_rpc"
+      },
+      {
+        "function": "ia_rebuild_simple_national_effective_rates",
+        "signature": "(uuid,date,date,boolean)",
+        "service_role_execute": true,
+        "guard": "service_role branch or AAL2 supervisor in tenant; bounded period; test-mode check when p_is_test=true",
+        "disposition": "accepted_for_homologation_p2_requires_live_mode_gate_before_production"
+      },
+      {
+        "function": "ia_review_ai_draft",
+        "signature": "(uuid,uuid,text,text)",
+        "service_role_execute": true,
+        "guard": "UID+AAL2; can_review_case; current revision and citations; row lock",
+        "disposition": "accepted_intentional_authenticated_rpc"
+      },
+      {
+        "function": "ia_review_knowledge_article",
+        "signature": "(uuid,uuid,text,text)",
+        "service_role_execute": false,
+        "guard": "UID+AAL2; current fiscal, supervisor or legal_reviewer membership; can_review_case for question-derived article; citation checks",
+        "disposition": "accepted_intentional_authenticated_rpc"
+      },
+      {
+        "function": "ia_search_fiscal",
+        "signature": "(uuid,text,integer,integer)",
+        "service_role_execute": true,
+        "guard": "service_role branch or current municipal membership; has_municipality_role enforces AAL2; strict tenant; bounded query and page; read plus audit",
+        "disposition": "accepted_read_and_audit_rpc"
+      },
+      {
+        "function": "ia_submit_case_question",
+        "signature": "(uuid,text,text)",
+        "service_role_execute": true,
+        "guard": "UID+AAL2; can_access_case; active participant link; rate limit; advisory lock and idempotency; internal queue only",
+        "disposition": "accepted_intentional_authenticated_rpc"
+      }
+    ],
+    "removed_from_authenticated_surface": [
+      "ia_publish_manual_response",
+      "ia_publish_approved_response"
+    ],
+    "open_p2": [
+      {
+        "function": "ia_rebuild_simple_national_effective_rates(uuid,date,date,boolean)",
+        "finding": "authenticated supervisor may pass p_is_test=false without an explicit municipality-status gate",
+        "impact": "does not bypass tenant isolation or create external delivery, but can label a rebuild as live before the production gate",
+        "required_before_production": "reject p_is_test=false unless an explicit database production control and municipality state both permit live execution"
+      }
+    ],
+    "open_warning": {
+      "name": "auth_leaked_password_protection",
+      "level": "WARN",
+      "status": "blocked_by_missing_auth_config_write_channel",
+      "remediation": "https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection"
+    }
+  },
+  "performance": {
+    "total": 136,
+    "unindexed_foreign_keys": 12,
+    "unused_indexes": 123,
+    "auth_absolute_connection_strategy": 1,
+    "interpretation": "homologation has near-zero workload, so unused-index observations are not production usage evidence; review before production, do not delete mechanically"
+  },
+  "production_gate": "closed"
+}

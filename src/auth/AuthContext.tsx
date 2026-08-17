@@ -13,7 +13,7 @@ import {
 
 import { isDemoMode, runtimeConfig, setDemoMode } from "@/config/runtime";
 import { getSupabaseClient } from "@/lib/supabase";
-import type { AccessContext, StaffRole } from "@/types/read-models";
+import type { AccessContext, MunicipalityContext, StaffRole } from "@/types/read-models";
 
 type AuthStatus =
   | "loading"
@@ -35,29 +35,65 @@ interface AuthContextValue {
   session: Session | null;
   user: User | null;
   access: AccessContext | null;
+  municipalityContexts: MunicipalityContext[];
   demo: boolean;
   errorCode: string | null;
   mfaEnrollment: MfaEnrollment | null;
   signIn(email: string, password: string): Promise<void>;
+  signUp(fullName: string, email: string, password: string): Promise<void>;
   signOut(): Promise<void>;
   requestPasswordReset(email: string): Promise<void>;
   startMfaEnrollment(): Promise<void>;
   verifyMfa(code: string): Promise<void>;
-  updateRecoveredPassword(password: string): Promise<void>;
+  updateRecoveredPassword(password: string): Promise<boolean>;
   enterDemo(): void;
   leaveDemo(): void;
+  selectMunicipality(municipalityId: string): Promise<MunicipalityContext>;
   reloadAccess(): Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const STAFF_ROLES = new Set<StaffRole>([
-  "platform_admin",
+const MUNICIPAL_STAFF_ROLES = new Set<StaffRole>([
   "municipal_admin",
   "supervisor",
   "fiscal_auditor",
   "legal_reviewer",
+  "support_readonly",
 ]);
+
+const MUNICIPALITY_CONTEXT_STORAGE_PREFIX = "ia-fiscal:municipality-context:v1:";
+
+interface ResolvedAccess {
+  access: AccessContext | null;
+  municipalityContexts: MunicipalityContext[];
+}
+
+interface PasswordSetupProof {
+  flowType: "invite" | "recovery";
+  accessToken: string;
+}
+
+function storedMunicipalityId(userId: string): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.sessionStorage.getItem(`${MUNICIPALITY_CONTEXT_STORAGE_PREFIX}${userId}`);
+  } catch {
+    return null;
+  }
+}
+
+function storeMunicipalityId(userId: string, municipalityId: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(
+      `${MUNICIPALITY_CONTEXT_STORAGE_PREFIX}${userId}`,
+      municipalityId,
+    );
+  } catch {
+    // O armazenamento é apenas uma preferência de interface, nunca uma fonte de autorização.
+  }
+}
 
 function safeErrorCode(error: unknown): string {
   if (error && typeof error === "object" && "code" in error) {
@@ -66,35 +102,180 @@ function safeErrorCode(error: unknown): string {
   return "access_resolution_failed";
 }
 
-function clearRecoveryLocation(): void {
-  if (typeof window === "undefined") return;
+function hasPasswordSetupFlowHint(): boolean {
+  if (typeof window === "undefined") return false;
   const url = new URL(window.location.href);
-  if (!url.searchParams.has("recovery")) return;
-  url.searchParams.delete("recovery");
-  window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  const fragment = new URLSearchParams(url.hash.replace(/^#/, ""));
+  const flowTypes = [url.searchParams.get("type"), fragment.get("type")];
+  return (
+    url.searchParams.get("recovery") === "1" ||
+    flowTypes.some((type) => type === "invite" || type === "recovery")
+  );
 }
 
-async function resolveAccess(userId: string): Promise<AccessContext | null> {
+function capturePasswordSetupProof(): PasswordSetupProof | null {
+  if (typeof window === "undefined") return null;
+  const url = new URL(window.location.href);
+  const fragment = new URLSearchParams(url.hash.replace(/^#/, ""));
+  const flowType = fragment.get("type") ?? url.searchParams.get("type");
+  if (flowType !== "invite" && flowType !== "recovery") return null;
+  const accessToken = fragment.get("access_token");
+  if (!accessToken) return null;
+  return { flowType, accessToken };
+}
+
+function passwordSetupProofMatchesSession(
+  proof: PasswordSetupProof | null,
+  session: Session | null,
+): boolean {
+  if (!proof || !session) return false;
+  return proof.accessToken === session.access_token;
+}
+
+function clearPasswordSetupLocation(): void {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  url.searchParams.delete("recovery");
+  url.searchParams.delete("type");
+  window.history.replaceState({}, "", `${url.pathname}${url.search}`);
+}
+
+async function resolveAccess(
+  userId: string,
+  preferredMunicipalityId?: string,
+): Promise<ResolvedAccess> {
   const supabase = getSupabaseClient();
   const now = new Date().toISOString();
+
+  const platform = await supabase
+    .from("platform_administrators")
+    .select("user_id")
+    .eq("user_id", userId)
+    .eq("active", true)
+    .is("revoked_at", null)
+    .maybeSingle();
+
+  if (platform.error) throw platform.error;
+  const isPlatformAdmin = Boolean(platform.data);
+
+  if (isPlatformAdmin) {
+    const [municipalitiesResult, membershipsResult] = await Promise.all([
+      supabase
+        .from("municipalities")
+        .select("id, name, state_code, ibge_code, status")
+        .order("name", { ascending: true }),
+      supabase
+        .from("municipality_memberships")
+        .select("id, municipality_id, role")
+        .eq("user_id", userId)
+        .eq("status", "active")
+        .lte("valid_from", now)
+        .or(`valid_until.is.null,valid_until.gt.${now}`)
+        .order("valid_from", { ascending: false }),
+    ]);
+
+    if (municipalitiesResult.error) throw municipalitiesResult.error;
+    if (membershipsResult.error) throw membershipsResult.error;
+
+    const municipalities = new Map(
+      (municipalitiesResult.data ?? [])
+        .filter((row) => row.status !== "archived")
+        .map((row) => [String(row.id), row]),
+    );
+    const municipalityContexts = (membershipsResult.data ?? []).flatMap((membership) => {
+      const role = membership.role as StaffRole;
+      const municipality = municipalities.get(String(membership.municipality_id));
+      if (!municipality || !MUNICIPAL_STAFF_ROLES.has(role)) return [];
+      const name = String(municipality.name).trim();
+      const stateCode = String(municipality.state_code).trim();
+      return [
+        {
+          id: String(municipality.id),
+          label: `${name}/${stateCode}`,
+          name,
+          stateCode,
+          ibgeCode: municipality.ibge_code ? String(municipality.ibge_code) : null,
+          role,
+          membershipId: String(membership.id),
+        } satisfies MunicipalityContext,
+      ];
+    });
+
+    const selectedMunicipalityId =
+      preferredMunicipalityId ?? storedMunicipalityId(userId) ?? undefined;
+    const explicitlySelected = preferredMunicipalityId
+      ? municipalityContexts.find((item) => item.id === preferredMunicipalityId)
+      : undefined;
+    if (preferredMunicipalityId && !explicitlySelected) {
+      throw Object.assign(new Error("Contexto municipal não autorizado"), {
+        code: "municipality_context_denied",
+      });
+    }
+    const selected =
+      explicitlySelected ??
+      municipalityContexts.find((item) => item.id === selectedMunicipalityId) ??
+      municipalityContexts.find((item) => item.ibgeCode === runtimeConfig.municipalityIbge) ??
+      municipalityContexts[0];
+
+    if (!selected) {
+      return {
+        access: {
+          role: "platform_admin",
+          platformAdmin: true,
+          municipalityId: "",
+          municipalityLabel: "Administração da plataforma",
+        },
+        municipalityContexts: [],
+      };
+    }
+
+    return {
+      access: {
+        role: selected.role,
+        platformAdmin: true,
+        municipalityId: selected.id,
+        municipalityLabel: selected.label,
+        membershipId: selected.membershipId,
+      },
+      municipalityContexts,
+    };
+  }
+
+  const municipality = await supabase
+    .from("municipalities")
+    .select("id, name, state_code")
+    .eq("ibge_code", runtimeConfig.municipalityIbge)
+    .maybeSingle();
+
+  if (municipality.error) throw municipality.error;
+  if (!municipality.data) {
+    return { access: null, municipalityContexts: [] };
+  }
+  const municipalityId = municipality.data.id as string;
+  const municipalityLabel = `${String(municipality.data.name).trim()}/${String(
+    municipality.data.state_code,
+  ).trim()}`;
 
   const staff = await supabase
     .from("municipality_memberships")
     .select("id, municipality_id, role")
     .eq("user_id", userId)
+    .eq("municipality_id", municipalityId)
     .eq("status", "active")
     .lte("valid_from", now)
     .or(`valid_until.is.null,valid_until.gt.${now}`)
-    .limit(1)
     .maybeSingle();
 
   if (staff.error) throw staff.error;
-  if (staff.data && STAFF_ROLES.has(staff.data.role as StaffRole)) {
+  if (staff.data && MUNICIPAL_STAFF_ROLES.has(staff.data.role as StaffRole)) {
     return {
-      role: staff.data.role as StaffRole,
-      municipalityId: staff.data.municipality_id as string,
-      municipalityLabel: runtimeConfig.municipalityLabel,
-      membershipId: staff.data.id as string,
+      access: {
+        role: staff.data.role as StaffRole,
+        municipalityId,
+        municipalityLabel,
+        membershipId: staff.data.id as string,
+      },
+      municipalityContexts: [],
     };
   }
 
@@ -102,20 +283,25 @@ async function resolveAccess(userId: string): Promise<AccessContext | null> {
     .from("taxpayer_user_links")
     .select("municipality_id, taxpayer_id")
     .eq("user_id", userId)
+    .eq("municipality_id", municipalityId)
     .eq("status", "active")
     .not("verified_at", "is", null)
     .lte("valid_from", now)
     .or(`valid_until.is.null,valid_until.gt.${now}`)
+    .order("taxpayer_id", { ascending: true })
     .limit(1)
     .maybeSingle();
 
   if (taxpayer.error) throw taxpayer.error;
   if (taxpayer.data) {
     return {
-      role: "taxpayer",
-      municipalityId: taxpayer.data.municipality_id as string,
-      municipalityLabel: runtimeConfig.municipalityLabel,
-      taxpayerId: taxpayer.data.taxpayer_id as string,
+      access: {
+        role: "taxpayer",
+        municipalityId,
+        municipalityLabel,
+        taxpayerId: taxpayer.data.taxpayer_id as string,
+      },
+      municipalityContexts: [],
     };
   }
 
@@ -123,24 +309,29 @@ async function resolveAccess(userId: string): Promise<AccessContext | null> {
     .from("accountant_user_links")
     .select("municipality_id, accounting_firm_id")
     .eq("user_id", userId)
+    .eq("municipality_id", municipalityId)
     .eq("status", "active")
     .not("verified_at", "is", null)
     .lte("valid_from", now)
     .or(`valid_until.is.null,valid_until.gt.${now}`)
+    .order("accounting_firm_id", { ascending: true })
     .limit(1)
     .maybeSingle();
 
   if (accountant.error) throw accountant.error;
   if (accountant.data) {
     return {
-      role: "accountant",
-      municipalityId: accountant.data.municipality_id as string,
-      municipalityLabel: runtimeConfig.municipalityLabel,
-      accountingFirmId: accountant.data.accounting_firm_id as string,
+      access: {
+        role: "accountant",
+        municipalityId,
+        municipalityLabel,
+        accountingFirmId: accountant.data.accounting_firm_id as string,
+      },
+      municipalityContexts: [],
     };
   }
 
-  return null;
+  return { access: null, municipalityContexts: [] };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -148,6 +339,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [session, setSession] = useState<Session | null>(null);
   const [access, setAccess] = useState<AccessContext | null>(null);
+  const [municipalityContexts, setMunicipalityContexts] = useState<MunicipalityContext[]>([]);
   const [demo, setDemo] = useState(false);
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [mfaEnrollment, setMfaEnrollment] = useState<MfaEnrollment | null>(null);
@@ -155,15 +347,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const principalRef = useRef<string | null>(null);
   const accessRequestRef = useRef(0);
   const recoveryRef = useRef(false);
+  const localLockoutRef = useRef(false);
+  const pendingMunicipalityRef = useRef<string | null>(null);
+  const municipalitySwitchRef = useRef(0);
+  const passwordSetupProofRef = useRef<PasswordSetupProof | null>(capturePasswordSetupProof());
 
   const loadAccess = useCallback(
-    async (nextSession: Session | null) => {
+    async (nextSession: Session | null, preferredMunicipalityId?: string) => {
       const nextPrincipal = nextSession?.user.id ?? null;
       const requestId = ++accessRequestRef.current;
 
       if (principalRef.current !== nextPrincipal) {
         queryClient.clear();
         setAccess(null);
+        setMunicipalityContexts([]);
         setMfaEnrollment(null);
         setMfaFactorId(null);
         setStatus(nextSession ? "loading" : "unauthenticated");
@@ -174,17 +371,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setErrorCode(null);
       if (!nextSession) {
         setAccess(null);
+        setMunicipalityContexts([]);
         setMfaEnrollment(null);
         setMfaFactorId(null);
         setStatus("unauthenticated");
-        return;
+        return null;
       }
       if (recoveryRef.current) {
         setAccess(null);
+        setMunicipalityContexts([]);
         setMfaEnrollment(null);
         setMfaFactorId(null);
         setStatus("password_recovery");
-        return;
+        return null;
       }
       try {
         const supabase = getSupabaseClient();
@@ -195,7 +394,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           principalRef.current !== nextPrincipal ||
           recoveryRef.current
         ) {
-          return;
+          return null;
         }
 
         if (assurance.data.currentLevel !== "aal2") {
@@ -206,34 +405,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             principalRef.current !== nextPrincipal ||
             recoveryRef.current
           ) {
-            return;
+            return null;
           }
 
           const verifiedTotp = factors.data.totp[0] ?? null;
           setAccess(null);
+          setMunicipalityContexts([]);
           if (verifiedTotp) {
             setMfaEnrollment(null);
             setMfaFactorId(verifiedTotp.id);
           }
           setStatus(verifiedTotp ? "mfa_required" : "mfa_enrollment_required");
-          return;
+          return null;
         }
 
         setMfaEnrollment(null);
         setMfaFactorId(null);
-        const nextAccess = await resolveAccess(nextSession.user.id);
+        const resolved = await resolveAccess(nextSession.user.id, preferredMunicipalityId);
         if (requestId !== accessRequestRef.current || principalRef.current !== nextPrincipal) {
-          return;
+          return null;
         }
-        setAccess(nextAccess);
-        setStatus(nextAccess ? "ready" : "access_pending");
+        if (resolved.access?.platformAdmin && resolved.access.municipalityId) {
+          storeMunicipalityId(nextSession.user.id, resolved.access.municipalityId);
+        }
+        setMunicipalityContexts(resolved.municipalityContexts);
+        setAccess(resolved.access);
+        setStatus(resolved.access ? "ready" : "access_pending");
+        return resolved.access;
       } catch (error) {
         if (requestId !== accessRequestRef.current || principalRef.current !== nextPrincipal) {
-          return;
+          return null;
         }
         setAccess(null);
+        setMunicipalityContexts([]);
         setErrorCode(safeErrorCode(error));
         setStatus("access_pending");
+        return null;
       }
     },
     [queryClient],
@@ -242,47 +449,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const demoActive = isDemoMode();
     setDemo(demoActive);
-    const recoveryFromUrl =
-      typeof window !== "undefined" &&
-      new URLSearchParams(window.location.search).get("recovery") === "1";
-    recoveryRef.current = recoveryFromUrl;
+    const passwordSetupHint = Boolean(passwordSetupProofRef.current) || hasPasswordSetupFlowHint();
+    recoveryRef.current = false;
 
-    if (demoActive && !recoveryFromUrl) {
+    if (demoActive && !passwordSetupHint) {
       setStatus("ready");
       return;
     }
-    if (recoveryFromUrl) {
+    if (passwordSetupHint) {
       setDemoMode(false);
       setDemo(false);
     }
 
     const supabase = getSupabaseClient();
-    void supabase.auth.getSession().then(({ data, error }) => {
-      if (error) {
-        setErrorCode(safeErrorCode(error));
-        setStatus("unauthenticated");
+    let authEventObserved = false;
+    let disposed = false;
+    const { data: subscription } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (disposed) return;
+      authEventObserved = true;
+      if (localLockoutRef.current && nextSession) return;
+      if (
+        pendingMunicipalityRef.current &&
+        nextSession?.user.id === principalRef.current &&
+        (event === "SIGNED_IN" || event === "TOKEN_REFRESHED")
+      ) {
         return;
       }
-      void loadAccess(data.session);
-    });
-
-    const { data: subscription } = supabase.auth.onAuthStateChange((event, nextSession) => {
-      if (event === "PASSWORD_RECOVERY") {
+      if (
+        event === "PASSWORD_RECOVERY" ||
+        passwordSetupProofMatchesSession(passwordSetupProofRef.current, nextSession)
+      ) {
         recoveryRef.current = true;
         accessRequestRef.current += 1;
         queryClient.clear();
         principalRef.current = nextSession?.user.id ?? null;
         setSession(nextSession);
         setAccess(null);
+        setMunicipalityContexts([]);
         setMfaEnrollment(null);
         setMfaFactorId(null);
         setErrorCode(null);
         setStatus(nextSession ? "password_recovery" : "unauthenticated");
         return;
       }
+      if (event === "SIGNED_OUT") recoveryRef.current = false;
       void loadAccess(nextSession);
     });
-    return () => subscription.subscription.unsubscribe();
+
+    void supabase.auth.getSession().then(({ data, error }) => {
+      if (disposed || authEventObserved) return;
+      if (error) {
+        setErrorCode(safeErrorCode(error));
+        setStatus("unauthenticated");
+        return;
+      }
+      recoveryRef.current = passwordSetupProofMatchesSession(
+        passwordSetupProofRef.current,
+        data.session,
+      );
+      void loadAccess(data.session);
+    });
+    return () => {
+      disposed = true;
+      subscription.subscription.unsubscribe();
+    };
   }, [loadAccess, queryClient]);
 
   const value = useMemo<AuthContextValue>(
@@ -298,29 +528,87 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             membershipId: "demo-membership",
           }
         : access,
+      municipalityContexts: demo
+        ? [
+            {
+              id: "demo-cordeiropolis",
+              label: runtimeConfig.municipalityLabel,
+              name: "Cordeirópolis",
+              stateCode: "SP",
+              ibgeCode: runtimeConfig.municipalityIbge,
+              role: "fiscal_auditor",
+              membershipId: "demo-membership",
+            },
+          ]
+        : municipalityContexts,
       demo,
       errorCode,
       mfaEnrollment,
       async signIn(email, password) {
         setErrorCode(null);
+        localLockoutRef.current = false;
         const { error } = await getSupabaseClient().auth.signInWithPassword({ email, password });
         if (error) {
+          localLockoutRef.current = true;
+          setErrorCode(safeErrorCode(error));
+          throw error;
+        }
+      },
+      async signUp(fullName, email, password) {
+        setErrorCode(null);
+        if (password.length < 12 || password.length > 128) {
+          const error = Object.assign(new Error("Senha fora da política"), {
+            code: "password_policy_failed",
+          });
+          setErrorCode(error.code);
+          throw error;
+        }
+        const emailRedirectTo =
+          typeof window === "undefined"
+            ? undefined
+            : new URL("/?signup=confirmed", window.location.origin).toString();
+        localLockoutRef.current = false;
+        const { error } = await getSupabaseClient().auth.signUp({
+          email: email.trim(),
+          password,
+          options: {
+            data: { full_name: fullName.trim() },
+            ...(emailRedirectTo ? { emailRedirectTo } : {}),
+          },
+        });
+        if (error) {
+          localLockoutRef.current = true;
           setErrorCode(safeErrorCode(error));
           throw error;
         }
       },
       async signOut() {
-        queryClient.clear();
+        localLockoutRef.current = true;
+        pendingMunicipalityRef.current = null;
+        municipalitySwitchRef.current += 1;
+        passwordSetupProofRef.current = null;
         accessRequestRef.current += 1;
         principalRef.current = null;
         recoveryRef.current = false;
-        clearRecoveryLocation();
-        setMfaEnrollment(null);
-        setMfaFactorId(null);
-        await getSupabaseClient().auth.signOut({ scope: "local" });
+        clearPasswordSetupLocation();
         setSession(null);
         setAccess(null);
+        setMunicipalityContexts([]);
+        setMfaEnrollment(null);
+        setMfaFactorId(null);
         setStatus("unauthenticated");
+        try {
+          await queryClient.cancelQueries();
+        } catch (error) {
+          setErrorCode(safeErrorCode(error));
+        }
+        queryClient.clear();
+        try {
+          const result = await getSupabaseClient().auth.signOut({ scope: "local" });
+          if (result.error) setErrorCode(safeErrorCode(result.error));
+        } catch (error) {
+          setErrorCode(safeErrorCode(error));
+        }
       },
       async requestPasswordReset(email) {
         const options =
@@ -418,32 +706,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           throw update.error;
         }
 
+        localLockoutRef.current = true;
+        pendingMunicipalityRef.current = null;
+        municipalitySwitchRef.current += 1;
+        passwordSetupProofRef.current = null;
         recoveryRef.current = false;
-        clearRecoveryLocation();
+        clearPasswordSetupLocation();
         queryClient.clear();
         accessRequestRef.current += 1;
         principalRef.current = null;
-        const globalSignOut = await supabase.auth.signOut({ scope: "global" });
-        if (globalSignOut.error) {
-          await supabase.auth.signOut({ scope: "local" });
-        }
         setSession(null);
         setAccess(null);
+        setMunicipalityContexts([]);
         setMfaEnrollment(null);
         setMfaFactorId(null);
         setStatus("unauthenticated");
-        if (globalSignOut.error) {
+        try {
+          const globalSignOut = await supabase.auth.signOut({ scope: "global" });
+          if (!globalSignOut.error) return true;
           setErrorCode(safeErrorCode(globalSignOut.error));
-          throw globalSignOut.error;
+        } catch (error) {
+          setErrorCode(safeErrorCode(error));
         }
+        try {
+          await supabase.auth.signOut({ scope: "local" });
+        } catch {
+          // A interface já está bloqueada localmente; o próximo login revalida a sessão no servidor.
+        }
+        return false;
       },
       enterDemo() {
         queryClient.clear();
         accessRequestRef.current += 1;
         recoveryRef.current = false;
-        clearRecoveryLocation();
+        clearPasswordSetupLocation();
         setMfaEnrollment(null);
         setMfaFactorId(null);
+        if (!runtimeConfig.allowDemo) {
+          setDemoMode(false);
+          setDemo(false);
+          if (session) void loadAccess(session);
+          else setStatus("unauthenticated");
+          return;
+        }
         setDemoMode(true);
         setDemo(true);
         setStatus("ready");
@@ -458,11 +763,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session) void loadAccess(session);
         else setStatus("unauthenticated");
       },
+      async selectMunicipality(municipalityId) {
+        const currentSession = session;
+        const authorized = municipalityContexts.find((item) => item.id === municipalityId);
+        if (!currentSession || !authorized) {
+          const error = Object.assign(new Error("Contexto municipal não autorizado"), {
+            code: "municipality_context_denied",
+          });
+          setErrorCode(error.code);
+          throw error;
+        }
+        if (access?.municipalityId === municipalityId) return authorized;
+
+        const switchId = ++municipalitySwitchRef.current;
+        pendingMunicipalityRef.current = municipalityId;
+        try {
+          setStatus("loading");
+          try {
+            await queryClient.cancelQueries();
+          } catch (error) {
+            setErrorCode(safeErrorCode(error));
+          }
+          queryClient.clear();
+          const nextAccess = await loadAccess(currentSession, municipalityId);
+          if (switchId !== municipalitySwitchRef.current) {
+            throw Object.assign(new Error("Troca municipal substituída"), {
+              code: "municipality_context_superseded",
+            });
+          }
+          if (nextAccess?.municipalityId !== municipalityId) {
+            throw Object.assign(new Error("Contexto municipal não confirmado"), {
+              code: "municipality_context_not_committed",
+            });
+          }
+          return authorized;
+        } finally {
+          if (switchId === municipalitySwitchRef.current) {
+            pendingMunicipalityRef.current = null;
+          }
+        }
+      },
       async reloadAccess() {
         await loadAccess(session);
       },
     }),
-    [access, demo, errorCode, loadAccess, mfaEnrollment, mfaFactorId, queryClient, session, status],
+    [
+      access,
+      demo,
+      errorCode,
+      loadAccess,
+      mfaEnrollment,
+      mfaFactorId,
+      municipalityContexts,
+      queryClient,
+      session,
+      status,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

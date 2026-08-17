@@ -1,27 +1,33 @@
 # IA Fiscal
 
-Plataforma de apoio à fiscalização tributária municipal, inicialmente homologada para Cordeirópolis/SP (`3512407`). O produto cruza dados fiscais, aponta divergências, organiza casos e oferece consulta supervisionada à base de conhecimento. Cálculos, elegibilidade e permissões são determinísticos; decisões com efeito fiscal continuam sob responsabilidade humana.
+Plataforma de apoio à fiscalização tributária municipal, em operação assistida em Cordeirópolis/SP
+(`3512407`). O produto cruza dados fiscais, aponta divergências, organiza casos e oferece consulta
+supervisionada à base de conhecimento. Cálculos, elegibilidade e permissões são determinísticos;
+decisões com efeito fiscal continuam sob responsabilidade humana.
 
 > [!WARNING]
-> O sistema está em **homologação/sandbox**. Produção, comunicação externa, ciência fiscal, geração de prazo legal e qualquer lançamento automatizado estão proibidos até a aprovação de todos os gates descritos em [`docs/harness-release-gates.md`](docs/harness-release-gates.md).
+> [!IMPORTANT]
+> Cordeirópolis está **ativa para trabalho interno assistido**. Comunicação externa, ciência fiscal,
+> geração de prazo legal e lançamento automatizado continuam bloqueados até a aprovação dos gates
+> descritos em [`docs/harness-release-gates.md`](docs/harness-release-gates.md).
 
 ## Estado atual
 
-Snapshot consolidado em 2 de agosto de 2026:
+Estado verificado em 13 de agosto de 2026:
 
-- Supabase `qvgenxcrdrqyiyozxtdt`, região `sa-east-1`, PostgreSQL 17.6, saudável;
-- 33 migrações canônicas reconciliadas com o histórico remoto por tamanho e SHA-256;
-- 101 tabelas com RLS, 30 views, 98 funções e duas Edge Functions com JWT obrigatório;
-- migração de autorização `20260802230147` aplicada e regressão SQL aprovada com rollback;
-- frontend autenticado com MFA TOTP, recuperação de senha, cache isolado e envio idempotente;
-- tipos TypeScript gerados a partir do banco remoto;
-- nenhum usuário ou vínculo real disponível para homologação E2E;
-- nenhuma entrega externa ou promoção para produção autorizada.
+- Cordeirópolis está ativa para consultas e testes internos; Araras continua isolada;
+- autenticação por senha e TOTP, acesso por município e segregação de papéis permanecem obrigatórios;
+- o primeiro acesso possui treinamento versionado e específico por perfil;
+- códigos técnicos são convertidos em nomes e explicações em português na camada de apresentação;
+- a trava mestra de comunicação externa está ativa e a fila externa está vazia;
+- ainda não existem provedor de e-mail, canal ativo, modelo aprovado nem contatos verificados para
+  envio real;
+- os dados fiscais atualmente carregados mantêm origem de teste e não devem ser descritos como
+  lançamentos ou fatos fiscais definitivamente validados.
 
-Os gates locais de código estão verdes. O estado de produção continua **CLOSED** até replay do
-banco em ambiente descartável, matriz E2E por papel, homologação real de MFA/e-mail, restore,
-observabilidade e aprovações fiscal, jurídica, de segurança e proteção de dados. Consulte
-[`docs/qa/release-readiness-2026-08-02.md`](docs/qa/release-readiness-2026-08-02.md).
+O painel “Preparar envios externos” é informativo e fail-closed: apresenta o checklist real, mas
+não cria jobs nem altera travas. A ativação futura exige infraestrutura de entrega, aprovações,
+auditoria e testes ponta a ponta.
 
 ## Escopo do MVP
 
@@ -50,9 +56,9 @@ Detalhes: [`docs/architecture.md`](docs/architecture.md).
 
 ### Pré-requisitos
 
-- Node.js 22 LTS ou superior;
+- Node.js `22.x`;
 - npm compatível com o `package-lock.json`;
-- acesso autorizado ao projeto de homologação quando for testar dados reais.
+- acesso autorizado ao município quando for consultar a base assistida.
 
 ### Instalação
 
@@ -64,15 +70,16 @@ npm ci
 npm run dev
 ```
 
-Abra a URL informada pelo Vite. O modo padrão usa Supabase de homologação. O modo de demonstração usa apenas fixtures e não habilita escrita ou comunicação externa.
+Abra a URL informada pelo Vite. O modo padrão usa a operação assistida no Supabase. O modo de
+demonstração usa apenas dados fictícios e não habilita escrita ou comunicação externa.
 
 ### Variáveis públicas
 
-| Variável                        | Uso                          | Padrão de homologação      |
+| Variável                        | Uso                          | Padrão local               |
 | ------------------------------- | ---------------------------- | -------------------------- |
-| `VITE_APP_ENV`                  | rótulo do ambiente           | `homologation`             |
+| `VITE_APP_ENV`                  | rótulo operacional           | `assisted_operation`       |
 | `VITE_DATA_MODE`                | `supabase` ou `mock`         | `supabase`                 |
-| `VITE_ALLOW_DEMO`               | permite sessão demonstrativa | `true`                     |
+| `VITE_ALLOW_DEMO`               | permite sessão demonstrativa | `false`                    |
 | `VITE_SUPABASE_URL`             | URL pública do projeto       | projeto IA Fiscal          |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | chave publicável do cliente  | chave `sb_publishable_...` |
 | `VITE_MUNICIPALITY_LABEL`       | rótulo do tenant             | `Cordeirópolis/SP`         |
@@ -94,9 +101,9 @@ O mesmo conjunto é executado no CI. Um build verde comprova integridade estáti
 
 ## Banco e Edge Functions
 
-[`supabase/migrations`](supabase/migrations) é a única fonte canônica de replay. Seus 33 arquivos
-representam as versões e os corpos SQL registrados remotamente; as diferenças de `LF` terminal são
-documentadas no manifesto de checksums.
+[`supabase/migrations`](supabase/migrations) é a única fonte canônica de replay. Os 36 arquivos
+representam as versões e os corpos SQL registrados remotamente. As diferenças históricas de `LF`
+terminal são documentadas no manifesto de checksums.
 
 Os arquivos em [`supabase/sql/applied`](supabase/sql/applied) são apenas um **arquivo histórico
 parcial** e nunca devem ser executados como cadeia. Antes de qualquer reconstrução, siga o
@@ -106,7 +113,7 @@ parcial** e nunca devem ser executados como cadeia. Antes de qualquer reconstru�
 ## Documentação operacional
 
 - [Arquitetura e contratos](docs/architecture.md)
-- [Reconciliação do banco](docs/database/reconciliation-2026-08-02.md)
+- [Reconciliação atual do banco](docs/database/reconciliation-2026-08-03.md)
 - [Runbook de reconstrução e recuperação](docs/database/recovery-runbook.md)
 - [Segurança, LGPD e limites jurídicos](docs/security-lgpd-legal.md)
 - [Fechamento da remediação de segurança](docs/security/reviews/2026-08-02-remediation.md)

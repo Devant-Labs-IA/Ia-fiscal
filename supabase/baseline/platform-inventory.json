@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "captured_at": "2026-08-02T23:15:00Z",
+  "captured_at": "2026-08-04T00:53:00Z",
   "project": {
     "id": "qvgenxcrdrqyiyozxtdt",
     "name": "IA Fiscal",
@@ -9,8 +9,8 @@
     "postgres_version": "17.6.1"
   },
   "database": {
-    "migration_count": 33,
-    "latest_migration": "20260802230147_harden_fiscal_authorization_boundaries",
+    "migration_count": 36,
+    "latest_migration": "20260804004659_revalidate_case_assignment_roles",
     "catalog_fingerprint": "supabase/baseline/catalog-fingerprint.json",
     "extensions": {
       "citext": "1.6",
@@ -59,10 +59,10 @@
     },
     {
       "name": "ia-fiscal-search",
-      "version": 1,
+      "version": 3,
       "status": "ACTIVE",
       "verify_jwt": true,
-      "deployed_bundle_sha256": "2faab97c11b6b78c0061f93f34698da1e4cfe54dae9be04c5be6c6d9a4bc658d",
+      "deployed_bundle_sha256": "9e04956c3f28fea304d61ba72191bf320477b8cfd63ea0b03973bacfddaba9be",
       "repository_source_parity": "verified"
     }
   ],

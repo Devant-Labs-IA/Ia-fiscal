@@ -20,4 +20,7 @@ O time deve seguir [`docs/runbooks/incident-response.md`](docs/runbooks/incident
 
 ## Escopo atual
 
-Somente homologação/sandbox está autorizada. Produção, ciência fiscal e comunicação externa permanecem desabilitadas.
+Cordeirópolis está em operação assistida para consultas, cadastro e testes internos autenticados.
+Comunicação externa, ciência fiscal e geração de prazo legal permanecem bloqueadas até que provedor,
+canal, modelos, contatos e aprovações sejam verificados. O bloqueio é aplicado no banco e não pode
+ser removido por uma alteração apenas visual no cliente web.

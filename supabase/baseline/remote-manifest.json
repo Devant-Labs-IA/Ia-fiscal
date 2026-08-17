@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "captured_at": "2026-08-02T20:06:00-03:00",
+  "captured_at": "2026-08-03T21:48:55-03:00",
   "project": {
     "id": "qvgenxcrdrqyiyozxtdt",
     "name": "IA Fiscal"
@@ -14,14 +14,14 @@
   },
   "normalization": {
     "versions_20260730025805_through_20260802162332": "The repository file is the exact remote statements[1] byte sequence plus one terminal LF. remote_statement_sha256 hashes the remote bytes; local_sha256 hashes the repository file including that LF.",
-    "version_20260802230147": "The repository file and the remote statements[1] are byte-identical and both already end in LF.",
+    "versions_20260802230147_through_20260804004659": "The repository file and the remote statements[1] are byte-identical and both already end in LF.",
     "text_encoding": "UTF-8"
   },
   "verification": {
-    "remote_migration_count": 33,
-    "local_migration_count": 33,
-    "remote_statement_hashes_first_32": "verified_read_only",
-    "remote_statement_hash_33": "verified_read_only",
+    "remote_migration_count": 36,
+    "local_migration_count": 36,
+    "remote_statement_hashes_first_33": "verified_read_only",
+    "remote_statement_hashes_34_through_36": "verified_read_only",
     "empty_database_replay": "not_run",
     "catalog_equivalence": "not_run",
     "rollback_entries": 0,
@@ -356,6 +356,36 @@
       "local_sha256": "e75c9904c15bcd1311524f793df578f6174ffbd27f417de993f3e8c65f62cdca",
       "remote_statement_bytes": 21183,
       "remote_statement_sha256": "e75c9904c15bcd1311524f793df578f6174ffbd27f417de993f3e8c65f62cdca",
+      "byte_relation": "byte_identical"
+    },
+    {
+      "version": "20260803234455",
+      "name": "enforce_aal2_and_idempotent_question_claim",
+      "file": "20260803234455_enforce_aal2_and_idempotent_question_claim.sql",
+      "local_bytes": 12596,
+      "local_sha256": "18126bce373b8202bef8887bec14c14c4ff9f77c8b92925034e3c4d2f05c0fa9",
+      "remote_statement_bytes": 12596,
+      "remote_statement_sha256": "18126bce373b8202bef8887bec14c14c4ff9f77c8b92925034e3c4d2f05c0fa9",
+      "byte_relation": "byte_identical"
+    },
+    {
+      "version": "20260804002339",
+      "name": "harden_batch_and_response_boundaries",
+      "file": "20260804002339_harden_batch_and_response_boundaries.sql",
+      "local_bytes": 24435,
+      "local_sha256": "bceb09b9619caf45816c73dbe07920825cdf113af1c7f2073e50d4eee5e5a7f1",
+      "remote_statement_bytes": 24435,
+      "remote_statement_sha256": "bceb09b9619caf45816c73dbe07920825cdf113af1c7f2073e50d4eee5e5a7f1",
+      "byte_relation": "byte_identical"
+    },
+    {
+      "version": "20260804004659",
+      "name": "revalidate_case_assignment_roles",
+      "file": "20260804004659_revalidate_case_assignment_roles.sql",
+      "local_bytes": 12096,
+      "local_sha256": "68a292e493af9b519d7e53778d67fe024482ec1076fe8a4fee0441ee113cb6ee",
+      "remote_statement_bytes": 12096,
+      "remote_statement_sha256": "68a292e493af9b519d7e53778d67fe024482ec1076fe8a4fee0441ee113cb6ee",
       "byte_relation": "byte_identical"
     }
   ]

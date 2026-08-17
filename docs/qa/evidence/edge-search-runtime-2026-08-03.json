@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "environment": "supabase_homologation",
+  "project_ref": "qvgenxcrdrqyiyozxtdt",
+  "executed_at_brt": "2026-08-03T21:11:10-03:00",
+  "edge_function": {
+    "slug": "ia-fiscal-search",
+    "version": 3,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "source_matches_working_tree": true,
+    "source_path": "supabase/functions/ia-fiscal-search/index.ts",
+    "source_sha256": "8be6ea09e16a230d52a6e87b0e64dcc613975af8a573a317f9ba85bbb26ea66a",
+    "deployment_sha256": "9e04956c3f28fea304d61ba72191bf320477b8cfd63ea0b03973bacfddaba9be"
+  },
+  "scenarios": [
+    {
+      "id": "EDGE-AUTH-001",
+      "name": "sem Authorization",
+      "expected_status": 401,
+      "actual_status": 401,
+      "status": "pass"
+    },
+    {
+      "id": "EDGE-AUTH-002",
+      "name": "JWT com assinatura adulterada",
+      "expected_status": 401,
+      "actual_status": 401,
+      "status": "pass"
+    },
+    {
+      "id": "EDGE-AAL-001",
+      "name": "JWT válido AAL1",
+      "expected": "403 aal2_required",
+      "actual": "403 aal2_required",
+      "status": "pass"
+    },
+    {
+      "id": "EDGE-AAL-002",
+      "name": "JWT AAL2 e tenant autorizado",
+      "expected": "200 fiscal-search-v1",
+      "actual": "200 fiscal-search-v1",
+      "status": "pass"
+    },
+    {
+      "id": "EDGE-TENANT-001",
+      "name": "JWT AAL2 e tenant não vinculado",
+      "expected": "403 search_access_denied",
+      "actual": "403 search_access_denied",
+      "status": "pass"
+    }
+  ],
+  "external_side_effects": {
+    "messages_sent": 0,
+    "notifications_sent": 0,
+    "production_deployments": 0
+  },
+  "secrets_recorded": false
+}

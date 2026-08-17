@@ -1,10 +1,27 @@
-import { CheckCircle2, Mail, MessageCircle, ShieldAlert, type LucideIcon } from "lucide-react";
-import { toast } from "sonner";
+import { Link } from "@tanstack/react-router";
+import {
+  ArrowRight,
+  CheckCircle2,
+  Mail,
+  MessageCircle,
+  ShieldAlert,
+  type LucideIcon,
+} from "lucide-react";
 
-import { EmptyState, SectionCard, SectionSkeleton } from "@/components/common/SectionCard";
+import {
+  EmptyState,
+  ErrorState,
+  SectionCard,
+  SectionSkeleton,
+} from "@/components/common/SectionCard";
 import { StatusBadge } from "@/components/common/StatusBadges";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  blockReasonSummary,
+  notificationChannelLabel,
+  notificationPurposeLabel,
+} from "@/lib/fiscal-labels";
 import { maskCnpj } from "@/lib/format";
 import type { NotificationCandidate } from "@/types/fiscal";
 
@@ -17,13 +34,30 @@ const channelIcons: Record<NotificationCandidate["channel"], LucideIcon> = {
 interface NotificationsSectionProps {
   items: NotificationCandidate[] | undefined;
   isLoading: boolean;
+  isError: boolean;
+  onRetry?: () => void;
+  retrying?: boolean;
 }
 
-export function NotificationsSection({ items, isLoading }: NotificationsSectionProps) {
+export function NotificationsSection({
+  items,
+  isLoading,
+  isError,
+  onRetry,
+  retrying,
+}: NotificationsSectionProps) {
+  const visibleCount = items?.length ?? 0;
+
   return (
     <SectionCard
       title="Notificações para validar"
-      description="86 destinatários preparados. Nenhum liberado para envio."
+      description={
+        isLoading
+          ? "Carregando candidatos a destinatário."
+          : isError
+            ? "Contagem indisponível. Nenhum envio foi liberado."
+            : `${visibleCount} candidato${visibleCount === 1 ? "" : "s"} ${visibleCount === 1 ? "visível" : "visíveis"}. Nenhum liberado para envio.`
+      }
       action={
         <Badge
           variant="outline"
@@ -33,7 +67,13 @@ export function NotificationsSection({ items, isLoading }: NotificationsSectionP
         </Badge>
       }
     >
-      {isLoading ? (
+      {isError ? (
+        <ErrorState
+          message="Não foi possível carregar os candidatos de notificação."
+          onRetry={onRetry}
+          retrying={retrying}
+        />
+      ) : isLoading ? (
         <SectionSkeleton rows={3} />
       ) : (items ?? []).length === 0 ? (
         <EmptyState message="Nenhuma notificação aguardando validação." />
@@ -51,11 +91,13 @@ export function NotificationsSection({ items, isLoading }: NotificationsSectionP
                     </span>
                     <StatusBadge status={item.status} />
                   </div>
-                  <p className="mt-1 text-sm text-muted-foreground">{item.templateName}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {notificationPurposeLabel(item.templateName)}
+                  </p>
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-1">
                       <ChannelIcon className="size-3.5" aria-hidden />
-                      {item.channel}: {item.contact}
+                      {notificationChannelLabel(item.channel)}: {item.contact}
                     </span>
                     {item.contactValidated ? (
                       <span className="inline-flex items-center gap-1 text-success">
@@ -67,31 +109,27 @@ export function NotificationsSection({ items, isLoading }: NotificationsSectionP
                     )}
                   </div>
                   <p className="mt-1.5 text-xs text-muted-foreground">
-                    Bloqueio: {item.blockedReason}
+                    Bloqueio: {blockReasonSummary(item.blockedReason)}
                   </p>
                 </div>
 
                 <div className="flex flex-wrap items-start gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      toast.info("Mensagem aberta para revisão", {
-                        description: item.draftMessage,
-                      })
-                    }
-                  >
-                    Revisar mensagem
+                  <Button asChild size="sm" variant="outline">
+                    <Link
+                      to="/notificacoes"
+                      aria-label={`Abrir detalhes da notificação de ${item.taxpayerName}`}
+                    >
+                      Abrir detalhes
+                      <ArrowRight className="size-4" aria-hidden />
+                    </Link>
                   </Button>
-                  <Button
-                    size="sm"
-                    onClick={() =>
-                      toast.success("Validação de contato registrada", {
-                        description: "Ambiente de homologação — nenhum envio externo autorizado.",
-                      })
-                    }
-                  >
-                    Validar contato
+                  <Button asChild size="sm">
+                    <Link
+                      to="/notificacoes"
+                      aria-label={`Revisar pendências da notificação de ${item.taxpayerName}`}
+                    >
+                      Revisar pendências
+                    </Link>
                   </Button>
                 </div>
               </li>

@@ -2,7 +2,7 @@
 
 Status: homologação/sandbox
 Tenant de referência: Cordeirópolis/SP (`3512407`)
-Última consolidação: 2 de agosto de 2026
+Última consolidação: 3 de agosto de 2026
 
 ## Objetivo e limites
 
@@ -31,7 +31,7 @@ O cliente recebe somente URL e chave publicável. Sessão e JWT identificam o us
 | `AuthContext`        | sessão e resolução do contexto de acesso          | usuário autenticado ainda precisa de membership/vínculo válido     |
 | serviço fiscal web   | leitura dos contratos e chamada de RPC/Edge       | modo demo não grava; falhas não podem cair silenciosamente em mock |
 | PostgreSQL           | verdade transacional, regras determinísticas, RLS | promoção depende de baseline reproduzível e auditoria dos RPCs     |
-| `ia-fiscal-search`   | pesquisa fiscal autenticada                       | resposta deve preservar escopo do usuário e rastreabilidade        |
+| `ia-fiscal-search`   | pesquisa fiscal autenticada                       | v3 exige JWT, AAL2, tenant e rastreabilidade                       |
 | `ia-fiscal-worker`   | fila e processamento assíncrono                   | IO externo desabilitado; sem decisão jurídica autônoma             |
 | camada de IA         | interpretação e rascunho                          | conteúdo novo exige revisão fiscal; nenhum envio automático        |
 
@@ -103,7 +103,7 @@ Consulte o ADR [`0001-decision-boundaries.md`](adr/0001-decision-boundaries.md).
 ## Ambientes e promoção
 
 - local: desenvolvimento e fixtures;
-- homologação: Supabase atual e futuro preview Vercel, sem comunicação externa;
+- homologação: Supabase atual; Preview Vercel ainda bloqueada, sem comunicação externa;
 - produção: inexistente/não autorizada nesta entrega.
 
 Não existe promoção automática de banco. `supabase/migrations/` contém a cadeia canônica
@@ -126,10 +126,11 @@ Não registrar JWT, credenciais, conteúdo integral de documentos fiscais ou dad
 
 ## Pendências arquiteturais que bloqueiam produção
 
-- reproduzir as 33 migrações canônicas em banco vazio e comparar o catálogo;
-- auditar as 19 funções `SECURITY DEFINER` expostas a `authenticated`;
+- reproduzir as 36 migrações aplicadas em banco vazio e comparar o catálogo;
+- registrar e manter a justificativa dos 17 RPCs `SECURITY DEFINER` intencionais;
+- habilitar a proteção do Supabase Auth contra senhas vazadas;
 - criar usuários de teste e comprovar RLS para todos os papéis;
-- executar E2E web/banco/Edge com evidência;
+- executar E2E web em Preview; banco e Edge já possuem evidência de homologação;
 - comprovar backup, restore, retenção, observabilidade e resposta a incidentes;
-- criar e validar preview Vercel sem domínio de produção;
+- obter um canal Vercel autenticado e controlável e validar Preview sem domínio de produção;
 - obter aprovação fiscal, jurídica, LGPD e operacional para qualquer comunicação.

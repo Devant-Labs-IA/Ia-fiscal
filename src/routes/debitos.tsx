@@ -3,6 +3,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { Search, WalletCards } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { useAuth } from "@/auth/AuthContext";
 import {
   EmptyState,
   ErrorState,
@@ -29,6 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { debtClassificationRuleDetails, fiscalStatusLabel } from "@/lib/fiscal-labels";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { fiscalKeys, fiscalService } from "@/services/fiscal-service";
 
@@ -65,15 +67,19 @@ function safeDate(value: string | null): string {
 }
 
 function DebtsPage() {
+  const auth = useAuth();
+  const municipalityId = auth.access?.municipalityId ?? "";
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("todos");
   const debts = useQuery({
-    queryKey: fiscalKeys.debts(),
-    queryFn: () => fiscalService.listDebtPeriods(),
+    queryKey: fiscalKeys.debts(municipalityId),
+    queryFn: () => fiscalService.listDebtPeriods(municipalityId),
+    enabled: Boolean(municipalityId),
   });
   const taxpayers = useQuery({
-    queryKey: fiscalKeys.taxpayers,
-    queryFn: () => fiscalService.listTaxpayerSummaries(),
+    queryKey: fiscalKeys.taxpayers(municipalityId),
+    queryFn: () => fiscalService.listTaxpayerSummaries(municipalityId),
+    enabled: Boolean(municipalityId),
   });
 
   const taxpayerById = useMemo(
@@ -124,7 +130,12 @@ function DebtsPage() {
       {queryLoading ? (
         <SectionSkeleton rows={3} />
       ) : queryFailed ? (
-        <ErrorState message="Não foi possível carregar a consolidação de débitos." />
+        <ErrorState
+          message="Não foi possível carregar a consolidação de débitos."
+          error={debts.error ?? taxpayers.error}
+          onRetry={() => void Promise.all([debts.refetch(), taxpayers.refetch()])}
+          retrying={debts.isFetching || taxpayers.isFetching}
+        />
       ) : (
         <div className="grid gap-3 sm:grid-cols-3">
           <DebtMetric label="Saldo em aberto" value={formatCurrency(totals.open)} />
@@ -164,7 +175,7 @@ function DebtsPage() {
               <SelectItem value="todos">Todas as situações</SelectItem>
               {statuses.map((item) => (
                 <SelectItem key={item} value={item}>
-                  {item.replaceAll("_", " ")}
+                  {fiscalStatusLabel(item)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -174,7 +185,12 @@ function DebtsPage() {
         {queryLoading ? (
           <SectionSkeleton rows={6} />
         ) : queryFailed ? (
-          <ErrorState message="Os períodos de débito estão temporariamente indisponíveis." />
+          <ErrorState
+            message="Os períodos de débito estão temporariamente indisponíveis."
+            error={debts.error ?? taxpayers.error}
+            onRetry={() => void Promise.all([debts.refetch(), taxpayers.refetch()])}
+            retrying={debts.isFetching || taxpayers.isFetching}
+          />
         ) : filtered.length === 0 ? (
           <EmptyState message="Nenhum período de débito corresponde aos filtros aplicados." />
         ) : (
@@ -195,6 +211,7 @@ function DebtsPage() {
               <TableBody>
                 {filtered.map((item) => {
                   const taxpayer = taxpayerById.get(item.taxpayerId);
+                  const rule = debtClassificationRuleDetails(item.ruleVersion);
                   return (
                     <TableRow key={`${item.taxpayerId}-${item.competence}-${item.ruleVersion}`}>
                       <TableCell className="min-w-60">
@@ -226,10 +243,13 @@ function DebtsPage() {
                       <TableCell className="text-right font-medium tabular-nums">
                         {formatCurrency(item.openBalance)}
                       </TableCell>
-                      <TableCell>
-                        <span className="block text-xs font-medium">{item.ruleVersion}</span>
+                      <TableCell className="min-w-72">
+                        <span className="block text-xs font-medium">{rule.label}</span>
+                        <span className="mt-0.5 block text-xs text-muted-foreground">
+                          {rule.description}
+                        </span>
                         <span className="block text-xs text-muted-foreground">
-                          {item.eligible ? "Elegível" : "Não elegível"}
+                          Resultado: {item.eligible ? "elegível para conferência" : "não elegível"}
                         </span>
                       </TableCell>
                     </TableRow>

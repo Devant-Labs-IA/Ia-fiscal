@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { CalendarDays } from "lucide-react";
 
+import { useAuth } from "@/auth/AuthContext";
 import { ErrorState, SectionSkeleton } from "@/components/common/SectionCard";
 import { ActivityTimeline } from "@/components/dashboard/ActivityTimeline";
 import { BlockersSection } from "@/components/dashboard/BlockersSection";
@@ -35,33 +36,41 @@ export const Route = createFileRoute("/")({
 });
 
 function DashboardFiscal() {
+  const auth = useAuth();
+  const municipalityId = auth.access?.municipalityId ?? "";
   const summary = useQuery({
-    queryKey: fiscalKeys.dashboard,
-    queryFn: () => fiscalService.getDashboardSummary(),
+    queryKey: fiscalKeys.dashboard(municipalityId),
+    queryFn: () => fiscalService.getDashboardSummary(municipalityId),
+    enabled: Boolean(municipalityId),
   });
   const cases = useQuery({
-    queryKey: fiscalKeys.cases,
-    queryFn: () => fiscalService.listFiscalCases(),
+    queryKey: fiscalKeys.cases(municipalityId),
+    queryFn: () => fiscalService.listFiscalCases(municipalityId),
+    enabled: Boolean(municipalityId),
   });
   const chat = useQuery({
-    queryKey: fiscalKeys.chat,
-    queryFn: () => fiscalService.listChatQueue(),
+    queryKey: fiscalKeys.chat(municipalityId),
+    queryFn: () => fiscalService.listChatQueue(municipalityId),
+    enabled: Boolean(municipalityId),
   });
   const notifications = useQuery({
-    queryKey: fiscalKeys.notifications,
-    queryFn: () => fiscalService.listNotificationCandidates(),
+    queryKey: fiscalKeys.notifications(municipalityId),
+    queryFn: () => fiscalService.listNotificationCandidates(municipalityId),
+    enabled: Boolean(municipalityId),
   });
   const health = useQuery({
     queryKey: fiscalKeys.health,
     queryFn: () => fiscalService.listProcessingHealth(),
   });
   const blockers = useQuery({
-    queryKey: fiscalKeys.blockers,
-    queryFn: () => fiscalService.listProductionBlockers(),
+    queryKey: fiscalKeys.blockers(municipalityId),
+    queryFn: () => fiscalService.listProductionBlockers(municipalityId),
+    enabled: Boolean(municipalityId),
   });
   const events = useQuery({
-    queryKey: fiscalKeys.events,
-    queryFn: () => fiscalService.listAuditEvents(),
+    queryKey: fiscalKeys.events(municipalityId),
+    queryFn: () => fiscalService.listAuditEvents(municipalityId),
+    enabled: Boolean(municipalityId),
   });
 
   return (
@@ -86,25 +95,66 @@ function DashboardFiscal() {
       </header>
 
       {summary.isError ? (
-        <ErrorState message="Não foi possível carregar os indicadores. Tente novamente." />
+        <ErrorState
+          message="Não foi possível carregar os indicadores. Tente novamente."
+          error={summary.error}
+          onRetry={() => void summary.refetch()}
+          retrying={summary.isFetching}
+        />
       ) : summary.isLoading ? (
         <SectionSkeleton rows={3} />
       ) : (
         <MetricGrid metrics={summary.data?.metrics ?? []} />
       )}
 
-      <PriorityCasesSection cases={cases.data} isLoading={cases.isLoading} />
+      <PriorityCasesSection
+        cases={cases.data}
+        isLoading={cases.isLoading}
+        isError={cases.isError}
+        onRetry={() => void cases.refetch()}
+        retrying={cases.isFetching}
+      />
 
       <div className="grid gap-5 2xl:grid-cols-2">
-        <ChatQueueSection items={chat.data} isLoading={chat.isLoading} />
-        <NotificationsSection items={notifications.data} isLoading={notifications.isLoading} />
+        <ChatQueueSection
+          items={chat.data}
+          isLoading={chat.isLoading}
+          isError={chat.isError}
+          onRetry={() => void chat.refetch()}
+          retrying={chat.isFetching}
+        />
+        <NotificationsSection
+          items={notifications.data}
+          isLoading={notifications.isLoading}
+          isError={notifications.isError}
+          onRetry={() => void notifications.refetch()}
+          retrying={notifications.isFetching}
+        />
       </div>
 
-      <ProcessingHealthSection items={health.data} isLoading={health.isLoading} />
+      <ProcessingHealthSection
+        items={health.data}
+        isLoading={health.isLoading}
+        isError={health.isError}
+        onRetry={() => void health.refetch()}
+        retrying={health.isFetching}
+      />
 
       <div className="grid gap-5 xl:grid-cols-2">
-        <BlockersSection items={blockers.data} isLoading={blockers.isLoading} />
-        <ActivityTimeline items={events.data} isLoading={events.isLoading} />
+        <BlockersSection
+          items={blockers.data}
+          isLoading={blockers.isLoading}
+          isError={blockers.isError}
+          onRetry={() => void blockers.refetch()}
+          retrying={blockers.isFetching}
+        />
+        <ActivityTimeline
+          items={events.data}
+          isLoading={events.isLoading}
+          isError={events.isError}
+          onRetry={() => void events.refetch()}
+          retrying={events.isFetching}
+        />
       </div>
     </div>
   );

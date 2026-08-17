@@ -1,6 +1,13 @@
+// @vitest-environment jsdom
+
 import { describe, expect, it } from "vitest";
 
-import { assertPublicRuntimeConfiguration, runtimeConfig } from "@/config/runtime";
+import {
+  assertPublicRuntimeConfiguration,
+  isDemoMode,
+  runtimeConfig,
+  setDemoMode,
+} from "@/config/runtime";
 
 describe("configuração pública", () => {
   it("aceita somente URL HTTPS e chave publicável", () => {
@@ -11,5 +18,18 @@ describe("configuração pública", () => {
 
   it("não usa credencial administrativa no bundle", () => {
     expect(runtimeConfig.supabasePublishableKey).not.toMatch(/service_role|sb_secret_/i);
+  });
+
+  it("mantém o modo de demonstração desativado por padrão", () => {
+    expect(runtimeConfig.allowDemo).toBe(false);
+    window.sessionStorage.setItem("ia-fiscal:demo-mode", "true");
+    expect(isDemoMode()).toBe(false);
+    setDemoMode(true);
+    expect(window.sessionStorage.getItem("ia-fiscal:demo-mode")).toBeNull();
+  });
+
+  it("habilita cadastro somente na operação assistida explicitamente configurada", () => {
+    expect(runtimeConfig.environment).toBe("assisted_operation");
+    expect(runtimeConfig.allowSignup).toBe(true);
   });
 });

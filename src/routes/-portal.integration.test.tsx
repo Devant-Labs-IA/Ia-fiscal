@@ -26,7 +26,9 @@ vi.mock("@/auth/AuthContext", () => ({
 }));
 
 vi.mock("@/services/fiscal-service", () => ({
-  fiscalKeys: { portal: ["portal-cases"] },
+  fiscalKeys: {
+    portal: (municipalityId: string) => ["municipality", municipalityId, "portal-cases"],
+  },
   fiscalService: {
     listPortalCases: mocks.listPortalCases,
     submitCaseQuestion: mocks.submitCaseQuestion,
@@ -95,6 +97,11 @@ beforeEach(() => {
 afterEach(() => cleanup());
 
 describe("envio idempotente no portal", () => {
+  it("consulta somente o contexto municipal autenticado", async () => {
+    await renderPortal();
+    await waitFor(() => expect(mocks.listPortalCases).toHaveBeenCalledWith("municipality-1"));
+  });
+
   it("desabilita a confirmação durante pending e bloqueia um segundo disparo", async () => {
     let resolveSubmission: ((questionId: string) => void) | undefined;
     mocks.submitCaseQuestion.mockImplementation(

@@ -1,11 +1,27 @@
 export type StaffRole =
-  "platform_admin" | "municipal_admin" | "supervisor" | "fiscal_auditor" | "legal_reviewer";
+  | "platform_admin"
+  | "municipal_admin"
+  | "supervisor"
+  | "fiscal_auditor"
+  | "legal_reviewer"
+  | "support_readonly";
 
 export type PortalRole = "taxpayer" | "accountant";
 export type AppRole = StaffRole | PortalRole;
 
+export interface MunicipalityContext {
+  id: string;
+  label: string;
+  name: string;
+  stateCode: string;
+  ibgeCode: string | null;
+  role: StaffRole;
+  membershipId: string;
+}
+
 export interface AccessContext {
   role: AppRole;
+  platformAdmin?: boolean;
   municipalityId: string;
   municipalityLabel: string;
   membershipId?: string;
@@ -79,6 +95,8 @@ export interface DivergenceReadModel {
   status: string;
   executionMode: string;
   ruleCode: string;
+  ruleName: string | null;
+  ruleDescription: string | null;
   ruleVersion: number | null;
   blockReasons: string[];
   hasCaseFinding: boolean;
@@ -88,6 +106,7 @@ export interface FiscalCaseReadModel {
   municipalityId: string;
   caseId: string;
   caseNumber: string;
+  divergenceId: string | null;
   taxpayerId: string;
   taxpayerName: string;
   status: string;
@@ -154,6 +173,18 @@ export interface PortalCaseReadModel {
   threadStatus: string | null;
 }
 
+export interface CaseMessageReadModel {
+  id: string;
+  caseId: string;
+  body: string;
+  senderType: string;
+  sourceType: string;
+  status: string;
+  visibility: string;
+  createdAt: string;
+  publishedAt: string | null;
+}
+
 export interface OperationalReport {
   taxpayerCount: number;
   overduePeriodCount: number;
@@ -166,6 +197,38 @@ export interface OperationalReport {
   recipientCandidateCount: number;
   deliveryReadyCount: number;
   externalDeliveryCount: number;
+}
+
+/**
+ * Snapshot somente leitura das proteções que mantêm a comunicação externa fechada.
+ * Este contrato não representa autorização nem prontidão para enviar mensagens.
+ */
+export interface AssistedOperationSafetyStatus {
+  verified: boolean;
+  externalDeliveryBlocked: boolean;
+  masterLock: boolean;
+  externalEmailEnabled: boolean;
+  openEmailChannel: boolean;
+  automaticNoticeEnabled: boolean;
+  pendingExternalJobs: number;
+  checkedAt: string | null;
+}
+
+export type MunicipalityUserRole =
+  "municipal_admin" | "supervisor" | "fiscal_auditor" | "legal_reviewer" | "support_readonly";
+
+export type MunicipalityMembershipStatus = "active" | "suspended" | "revoked";
+
+export interface MunicipalityUser {
+  membershipId: string;
+  userId: string;
+  fullName: string;
+  email: string;
+  role: MunicipalityUserRole;
+  status: MunicipalityMembershipStatus;
+  validFrom: string;
+  validUntil: string | null;
+  lastSeenAt: string | null;
 }
 
 export interface SearchResultItem {

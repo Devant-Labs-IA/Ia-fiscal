@@ -1,6 +1,6 @@
 import { Check } from "lucide-react";
 
-import { SectionCard, SectionSkeleton } from "@/components/common/SectionCard";
+import { ErrorState, SectionCard, SectionSkeleton } from "@/components/common/SectionCard";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { ProductionBlocker } from "@/types/fiscal";
@@ -8,22 +8,41 @@ import type { ProductionBlocker } from "@/types/fiscal";
 interface BlockersSectionProps {
   items: ProductionBlocker[] | undefined;
   isLoading: boolean;
+  isError: boolean;
+  onRetry?: () => void;
+  retrying?: boolean;
 }
 
-export function BlockersSection({ items, isLoading }: BlockersSectionProps) {
+export function BlockersSection({
+  items,
+  isLoading,
+  isError,
+  onRetry,
+  retrying,
+}: BlockersSectionProps) {
   const concluded = (items ?? []).filter((item) => item.done).length;
 
   return (
     <SectionCard
-      title="Pendências que bloqueiam produção"
+      title="Pendências para liberação externa"
       description="Itens obrigatórios antes de qualquer liberação de envio."
       action={
         <Badge variant="secondary" className="tabular-nums">
-          {concluded} de {(items ?? []).length} concluídos
+          {isLoading
+            ? "carregando…"
+            : isError
+              ? "contagem indisponível"
+              : `${concluded} de ${(items ?? []).length} concluídos`}
         </Badge>
       }
     >
-      {isLoading ? (
+      {isError ? (
+        <ErrorState
+          message="Não foi possível carregar as pendências de liberação externa."
+          onRetry={onRetry}
+          retrying={retrying}
+        />
+      ) : isLoading ? (
         <SectionSkeleton rows={4} />
       ) : (
         <ul className="space-y-3">

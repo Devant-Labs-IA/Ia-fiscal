@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "system": "IA Fiscal",
+  "environment": "Supabase homologation",
+  "project_id": "qvgenxcrdrqyiyozxtdt",
+  "executed_at_utc": "2026-08-04T00:48:55Z",
+  "result": "pass",
+  "migration_count": 36,
+  "migrations": [
+    {
+      "path": "supabase/migrations/20260803234455_enforce_aal2_and_idempotent_question_claim.sql",
+      "sha256": "18126bce373b8202bef8887bec14c14c4ff9f77c8b92925034e3c4d2f05c0fa9",
+      "deployment_status": "applied_and_regression_passed"
+    },
+    {
+      "path": "supabase/migrations/20260804002339_harden_batch_and_response_boundaries.sql",
+      "sha256": "bceb09b9619caf45816c73dbe07920825cdf113af1c7f2073e50d4eee5e5a7f1",
+      "deployment_status": "applied_and_regression_passed"
+    },
+    {
+      "path": "supabase/migrations/20260804004659_revalidate_case_assignment_roles.sql",
+      "sha256": "68a292e493af9b519d7e53778d67fe024482ec1076fe8a4fee0441ee113cb6ee",
+      "deployment_status": "applied_after_two_clean_rollback_passes"
+    }
+  ],
+  "regression_suites": [
+    {
+      "path": "supabase/tests/authorization_regression.sql",
+      "sha256": "f42574072579661759a1e5f87ec431bb62d2aee00fcdc857944621ddc7f81f90",
+      "execution": "post_apply_single_transaction_with_final_rollback",
+      "status": "pass"
+    },
+    {
+      "path": "supabase/tests/operational_boundary_regression.sql",
+      "sha256": "5396ad54c6195beaea5ba716d819b0dc46a21239b479ea689877182b91c3df1d",
+      "execution": "two_pre_apply_passes_and_one_post_apply_pass_with_final_rollback",
+      "status": "pass"
+    }
+  ],
+  "validated_controls": [
+    "AAL2, explicit municipal context and idempotent question claim",
+    "supervisor and legal-reviewer claims use reviewer assignment semantics",
+    "batch payload and owner idempotency",
+    "live-only generic batch approval and fail-closed participant publication",
+    "single active reservation per divergence",
+    "ordered divergence and membership locks at approval and worker boundaries",
+    "fiscal role, active status and validity rechecked before operational writes",
+    "terminal batch items do not block remaining valid work",
+    "manual and approved participant-response RPCs have no API-role EXECUTE grant"
+  ],
+  "post_regression": {
+    "synthetic_users": 0,
+    "synthetic_memberships": 0,
+    "synthetic_assignments": 0,
+    "synthetic_batches": 0,
+    "delivery_attempts": 0,
+    "sandbox_messages": 2,
+    "sandbox_messages_relation": "baseline_unchanged"
+  },
+  "synthetic_identity_cleanup": {
+    "auth_users": 0,
+    "mfa_factors": 0,
+    "municipality_memberships": 0,
+    "active_case_assignments": 0,
+    "search_requests": 0,
+    "seed_question_restored": true,
+    "immutable_claim_event_retained": 1,
+    "immutable_claim_event_actor_anonymized": true,
+    "append_only_trigger_reenabled": true
+  },
+  "external_side_effects": {
+    "messages_sent": 0,
+    "notifications_sent": 0,
+    "production_deployments": 0
+  },
+  "limitations": [
+    "Lock clauses and ordering were executed in real transactions, but multiconnection contention was not stress-tested.",
+    "Empty-database replay and backup/restore remain separate recovery gates.",
+    "Browser E2E remains dependent on a controlled Vercel Preview."
+  ]
+}

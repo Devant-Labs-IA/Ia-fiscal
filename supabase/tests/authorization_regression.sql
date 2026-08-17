@@ -19,6 +19,10 @@ declare
   v_first_question uuid;
   v_second_question uuid;
   v_message_count bigint;
+  v_claim_last_activity_at timestamptz;
+  v_terminal_status text;
+  v_claim_replay_sentinel constant timestamptz := '2000-01-01 00:00:00+00';
+  x_municipality constant uuid := '00000000-0000-4000-8000-000000000999';
 
   u_fiscal_unassigned constant uuid := '00000000-0000-4000-8000-000000000101';
   u_fiscal_assigned constant uuid := '00000000-0000-4000-8000-000000000102';
@@ -142,7 +146,9 @@ begin
 
   v_denied := false;
   begin
-    perform public.ia_claim_case_question(v_question_id, 'human');
+    perform public.ia_claim_case_question(
+      v_question_id, v_municipality_id, m_fiscal_unassigned, 'human'
+    );
   exception when others then
     v_denied := true;
   end;
@@ -179,6 +185,38 @@ begin
   perform set_config('request.jwt.claim.sub', u_fiscal_assigned::text, true);
   perform set_config(
     'request.jwt.claims',
+    jsonb_build_object('sub', u_fiscal_assigned, 'role', 'authenticated', 'aal', 'aal1')::text,
+    true
+  );
+  if private.has_municipality_role(
+       v_municipality_id, array['fiscal_auditor']::text[]
+     ) then
+    raise exception 'AAL1 fiscal passed municipal role authorization';
+  end if;
+  if private.current_municipality_membership_id(
+       v_municipality_id, array['fiscal_auditor']::text[]
+     ) is not null then
+    raise exception 'AAL1 fiscal received a current membership';
+  end if;
+  if private.can_view_case_staff(v_municipality_id, v_case_id)
+     or private.can_review_case(v_municipality_id, v_case_id)
+     or private.can_access_case(v_municipality_id, v_case_id) then
+    raise exception 'AAL1 fiscal crossed a regulated case boundary';
+  end if;
+  v_denied := false;
+  begin
+    perform public.ia_claim_case_question(
+      v_question_id, v_municipality_id, m_fiscal_assigned, 'human'
+    );
+  exception when others then
+    v_denied := true;
+  end;
+  if not v_denied then
+    raise exception 'AAL1 fiscal claimed a question';
+  end if;
+
+  perform set_config(
+    'request.jwt.claims',
     jsonb_build_object('sub', u_fiscal_assigned, 'role', 'authenticated', 'aal', 'aal2')::text,
     true
   );
@@ -186,9 +224,135 @@ begin
      or not private.can_review_case(v_municipality_id, v_case_id) then
     raise exception 'assigned fiscal lost legitimate access';
   end if;
-  if public.ia_claim_case_question(v_question_id, 'human') is distinct from m_fiscal_assigned then
+  -- A stale or cross-tenant client context must fail before any write, even
+  -- when the caller has a legitimate fiscal membership for this question.
+  v_denied := false;
+  begin
+    perform public.ia_claim_case_question(
+      v_question_id, x_municipality, m_fiscal_assigned, 'human'
+    );
+  exception when others then
+    v_denied := true;
+  end;
+  if not v_denied then
+    raise exception 'cross-municipality claim context was accepted';
+  end if;
+
+  v_denied := false;
+  begin
+    perform public.ia_claim_case_question(
+      v_question_id, v_municipality_id, m_supervisor, 'human'
+    );
+  exception when others then
+    v_denied := true;
+  end;
+  if not v_denied then
+    raise exception 'stale membership claim context was accepted';
+  end if;
+
+  if public.ia_claim_case_question(
+       v_question_id, v_municipality_id, m_fiscal_assigned, 'human'
+     ) is distinct from m_fiscal_assigned then
     raise exception 'assigned fiscal claim returned wrong membership';
   end if;
+  update public.case_questions
+     set last_activity_at = v_claim_replay_sentinel
+   where municipality_id = v_municipality_id
+     and id = v_question_id;
+  select count(*) into v_event_count
+  from public.case_events ce
+  where ce.municipality_id = v_municipality_id
+    and ce.case_id = v_case_id
+    and ce.event_type = 'case_question_claimed'
+    and ce.actor_user_id = u_fiscal_assigned
+    and ce.event_data ->> 'question_id' = v_question_id::text;
+  if v_event_count <> 1 then
+    raise exception 'initial successful claim did not create exactly one event';
+  end if;
+  select count(*) into v_assignment_count
+  from public.case_assignments ca
+  where ca.municipality_id = v_municipality_id
+    and ca.case_id = v_case_id
+    and ca.membership_id = m_fiscal_assigned
+    and ca.status = 'active';
+
+  if public.ia_claim_case_question(
+       v_question_id, v_municipality_id, m_fiscal_assigned, 'human'
+     ) is distinct from m_fiscal_assigned then
+    raise exception 'idempotent claim replay returned wrong membership';
+  end if;
+  select cq.last_activity_at into strict v_claim_last_activity_at
+  from public.case_questions cq
+  where cq.municipality_id = v_municipality_id
+    and cq.id = v_question_id;
+  if v_claim_last_activity_at is distinct from v_claim_replay_sentinel then
+    raise exception 'idempotent claim replay changed last_activity_at';
+  end if;
+  if (
+    select count(*)
+    from public.case_events ce
+    where ce.municipality_id = v_municipality_id
+      and ce.case_id = v_case_id
+      and ce.event_type = 'case_question_claimed'
+      and ce.actor_user_id = u_fiscal_assigned
+      and ce.event_data ->> 'question_id' = v_question_id::text
+  ) <> v_event_count then
+    raise exception 'idempotent claim replay created another event';
+  end if;
+  if (
+    select count(*)
+    from public.case_assignments ca
+    where ca.municipality_id = v_municipality_id
+      and ca.case_id = v_case_id
+      and ca.membership_id = m_fiscal_assigned
+      and ca.status = 'active'
+  ) <> v_assignment_count then
+    raise exception 'idempotent claim replay changed active assignments';
+  end if;
+
+  foreach v_terminal_status in array array['answered', 'closed']::text[] loop
+    update public.case_questions
+       set status = v_terminal_status,
+           answered_at = now(),
+           last_activity_at = v_claim_replay_sentinel
+     where municipality_id = v_municipality_id
+       and id = v_question_id;
+
+    v_denied := false;
+    begin
+      perform public.ia_claim_case_question(
+        v_question_id, v_municipality_id, m_fiscal_assigned, 'human'
+      );
+    exception when others then
+      v_denied := true;
+    end;
+    if not v_denied then
+      raise exception 'terminal question status % was reclaimed', v_terminal_status;
+    end if;
+    if exists (
+      select 1
+      from public.case_questions cq
+      where cq.municipality_id = v_municipality_id
+        and cq.id = v_question_id
+        and (
+          cq.status is distinct from v_terminal_status
+          or cq.last_activity_at is distinct from v_claim_replay_sentinel
+        )
+    ) then
+      raise exception 'denied terminal-status claim changed question';
+    end if;
+    if (
+      select count(*)
+      from public.case_events ce
+      where ce.municipality_id = v_municipality_id
+        and ce.case_id = v_case_id
+        and ce.event_type = 'case_question_claimed'
+        and ce.actor_user_id = u_fiscal_assigned
+        and ce.event_data ->> 'question_id' = v_question_id::text
+    ) <> v_event_count then
+      raise exception 'denied terminal-status claim created another event';
+    end if;
+  end loop;
 
   perform set_config('request.jwt.claim.sub', u_supervisor::text, true);
   perform set_config(
@@ -199,6 +363,39 @@ begin
   if not private.can_view_case_staff(v_municipality_id, v_case_id)
      or not private.can_review_case(v_municipality_id, v_case_id) then
     raise exception 'supervisor lost legitimate access';
+  end if;
+
+  update public.case_questions
+     set status = 'submitted',
+         assigned_membership_id = null,
+         handling_mode = 'human',
+         answered_at = null,
+         claimed_at = null
+   where municipality_id = v_municipality_id
+     and id = v_question_id;
+  update public.case_assignments
+     set status = 'completed',
+         completed_at = now()
+   where municipality_id = v_municipality_id
+     and case_id = v_case_id
+     and membership_id = m_fiscal_assigned
+     and status = 'active';
+
+  if public.ia_claim_case_question(
+       v_question_id, v_municipality_id, m_supervisor, 'human'
+     ) is distinct from m_supervisor then
+    raise exception 'supervisor claim returned the wrong membership';
+  end if;
+  if not exists (
+    select 1
+    from public.case_assignments ca
+    where ca.municipality_id = v_municipality_id
+      and ca.case_id = v_case_id
+      and ca.membership_id = m_supervisor
+      and ca.assignment_role = 'reviewer'
+      and ca.status = 'active'
+  ) then
+    raise exception 'supervisor claim was mislabeled as responsible fiscal';
   end if;
 
   perform set_config('request.jwt.claim.sub', u_municipal_admin::text, true);
@@ -220,8 +417,14 @@ begin
     jsonb_build_object('sub', u_platform, 'role', 'authenticated', 'aal', 'aal2')::text,
     true
   );
-  if private.can_view_case_staff(v_municipality_id, v_case_id)
-     or private.can_review_case(v_municipality_id, v_case_id) then
+  if private.has_municipality_role(
+       v_municipality_id,
+       array['municipal_admin', 'supervisor', 'fiscal_auditor', 'legal_reviewer']::text[]
+     )
+     or private.current_municipality_membership_id(v_municipality_id, null) is not null
+     or private.can_view_case_staff(v_municipality_id, v_case_id)
+     or private.can_review_case(v_municipality_id, v_case_id)
+     or private.can_access_case(v_municipality_id, v_case_id) then
     raise exception 'technical platform admin inherited fiscal authority';
   end if;
 
@@ -273,6 +476,15 @@ begin
   perform set_config('request.jwt.claim.sub', u_accountant::text, true);
   perform set_config(
     'request.jwt.claims',
+    jsonb_build_object('sub', u_accountant, 'role', 'authenticated', 'aal', 'aal1')::text,
+    true
+  );
+  if private.can_access_case(v_municipality_id, v_case_id) then
+    raise exception 'AAL1 accountant accessed a verified relationship';
+  end if;
+
+  perform set_config(
+    'request.jwt.claims',
     jsonb_build_object('sub', u_accountant, 'role', 'authenticated', 'aal', 'aal2')::text,
     true
   );
@@ -297,12 +509,25 @@ begin
     (v_municipality_id, v_taxpayer_id, u_taxpayer_owner, 'owner', 'active',
       now() - interval '1 day', u_supervisor, now());
 
+  perform set_config('request.jwt.claim.sub', u_taxpayer_owner::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    jsonb_build_object('sub', u_taxpayer_owner, 'role', 'authenticated', 'aal', 'aal1')::text,
+    true
+  );
+  if private.can_access_case(v_municipality_id, v_case_id) then
+    raise exception 'AAL1 taxpayer accessed a linked case';
+  end if;
+
   perform set_config('request.jwt.claim.sub', u_taxpayer_readonly::text, true);
   perform set_config(
     'request.jwt.claims',
     jsonb_build_object('sub', u_taxpayer_readonly, 'role', 'authenticated', 'aal', 'aal2')::text,
     true
   );
+  if not private.can_access_case(v_municipality_id, v_case_id) then
+    raise exception 'AAL2 linked taxpayer lost legitimate read access';
+  end if;
   v_denied := false;
   begin
     perform public.ia_submit_case_question(
@@ -321,6 +546,9 @@ begin
     jsonb_build_object('sub', u_taxpayer_owner, 'role', 'authenticated', 'aal', 'aal2')::text,
     true
   );
+  if not private.can_access_case(v_municipality_id, v_case_id) then
+    raise exception 'AAL2 taxpayer owner lost legitimate case access';
+  end if;
   v_first_question := public.ia_submit_case_question(
     v_case_id, 'Pergunta idempotente de homologacao', 'security-idempotency-v1'
   );
@@ -360,6 +588,19 @@ begin
     raise exception 'knowledge publication does not enforce legal reviewer role';
   end if;
   if not exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'vw_fiscal_chat_inbox'
+      and column_name = 'operational_priority'
+  ) then
+    raise exception 'fiscal inbox lacks server-side operational priority';
+  end if;
+  if pg_get_viewdef('public.vw_fiscal_chat_inbox'::regclass, true)
+       not like '%sla_due_at < now()%' then
+    raise exception 'fiscal inbox operational priority does not prioritize overdue SLA';
+  end if;
+  if not exists (
     select 1 from pg_policies
     where schemaname = 'public'
       and tablename = 'fiscal_chat_inbox'
@@ -367,6 +608,59 @@ begin
       and qual like '%can_view_case_staff%'
   ) then
     raise exception 'fiscal inbox policy is not case-scoped';
+  end if;
+
+  if not has_function_privilege(
+       'authenticated', 'private.has_municipality_role(uuid,text[])', 'execute'
+     )
+     or not has_function_privilege(
+       'authenticated', 'private.can_view_case_staff(uuid,uuid)', 'execute'
+     )
+     or not has_function_privilege(
+       'authenticated', 'private.can_review_case(uuid,uuid)', 'execute'
+     )
+     or not has_function_privilege(
+       'authenticated', 'private.can_access_case(uuid,uuid)', 'execute'
+     )
+     or not has_function_privilege(
+       'authenticated', 'public.ia_claim_case_question(uuid,uuid,uuid,text)', 'execute'
+     ) then
+    raise exception 'authenticated role is missing a required function grant';
+  end if;
+  if has_function_privilege(
+       'authenticated', 'private.current_municipality_membership_id(uuid,text[])', 'execute'
+     ) then
+    raise exception 'internal membership resolver is directly executable by authenticated';
+  end if;
+  if has_function_privilege('anon', 'private.has_municipality_role(uuid,text[])', 'execute')
+     or has_function_privilege('anon', 'private.can_view_case_staff(uuid,uuid)', 'execute')
+     or has_function_privilege('anon', 'private.can_review_case(uuid,uuid)', 'execute')
+     or has_function_privilege('anon', 'private.can_access_case(uuid,uuid)', 'execute')
+     or has_function_privilege(
+       'anon', 'public.ia_claim_case_question(uuid,uuid,uuid,text)', 'execute'
+     )
+     or has_function_privilege(
+       'service_role', 'private.has_municipality_role(uuid,text[])', 'execute'
+     )
+     or has_function_privilege(
+       'service_role', 'private.current_municipality_membership_id(uuid,text[])', 'execute'
+     )
+     or has_function_privilege(
+       'service_role', 'private.can_view_case_staff(uuid,uuid)', 'execute'
+     )
+     or has_function_privilege(
+       'service_role', 'private.can_review_case(uuid,uuid)', 'execute'
+     )
+     or has_function_privilege(
+       'service_role', 'private.can_access_case(uuid,uuid)', 'execute'
+     )
+     or has_function_privilege(
+       'service_role', 'public.ia_claim_case_question(uuid,uuid,uuid,text)', 'execute'
+     ) then
+    raise exception 'anon or service_role retained a regulated function grant';
+  end if;
+  if to_regprocedure('public.ia_claim_case_question(uuid,text)') is not null then
+    raise exception 'legacy unscoped claim function still exists';
   end if;
 end
 $test$;

@@ -3,6 +3,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { ArrowLeft, Building2, CircleAlert, FileSearch, ReceiptText } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
+import { useAuth } from "@/auth/AuthContext";
 import {
   EmptyState,
   ErrorState,
@@ -22,6 +23,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  blockReasonLabel,
+  debtClassificationRuleDetails,
+  divergenceTypeDetails,
+  fiscalOperationalReasonLabel,
+  fiscalRulePresentation,
+} from "@/lib/fiscal-labels";
 import { formatCnpj, formatCurrency, formatDate } from "@/lib/format";
 import { fiscalKeys, fiscalService } from "@/services/fiscal-service";
 import type { DebtPeriod, DivergenceReadModel, FiscalCaseReadModel } from "@/types/read-models";
@@ -60,27 +68,30 @@ function formatTaxId(value: string): string {
 }
 
 function Taxpayer360Page() {
+  const auth = useAuth();
+  const municipalityId = auth.access?.municipalityId ?? "";
   const { taxpayerId } = Route.useParams();
   const [activeTab, setActiveTab] = useState<DetailTab>("resumo");
 
   const summaries = useQuery({
-    queryKey: fiscalKeys.taxpayers,
-    queryFn: () => fiscalService.listTaxpayerSummaries(),
+    queryKey: fiscalKeys.taxpayers(municipalityId),
+    queryFn: () => fiscalService.listTaxpayerSummaries(municipalityId),
+    enabled: Boolean(municipalityId),
   });
   const debts = useQuery({
-    queryKey: fiscalKeys.debts(taxpayerId),
-    queryFn: () => fiscalService.listDebtPeriods(taxpayerId),
-    enabled: activeTab === "debitos",
+    queryKey: fiscalKeys.debts(municipalityId, taxpayerId),
+    queryFn: () => fiscalService.listDebtPeriods(municipalityId, taxpayerId),
+    enabled: Boolean(municipalityId) && activeTab === "debitos",
   });
   const divergences = useQuery({
-    queryKey: fiscalKeys.divergences(taxpayerId),
-    queryFn: () => fiscalService.listDivergences(taxpayerId),
-    enabled: activeTab === "divergencias",
+    queryKey: fiscalKeys.divergences(municipalityId, taxpayerId),
+    queryFn: () => fiscalService.listDivergences(municipalityId, taxpayerId),
+    enabled: Boolean(municipalityId) && activeTab === "divergencias",
   });
   const cases = useQuery({
-    queryKey: fiscalKeys.caseRows(taxpayerId),
-    queryFn: () => fiscalService.listFiscalCaseRows(taxpayerId),
-    enabled: activeTab === "casos",
+    queryKey: fiscalKeys.caseRows(municipalityId, taxpayerId),
+    queryFn: () => fiscalService.listFiscalCaseRows(municipalityId, taxpayerId),
+    enabled: Boolean(municipalityId) && activeTab === "casos",
   });
   const taxpayer = summaries.data?.find((item) => item.taxpayerId === taxpayerId);
 
@@ -159,7 +170,7 @@ function Taxpayer360Page() {
           </p>
           {taxpayer.primaryActionReason && (
             <p className="mt-1 pl-6 text-xs text-warning-foreground/80">
-              {taxpayer.primaryActionReason}
+              {fiscalOperationalReasonLabel(taxpayer.primaryActionReason)}
             </p>
           )}
         </div>
@@ -308,29 +319,36 @@ function DebtTab({ data, isLoading, isError }: QueryTabProps<DebtPeriod>) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.map((item) => (
-                <TableRow key={`${item.competence}-${item.ruleVersion}`}>
-                  <TableCell className="font-medium tabular-nums">
-                    {formatCompetence(item.competence)}
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge status={item.status} />
-                  </TableCell>
-                  <TableCell className="tabular-nums">{safeDate(item.firstDueOn)}</TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {formatCurrency(item.assessedAmount)}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {formatCurrency(item.overdueAmount)}
-                  </TableCell>
-                  <TableCell className="text-right font-medium tabular-nums">
-                    {formatCurrency(item.openBalance)}
-                  </TableCell>
-                  <TableCell className="text-xs">
-                    {item.ruleVersion} · {item.eligible ? "elegível" : "não elegível"}
-                  </TableCell>
-                </TableRow>
-              ))}
+              {data.map((item) => {
+                const rule = debtClassificationRuleDetails(item.ruleVersion);
+                return (
+                  <TableRow key={`${item.competence}-${item.ruleVersion}`}>
+                    <TableCell className="font-medium tabular-nums">
+                      {formatCompetence(item.competence)}
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status={item.status} />
+                    </TableCell>
+                    <TableCell className="tabular-nums">{safeDate(item.firstDueOn)}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatCurrency(item.assessedAmount)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatCurrency(item.overdueAmount)}
+                    </TableCell>
+                    <TableCell className="text-right font-medium tabular-nums">
+                      {formatCurrency(item.openBalance)}
+                    </TableCell>
+                    <TableCell className="min-w-72 text-xs">
+                      <span className="block font-medium">{rule.label}</span>
+                      <span className="mt-0.5 block text-muted-foreground">{rule.description}</span>
+                      <span className="mt-0.5 block text-muted-foreground">
+                        Resultado: {item.eligible ? "elegível para conferência" : "não elegível"}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
@@ -365,26 +383,44 @@ function DivergenceTab({ data, isLoading, isError }: QueryTabProps<DivergenceRea
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.map((item) => (
-                <TableRow key={item.divergenceId}>
-                  <TableCell className="min-w-48 font-medium">{item.divergenceType}</TableCell>
-                  <TableCell className="whitespace-nowrap text-xs tabular-nums">
-                    {safeDate(item.periodStart)} a {safeDate(item.periodEnd)}
-                  </TableCell>
-                  <TableCell className="text-right font-medium tabular-nums">
-                    {formatCurrency(item.differenceAmount)}
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge status={item.status} />
-                  </TableCell>
-                  <TableCell className="text-xs">
-                    {item.ruleCode} · v{item.ruleVersion ?? "—"}
-                  </TableCell>
-                  <TableCell className="max-w-64 text-xs text-muted-foreground">
-                    {item.blockReasons.length ? item.blockReasons.join(" · ") : "Sem bloqueio"}
-                  </TableCell>
-                </TableRow>
-              ))}
+              {data.map((item) => {
+                const rule = fiscalRulePresentation(
+                  item.ruleCode,
+                  item.ruleVersion,
+                  item.ruleName,
+                  item.ruleDescription,
+                );
+                return (
+                  <TableRow key={item.divergenceId}>
+                    <TableCell className="min-w-56">
+                      <span className="block font-medium">
+                        {divergenceTypeDetails(item.divergenceType).label}
+                      </span>
+                      <span className="mt-0.5 block text-xs text-muted-foreground">
+                        {divergenceTypeDetails(item.divergenceType).description}
+                      </span>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-xs tabular-nums">
+                      {safeDate(item.periodStart)} a {safeDate(item.periodEnd)}
+                    </TableCell>
+                    <TableCell className="text-right font-medium tabular-nums">
+                      {formatCurrency(item.differenceAmount)}
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status={item.status} />
+                    </TableCell>
+                    <TableCell className="min-w-64 text-xs">
+                      <span className="block font-medium">{rule.label}</span>
+                      <span className="mt-0.5 block text-muted-foreground">{rule.description}</span>
+                    </TableCell>
+                    <TableCell className="max-w-64 text-xs text-muted-foreground">
+                      {item.blockReasons.length
+                        ? item.blockReasons.map(blockReasonLabel).join(" · ")
+                        : "Sem bloqueio"}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>

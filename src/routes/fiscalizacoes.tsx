@@ -3,6 +3,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { AlertTriangle, FileSearch, Scale } from "lucide-react";
 import { useState } from "react";
 
+import { useAuth } from "@/auth/AuthContext";
 import {
   EmptyState,
   ErrorState,
@@ -22,6 +23,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  blockReasonLabel,
+  confidentialityLabel,
+  divergenceTypeDetails,
+  fiscalRulePresentation,
+} from "@/lib/fiscal-labels";
 import { formatCurrency, formatDate, maskCnpj } from "@/lib/format";
 import { fiscalKeys, fiscalService } from "@/services/fiscal-service";
 
@@ -55,16 +62,18 @@ function safeDate(value: string | null): string {
 }
 
 function InspectionsPage() {
+  const auth = useAuth();
+  const municipalityId = auth.access?.municipalityId ?? "";
   const [activeTab, setActiveTab] = useState<InspectionTab>("divergencias");
   const divergences = useQuery({
-    queryKey: fiscalKeys.divergences(),
-    queryFn: () => fiscalService.listDivergences(),
-    enabled: activeTab === "divergencias",
+    queryKey: fiscalKeys.divergences(municipalityId),
+    queryFn: () => fiscalService.listDivergences(municipalityId),
+    enabled: Boolean(municipalityId) && activeTab === "divergencias",
   });
   const cases = useQuery({
-    queryKey: fiscalKeys.caseRows(),
-    queryFn: () => fiscalService.listFiscalCaseRows(),
-    enabled: activeTab === "casos",
+    queryKey: fiscalKeys.caseRows(municipalityId),
+    queryFn: () => fiscalService.listFiscalCaseRows(municipalityId),
+    enabled: Boolean(municipalityId) && activeTab === "casos",
   });
 
   return (
@@ -82,7 +91,7 @@ function InspectionsPage() {
       <div className="rounded-md border border-warning/40 bg-warning-soft px-4 py-3 text-sm text-warning-foreground">
         <p className="flex items-start gap-2">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
-          Nenhuma ação externa ou efeito jurídico é produzido nesta tela de homologação.
+          Na operação assistida, esta tela não produz ação externa nem efeito jurídico.
         </p>
       </div>
 
@@ -99,7 +108,7 @@ function InspectionsPage() {
         <TabsContent value="divergencias">
           <SectionCard
             title="Divergências fiscais"
-            description="Resultado determinístico das regras ativas no ambiente de homologação."
+            description="Resultados das regras ativas, disponíveis para conferência da equipe fiscal."
             action={
               <Badge variant="secondary" className="tabular-nums">
                 {divergences.data?.length ?? 0} registro
@@ -110,7 +119,12 @@ function InspectionsPage() {
             {divergences.isLoading ? (
               <SectionSkeleton rows={6} />
             ) : divergences.isError ? (
-              <ErrorState message="Não foi possível carregar as divergências fiscais." />
+              <ErrorState
+                message="Não foi possível carregar as divergências fiscais."
+                error={divergences.error}
+                onRetry={() => void divergences.refetch()}
+                retrying={divergences.isFetching}
+              />
             ) : !divergences.data?.length ? (
               <EmptyState message="Nenhuma divergência está visível para esta sessão." />
             ) : (
@@ -129,47 +143,62 @@ function InspectionsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {divergences.data.map((item) => (
-                      <TableRow key={item.divergenceId}>
-                        <TableCell className="min-w-60">
-                          <span className="block font-medium">{item.taxpayerName}</span>
-                          <span className="block text-xs tabular-nums text-muted-foreground">
-                            {maskCnpj(item.taxId)}
-                          </span>
-                        </TableCell>
-                        <TableCell className="min-w-48 text-sm">{item.divergenceType}</TableCell>
-                        <TableCell className="whitespace-nowrap text-xs tabular-nums">
-                          {safeDate(item.periodStart)} a {safeDate(item.periodEnd)}
-                        </TableCell>
-                        <TableCell className="text-right font-medium tabular-nums">
-                          {formatCurrency(item.differenceAmount)}
-                        </TableCell>
-                        <TableCell>
-                          <StatusBadge status={item.status} />
-                        </TableCell>
-                        <TableCell>
-                          <span className="block text-xs font-medium">{item.ruleCode}</span>
-                          <span className="block text-xs text-muted-foreground">
-                            versão {item.ruleVersion ?? "—"}
-                          </span>
-                        </TableCell>
-                        <TableCell className="max-w-64 text-xs text-muted-foreground">
-                          {item.blockReasons.length > 0
-                            ? item.blockReasons.join(" · ")
-                            : "Sem bloqueio registrado"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button asChild variant="outline" size="sm">
-                            <Link
-                              to="/contribuintes/$taxpayerId"
-                              params={{ taxpayerId: item.taxpayerId }}
-                            >
-                              Ver 360
-                            </Link>
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {divergences.data.map((item) => {
+                      const rule = fiscalRulePresentation(
+                        item.ruleCode,
+                        item.ruleVersion,
+                        item.ruleName,
+                        item.ruleDescription,
+                      );
+                      return (
+                        <TableRow key={item.divergenceId}>
+                          <TableCell className="min-w-60">
+                            <span className="block font-medium">{item.taxpayerName}</span>
+                            <span className="block text-xs tabular-nums text-muted-foreground">
+                              {maskCnpj(item.taxId)}
+                            </span>
+                          </TableCell>
+                          <TableCell className="min-w-56">
+                            <span className="block text-sm font-medium">
+                              {divergenceTypeDetails(item.divergenceType).label}
+                            </span>
+                            <span className="mt-0.5 block text-xs text-muted-foreground">
+                              {divergenceTypeDetails(item.divergenceType).description}
+                            </span>
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap text-xs tabular-nums">
+                            {safeDate(item.periodStart)} a {safeDate(item.periodEnd)}
+                          </TableCell>
+                          <TableCell className="text-right font-medium tabular-nums">
+                            {formatCurrency(item.differenceAmount)}
+                          </TableCell>
+                          <TableCell>
+                            <StatusBadge status={item.status} />
+                          </TableCell>
+                          <TableCell className="min-w-64">
+                            <span className="block text-xs font-medium">{rule.label}</span>
+                            <span className="mt-0.5 block text-xs text-muted-foreground">
+                              {rule.description}
+                            </span>
+                          </TableCell>
+                          <TableCell className="max-w-64 text-xs text-muted-foreground">
+                            {item.blockReasons.length > 0
+                              ? item.blockReasons.map(blockReasonLabel).join(" · ")
+                              : "Sem bloqueio registrado"}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button asChild variant="outline" size="sm">
+                              <Link
+                                to="/contribuintes/$taxpayerId"
+                                params={{ taxpayerId: item.taxpayerId }}
+                              >
+                                Ver 360
+                              </Link>
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
@@ -190,7 +219,12 @@ function InspectionsPage() {
             {cases.isLoading || cases.fetchStatus === "idle" ? (
               <SectionSkeleton rows={5} />
             ) : cases.isError ? (
-              <ErrorState message="Não foi possível carregar os procedimentos fiscais." />
+              <ErrorState
+                message="Não foi possível carregar os procedimentos fiscais."
+                error={cases.error}
+                onRetry={() => void cases.refetch()}
+                retrying={cases.isFetching}
+              />
             ) : !cases.data?.length ? (
               <EmptyState message="Nenhum procedimento fiscal está visível para esta sessão." />
             ) : (
@@ -213,7 +247,7 @@ function InspectionsPage() {
                         <TableCell>
                           <span className="block font-medium tabular-nums">{item.caseNumber}</span>
                           <span className="block text-xs text-muted-foreground">
-                            {item.confidentiality}
+                            {confidentialityLabel(item.confidentiality)}
                           </span>
                         </TableCell>
                         <TableCell className="min-w-60 font-medium">{item.taxpayerName}</TableCell>

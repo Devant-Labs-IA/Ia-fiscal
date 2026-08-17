@@ -1,4 +1,12 @@
-import { KeyRound, LockKeyhole, QrCode, RefreshCw, ShieldCheck } from "lucide-react";
+import {
+  KeyRound,
+  LockKeyhole,
+  Mail,
+  QrCode,
+  RefreshCw,
+  ShieldCheck,
+  UserPlus,
+} from "lucide-react";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 
@@ -30,11 +38,23 @@ function LoadingScreen() {
 
 function LoginScreen() {
   const auth = useAuth();
+  const [mode, setMode] = useState<"login" | "signup" | "recovery">("login");
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmation, setConfirmation] = useState("");
   const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
-  async function submit(event: FormEvent) {
+  function changeMode(nextMode: "login" | "signup" | "recovery") {
+    if (busy) return;
+    setMode(nextMode);
+    setPassword("");
+    setConfirmation("");
+    setNotice(null);
+  }
+
+  async function submitLogin(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
     try {
@@ -48,17 +68,45 @@ function LoginScreen() {
     }
   }
 
-  async function resetPassword() {
-    if (!email.trim()) {
-      toast.info("Informe seu e-mail primeiro.");
+  async function submitSignup(event: FormEvent) {
+    event.preventDefault();
+    if (password !== confirmation) {
+      toast.error("As senhas não coincidem.");
+      return;
+    }
+    if (password.length < 12) {
+      toast.error("A senha precisa ter pelo menos 12 caracteres.");
       return;
     }
     setBusy(true);
     try {
-      await auth.requestPasswordReset(email.trim());
-      toast.success("Solicitação registrada", {
-        description: "Se o usuário existir, o Supabase enviará as instruções de recuperação.",
+      await auth.signUp(fullName.trim(), email.trim(), password);
+      setPassword("");
+      setConfirmation("");
+      setNotice(
+        "Confira seu e-mail para confirmar a conta. O acesso aos dados só é liberado após a aprovação do vínculo.",
+      );
+      toast.success("Cadastro recebido", {
+        description: "Confirme o endereço pelo e-mail enviado antes de entrar.",
       });
+    } catch {
+      toast.error("O cadastro não pôde ser concluído", {
+        description: "Revise os dados ou aguarde antes de tentar novamente.",
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitRecovery(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    try {
+      await auth.requestPasswordReset(email.trim());
+      setNotice(
+        "Se esse e-mail estiver cadastrado, você receberá um link para definir uma nova senha.",
+      );
+      toast.success("Solicitação registrada");
     } catch {
       toast.error("A recuperação não pôde ser iniciada.");
     } finally {
@@ -75,7 +123,7 @@ function LoginScreen() {
           </div>
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-              Ambiente de homologação
+              Operação assistida
             </p>
             <h1 id="login-title" className="text-2xl font-semibold">
               IA Fiscal
@@ -84,48 +132,199 @@ function LoginScreen() {
         </div>
 
         <p className="mt-5 text-sm text-muted-foreground">
-          Acesso restrito a usuários vinculados à Prefeitura, ao contribuinte ou à contabilidade.
-          Nenhum aviso externo é enviado neste ambiente.
+          Entre, cadastre uma conta ou recupere sua senha. Todo acesso a dados exige vínculo
+          aprovado e verificação em duas etapas.
         </p>
 
-        <form className="mt-6 space-y-4" onSubmit={submit}>
-          <div className="space-y-2">
-            <Label htmlFor="email">E-mail institucional</Label>
-            <Input
-              id="email"
-              type="email"
-              autoComplete="username"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Senha</Label>
-            <Input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              required
-            />
-          </div>
-
-          <Button className="w-full" type="submit" disabled={busy}>
-            <LockKeyhole className="size-4" aria-hidden />
-            {busy ? "Validando…" : "Entrar com segurança"}
+        <div
+          className="mt-5 grid grid-cols-3 gap-1 rounded-lg bg-muted p-1"
+          role="tablist"
+          aria-label="Opções de acesso"
+        >
+          <Button
+            id="access-tab-login"
+            type="button"
+            size="sm"
+            variant={mode === "login" ? "secondary" : "ghost"}
+            role="tab"
+            aria-selected={mode === "login"}
+            aria-controls="access-panel-login"
+            disabled={busy}
+            onClick={() => changeMode("login")}
+          >
+            Entrar
           </Button>
           <Button
-            className="w-full"
+            id="access-tab-signup"
             type="button"
-            variant="ghost"
-            disabled={busy}
-            onClick={() => void resetPassword()}
+            size="sm"
+            variant={mode === "signup" ? "secondary" : "ghost"}
+            role="tab"
+            aria-selected={mode === "signup"}
+            aria-controls="access-panel-signup"
+            disabled={busy || !runtimeConfig.allowSignup}
+            onClick={() => changeMode("signup")}
           >
-            Recuperar senha
+            Cadastrar
           </Button>
-        </form>
+          <Button
+            id="access-tab-recovery"
+            type="button"
+            size="sm"
+            variant={mode === "recovery" ? "secondary" : "ghost"}
+            role="tab"
+            aria-selected={mode === "recovery"}
+            aria-controls="access-panel-recovery"
+            disabled={busy}
+            onClick={() => changeMode("recovery")}
+          >
+            Recuperar
+          </Button>
+        </div>
+
+        {notice ? (
+          <p
+            className="mt-4 rounded-md border border-border bg-primary-soft px-3 py-3 text-sm"
+            role="status"
+            aria-live="polite"
+          >
+            {notice}
+          </p>
+        ) : null}
+
+        {mode === "login" ? (
+          <form
+            id="access-panel-login"
+            className="mt-6 space-y-4"
+            role="tabpanel"
+            aria-labelledby="access-tab-login"
+            onSubmit={submitLogin}
+          >
+            <div className="space-y-2">
+              <Label htmlFor="login-email">E-mail</Label>
+              <Input
+                id="login-email"
+                type="email"
+                autoComplete="username"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="login-password">Senha</Label>
+              <Input
+                id="login-password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+              />
+            </div>
+            <Button className="w-full" type="submit" disabled={busy}>
+              <LockKeyhole className="size-4" aria-hidden />
+              {busy ? "Validando…" : "Entrar com segurança"}
+            </Button>
+          </form>
+        ) : null}
+
+        {mode === "signup" ? (
+          <form
+            id="access-panel-signup"
+            className="mt-6 space-y-4"
+            role="tabpanel"
+            aria-labelledby="access-tab-signup"
+            onSubmit={submitSignup}
+          >
+            <div className="space-y-2">
+              <Label htmlFor="signup-name">Nome completo</Label>
+              <Input
+                id="signup-name"
+                autoComplete="name"
+                value={fullName}
+                onChange={(event) => setFullName(event.target.value)}
+                minLength={3}
+                maxLength={120}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="signup-email">E-mail</Label>
+              <Input
+                id="signup-email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="signup-password">Crie uma senha</Label>
+              <Input
+                id="signup-password"
+                type="password"
+                autoComplete="new-password"
+                minLength={12}
+                maxLength={128}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="signup-confirmation">Confirme a senha</Label>
+              <Input
+                id="signup-confirmation"
+                type="password"
+                autoComplete="new-password"
+                minLength={12}
+                maxLength={128}
+                value={confirmation}
+                onChange={(event) => setConfirmation(event.target.value)}
+                required
+              />
+            </div>
+            <Button className="w-full" type="submit" disabled={busy}>
+              <UserPlus className="size-4" aria-hidden />
+              {busy ? "Cadastrando…" : "Criar meu acesso"}
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              O cadastro cria somente a identidade. Permissões fiscais ou administrativas dependem
+              de aprovação separada.
+            </p>
+          </form>
+        ) : null}
+
+        {mode === "recovery" ? (
+          <form
+            id="access-panel-recovery"
+            className="mt-6 space-y-4"
+            role="tabpanel"
+            aria-labelledby="access-tab-recovery"
+            onSubmit={submitRecovery}
+          >
+            <div className="space-y-2">
+              <Label htmlFor="recovery-email">E-mail cadastrado</Label>
+              <Input
+                id="recovery-email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+              />
+            </div>
+            <Button className="w-full" type="submit" disabled={busy}>
+              <Mail className="size-4" aria-hidden />
+              {busy ? "Solicitando…" : "Enviar link de recuperação"}
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Por segurança, a tela não informa se um endereço existe na base.
+            </p>
+          </form>
+        ) : null}
 
         {runtimeConfig.allowDemo && (
           <div className="mt-5 border-t border-border pt-5">
@@ -344,10 +543,17 @@ function PasswordRecoveryScreen() {
 
     setBusy(true);
     try {
-      await auth.updateRecoveredPassword(password);
-      toast.success("Senha atualizada", {
-        description: "Todas as sessões foram encerradas. Entre novamente com a nova senha.",
-      });
+      const allSessionsEnded = await auth.updateRecoveredPassword(password);
+      if (allSessionsEnded) {
+        toast.success("Senha atualizada", {
+          description: "As sessões foram encerradas. Entre novamente com a nova senha.",
+        });
+      } else {
+        toast.warning("Senha atualizada", {
+          description:
+            "A sessão atual foi encerrada, mas não foi possível confirmar o encerramento de todas as sessões anteriores.",
+        });
+      }
     } catch {
       toast.error("A senha não pôde ser atualizada", {
         description: "Solicite um novo link de recuperação e tente novamente.",
@@ -450,8 +656,11 @@ function AccessPendingScreen() {
             disabled={busy}
             onClick={async () => {
               setBusy(true);
-              await auth.reloadAccess();
-              setBusy(false);
+              try {
+                await auth.reloadAccess();
+              } finally {
+                setBusy(false);
+              }
             }}
           >
             <RefreshCw className="size-4" aria-hidden />

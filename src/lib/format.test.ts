@@ -12,4 +12,9 @@ describe("identificadores fiscais", () => {
     expect(masked).toContain("***");
     expect(masked).not.toContain("3456780001");
   });
+
+  it("não inventa um CNPJ quando o identificador está protegido", () => {
+    expect(maskCnpj("identificador protegido")).toBe("identificador protegido");
+    expect(maskCnpj("")).toBe("Identificador protegido");
+  });
 });

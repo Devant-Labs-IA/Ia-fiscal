@@ -8,6 +8,10 @@ type SearchRequest = {
   offset?: unknown;
 };
 
+const BUILT_IN_ALLOWED_ORIGINS = new Set([
+  "https://ia-fiscal-homologacao-diego-4685-diego-4685s-projects.vercel.app",
+]);
+
 function requiredEnv(name: string): string {
   const value = Deno.env.get(name)?.trim();
   if (!value) throw new Error(`missing_env:${name}`);
@@ -16,10 +20,13 @@ function requiredEnv(name: string): string {
 
 function corsHeaders(request: Request): Record<string, string> {
   const origin = request.headers.get("origin")?.trim();
-  const allowed = (Deno.env.get("IA_ALLOWED_ORIGINS") ?? "")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
+  const allowed = new Set([
+    ...BUILT_IN_ALLOWED_ORIGINS,
+    ...(Deno.env.get("IA_ALLOWED_ORIGINS") ?? "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean),
+  ]);
 
   const headers: Record<string, string> = {
     "access-control-allow-headers":
@@ -28,7 +35,7 @@ function corsHeaders(request: Request): Record<string, string> {
     "vary": "Origin",
   };
 
-  if (origin && allowed.includes(origin)) {
+  if (origin && allowed.has(origin)) {
     headers["access-control-allow-origin"] = origin;
   }
   return headers;
@@ -113,11 +120,20 @@ Deno.serve(async (request: Request) => {
     auth: { persistSession: false, autoRefreshToken: false },
     global: {
       headers: {
-        authorization,
+        Authorization: authorization,
         "x-ia-search": "ia-fiscal-search-v1",
       },
     },
   });
+
+  const token = authorization.slice("bearer ".length).trim();
+  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+  if (claimsError || !claimsData?.claims?.sub) {
+    return json(request, 401, { error: "invalid_authorization" });
+  }
+  if (claimsData.claims.aal !== "aal2") {
+    return json(request, 403, { error: "aal2_required" });
+  }
 
   const { data, error } = await supabase.rpc("ia_search_fiscal", {
     p_municipality_id: municipalityId,
