@@ -72,7 +72,9 @@ describe("bloqueio de primeiro acesso", () => {
       await screen.findByText("Acompanhe a plataforma sem assumir a função fiscal"),
     ).toBeTruthy();
     expect(screen.getByRole("dialog").className).toContain("max-h-[calc(100dvh-1rem)]");
-    expect(document.querySelector(".overflow-y-auto")).toBeTruthy();
+    const instructions = screen.getByRole("region", { name: /Instruções da etapa 1:/ });
+    expect(instructions.className).toContain("overflow-y-auto");
+    expect(instructions.getAttribute("tabindex")).toBe("0");
   });
 
   it("mantém a falha de carregamento em um modal ativo e não dispensável", async () => {

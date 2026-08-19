@@ -9,6 +9,7 @@ import {
   productionBlockers,
   taxpayers,
 } from "@/data/mocks";
+import type { KnowledgeOperationsSnapshot } from "@/features/knowledge/knowledge-models";
 import { validateTaxpayerInput } from "@/lib/taxpayer-validation";
 import type { FiscalService } from "@/services/fiscal-service";
 import type { CreateTaxpayerInput, Taxpayer, UpdateTaxpayerInput } from "@/types/fiscal";
@@ -187,6 +188,7 @@ const knowledgeRows: KnowledgeArticleReadModel[] = [
   {
     municipalityId: DEMO_MUNICIPALITY_ID,
     articleId: "demo-knowledge-1",
+    revisionId: "demo-knowledge-revision-1",
     intentKey: "consulta_debito",
     semanticVersion: 1,
     canonicalQuestion: "Como consultar a composição de um débito municipal?",
@@ -198,8 +200,180 @@ const knowledgeRows: KnowledgeArticleReadModel[] = [
     validUntil: null,
     publishedAt: dashboardSummary.referenceDate,
     isTest: true,
+    citations: [
+      {
+        citationId: "demo-citation-1",
+        citationLabel: "Demonstração — artigo 1º",
+        quotedExcerpt:
+          "Trecho fictício usado apenas para demonstrar a apresentação de uma citação oficial.",
+        sourceId: "demo-source-1",
+        sourceTitle: "Código Tributário Municipal",
+        officialIdentifier: "Lei Complementar nº 399/2024",
+        officialUrl: "https://cordeiropolis.sp.gov.br/",
+        sourceVersionId: "demo-source-version-1",
+        sourceVersionNumber: 1,
+        sourceVersionStatus: "published",
+        sourceSha256: "0".repeat(64),
+        publicationDate: "2024-12-20",
+        validFrom: "2025-01-01",
+        validUntil: null,
+        sectionId: "demo-section-1",
+        sectionKey: "artigo_1",
+        sectionHeading: "Artigo 1º",
+        sectionContentSha256: "1".repeat(64),
+        isValid: true,
+        blockers: [],
+      },
+    ],
   },
 ];
+
+const knowledgeOperationsSnapshot: KnowledgeOperationsSnapshot = {
+  verified: true,
+  municipalityId: DEMO_MUNICIPALITY_ID,
+  municipalityName: "Cordeirópolis",
+  municipalitySlug: "cordeiropolis-sp",
+  checkedAt: dashboardSummary.referenceDate,
+  capabilities: {
+    canView: true,
+    canSearch: true,
+    canSubmitCandidates: false,
+    canReviewCandidates: false,
+    canReviewSourceVersions: false,
+    canReviewArticles: false,
+    canPublishSourceVersions: false,
+    canPublishArticles: false,
+  },
+  summary: {
+    officialSources: 1,
+    totalSourceVersions: 1,
+    publishedSourceVersions: 0,
+    pendingSourceReviews: 1,
+    pendingSourceExtractions: 1,
+    pendingSourcePublications: 0,
+    pendingArticleReviews: 0,
+    pendingCandidates: 0,
+    pendingEmbeddings: 0,
+    eligibleSections: 1,
+    indexedSections: 1,
+    indexedChunks: 1,
+    lastIndexedAt: dashboardSummary.referenceDate,
+    openChanges: 1,
+    failedFetches24h: 0,
+  },
+  sources: [
+    {
+      sourceId: "demo-source-1",
+      title: "Código Tributário Municipal",
+      officialIdentifier: "Lei Complementar nº 399/2024",
+      sourceType: "law",
+      taxScope: "ISSQN",
+      status: "under_review",
+      officialUrl: "https://cordeiropolis.sp.gov.br/",
+      trustTier: "official_primary",
+      endpointStatus: "available",
+      lastFetchStatus: "success",
+      lastCheckedAt: dashboardSummary.referenceDate,
+      lastChangeDetectedAt: dashboardSummary.referenceDate,
+      lastErrorCode: null,
+      lastErrorDetail: null,
+      latestVersionId: "demo-source-version-1",
+      latestVersionNumber: 1,
+      latestVersionStatus: "under_review",
+      latestValidFrom: "2025-01-01",
+      latestValidUntil: null,
+      blockers: ["source_review_required"],
+      canReview: false,
+      canPublish: false,
+    },
+  ],
+  changes: [
+    {
+      changeSetId: "demo-change-1",
+      sourceId: "demo-source-1",
+      sourceTitle: "Código Tributário Municipal",
+      changeType: "first_version",
+      status: "pending_review",
+      detectedAt: dashboardSummary.referenceDate,
+      fromSha256: null,
+      toSha256: "demo-content-hash",
+      candidateVersionId: "demo-source-version-1",
+      candidateVersionNumber: 1,
+      candidateVersionStatus: "under_review",
+      candidateValidFrom: "2025-01-01",
+      candidateValidUntil: null,
+      officialUrl: "https://cordeiropolis.sp.gov.br/",
+      candidateContentPreview:
+        "Art. 1º Esta lei institui as normas tributárias aplicáveis ao Município de Cordeirópolis.",
+      sectionCount: 1,
+      diffSummary: "Primeira versão oficial identificada para revisão.",
+      blockers: ["source_review_required"],
+      canReview: false,
+      canPublish: false,
+    },
+  ],
+  reviews: [],
+  health: {
+    status: "attention",
+    staleSources: 0,
+    failedSources: 0,
+    blockedSources: 1,
+    lastSuccessfulFetchAt: dashboardSummary.referenceDate,
+    blockers: ["source_review_required"],
+  },
+  schedule: {
+    enabled: false,
+    cadenceLabel: "Todos os dias às 03h00",
+    timeZone: "America/Sao_Paulo",
+    nextRunAt: null,
+    lastRunAt: dashboardSummary.referenceDate,
+    lastRunStatus: "completed_unchanged",
+    runtimeVerified: false,
+    blockers: ["demo_runtime_simulated"],
+  },
+  index: {
+    status: "attention",
+    indexedSections: 1,
+    eligibleSections: 1,
+    embeddingModel: "Modelo semântico oficial",
+    lastIndexedAt: dashboardSummary.referenceDate,
+    blockers: [],
+  },
+  ocr: {
+    contractVersion: "ia-fiscal-knowledge-ocr/v1",
+    policyVersion: "ia-fiscal-knowledge-ocr-policy/v1",
+    runtimeVerified: false,
+    hasAttention: false,
+    state: "blocked",
+    jobs: {
+      queued: 0,
+      processing: 0,
+      completed: 0,
+      deadLetter: 0,
+      blockedPageLimit: 0,
+    },
+    lastEventAt: null,
+    limits: {
+      maxPages: 120,
+      maxPageCharacters: 1_000_000,
+      maxTotalCharacters: 8_000_000,
+      abovePageLimit: "manual_review_required",
+    },
+    candidateStatus: "under_review",
+    autoPublish: false,
+    blockers: ["knowledge_ocr_runtime_not_verified"],
+  },
+  reviewer: {
+    verified: false,
+    configured: false,
+    activeCount: 0,
+    currentUserCanReview: false,
+    blockers: ["reviewer_state_not_verified"],
+  },
+  coverage: [],
+  coverageLabel: "Cobertura inicial governada",
+  corpusIntegral: false,
+};
 
 const portalRows: PortalCaseReadModel[] = caseRows.slice(0, 2).map((item) => ({
   municipalityId: item.municipalityId,
@@ -380,6 +554,88 @@ export const mockFiscalService: FiscalService = {
     resolve(hasDemoMunicipality(municipalityId) ? recipientRows : []),
   listKnowledgeArticles: (municipalityId) =>
     resolve(hasDemoMunicipality(municipalityId) ? knowledgeRows : []),
+  getKnowledgeOperationsSnapshot: (municipalityId) => {
+    if (!hasDemoMunicipality(municipalityId)) throw new Error("invalid_municipality_id");
+    return resolve(knowledgeOperationsSnapshot);
+  },
+  async listKnowledgeReviewerCapabilities() {
+    throw new Error("demo_reviewer_directory_unavailable");
+  },
+  async grantKnowledgeReviewerCapability() {
+    throw new Error("demo_write_disabled");
+  },
+  async revokeKnowledgeReviewerCapability() {
+    throw new Error("demo_write_disabled");
+  },
+  async searchLegalKnowledge(municipalityId, query) {
+    if (!hasDemoMunicipality(municipalityId)) throw new Error("invalid_municipality_id");
+    const normalized = query.trim();
+    if (normalized.length < 5 || normalized.length > 500) {
+      throw new Error("invalid_knowledge_search_query");
+    }
+    return resolve({
+      verified: true,
+      correlationId: "00000000-0000-4000-8000-000000000001",
+      municipalityId,
+      query: normalized,
+      answered: true,
+      answer:
+        "O recolhimento deve observar o prazo definido na legislação municipal vigente. Confira o dispositivo oficial antes de aplicar a orientação ao caso concreto.",
+      confidence: 0.91,
+      retrievalMode: "hybrid",
+      searchedAt: dashboardSummary.referenceDate,
+      citations: [
+        {
+          citationId: "demo-search-citation-1",
+          sourceId: "demo-source-1",
+          sourceTitle: "Código Tributário Municipal",
+          officialIdentifier: "Lei Complementar nº 399/2024",
+          officialUrl: "https://cordeiropolis.sp.gov.br/",
+          sourceVersionId: "demo-source-version-1",
+          sectionId: "demo-section-1",
+          sectionKey: "artigo_1",
+          sectionHeading: "Artigo 1º",
+          citationLabel: "Art. 1º",
+          quotedExcerpt:
+            "Esta lei institui as normas tributárias aplicáveis ao Município de Cordeirópolis.",
+          publicationDate: "2024-12-20",
+          validFrom: "2025-01-01",
+          validUntil: null,
+          relevance: 0.91,
+          isValid: true,
+          blockers: [],
+        },
+      ],
+      blockers: [],
+    });
+  },
+  async submitKnowledgeCandidate() {
+    throw new Error("demo_write_disabled");
+  },
+  async getKnowledgeCandidateEvidence() {
+    throw new Error("demo_evidence_unavailable");
+  },
+  async reviewKnowledgeCandidate() {
+    throw new Error("demo_write_disabled");
+  },
+  async getKnowledgeArticleEvidence() {
+    throw new Error("demo_evidence_unavailable");
+  },
+  async getLegalSourceChangeEvidence() {
+    throw new Error("demo_evidence_unavailable");
+  },
+  async reviewLegalSourceChange() {
+    throw new Error("demo_write_disabled");
+  },
+  async publishLegalSourceVersion() {
+    throw new Error("demo_write_disabled");
+  },
+  async reviewKnowledgeArticle() {
+    throw new Error("demo_write_disabled");
+  },
+  async publishKnowledgeArticle() {
+    throw new Error("demo_write_disabled");
+  },
   listPortalCases: (municipalityId) =>
     resolve(hasDemoMunicipality(municipalityId) ? portalRows : []),
   listCaseMessages: (municipalityId, caseId) => {

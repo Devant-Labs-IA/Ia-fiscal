@@ -151,7 +151,12 @@ export function OnboardingDialog({
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-7">
+            <div
+              className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:px-7"
+              role="region"
+              aria-label={`Instruções da etapa ${stepIndex + 1}: ${step.title}`}
+              tabIndex={0}
+            >
               {step.routeLabel ? (
                 <p className="mb-4 rounded-md border border-border bg-background px-3 py-2 text-sm">
                   <span className="font-medium">Onde encontrar:</span> menu {step.routeLabel}

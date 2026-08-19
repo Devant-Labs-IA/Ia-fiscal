@@ -15,6 +15,17 @@
 - Hierarquia tipográfica: título da página, explicação operacional, seção e metadados.
 - Tabelas preservam leitura rápida e devem ter alternativa responsiva.
 
+## Segundo Cérebro
+
+- Tese visual: mesa de pesquisa jurídica municipal, onde a evidência oficial domina a resposta.
+- Hierarquia obrigatória: pergunta, resultado ou recusa, citações com vigência e ação supervisionada.
+- A assinatura da superfície é uma trilha de evidências numerada; ela conecta cada síntese ao dispositivo oficial sem adicionar cartões decorativos.
+- A busca fecha com segurança: sem origem HTTPS, texto citado, versão vigente ou verificação do servidor, a interface apresenta recusa e não mostra uma resposta conclusiva.
+- Respostas candidatas são sempre identificadas como propostas para revisão humana; nunca aparentam estar publicadas ou aprendidas automaticamente.
+- A agenda de atualização e a cobertura do índice mostram estados humanos e horários de Brasília, sem expor expressões cron, nomes de RPC, modelos internos ou códigos técnicos.
+- Em celular, resposta e evidências seguem a ordem de leitura; em desktop, podem ficar lado a lado sem reduzir a largura de leitura jurídica.
+- Movimento é restrito a indicadores de carregamento e respeita `prefers-reduced-motion`.
+
 ## Experiência orientada
 
 - Primeiro acesso abre treinamento modal, acessível e obrigatório.

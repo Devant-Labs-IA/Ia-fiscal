@@ -12,7 +12,7 @@ const operationalMigrationPath =
 const assignmentRoleMigrationPath =
   "supabase/migrations/20260804004659_revalidate_case_assignment_roles.sql";
 const internalAdminMigrationPath =
-  "supabase/migrations/20260812033000_harden_internal_admin_and_taxpayer_grants.sql";
+  "supabase/migrations/20260812021624_harden_internal_admin_and_taxpayer_grants.sql";
 
 function source(path: string): string {
   return readFileSync(resolve(projectRoot, path), "utf8");

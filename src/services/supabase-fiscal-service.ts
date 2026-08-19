@@ -1,4 +1,34 @@
 import { runtimeConfig } from "@/config/runtime";
+import type {
+  KnowledgeArticleEvidence,
+  KnowledgeCandidateEvidence,
+  KnowledgeCandidateInput,
+  KnowledgeCandidateReviewDecision,
+  KnowledgeCatalogCoverage,
+  KnowledgeCitationEvidence,
+  KnowledgeSearchCitation,
+  KnowledgeSearchResult,
+  KnowledgeOfficialSource,
+  KnowledgeOperationsSnapshot,
+  KnowledgeReviewerDirectory,
+  KnowledgeReviewerEligibleStaff,
+  KnowledgeReviewerGrant,
+  KnowledgeReviewDecision,
+  KnowledgeReviewQueueItem,
+  KnowledgeSourceChangeEvidence,
+  KnowledgeSourceChangeItemEvidence,
+  KnowledgeSourceSectionEvidence,
+  KnowledgeSourceChange,
+  KnowledgeSourceEvidencePageRequest,
+  LegalSourceReviewMetadata,
+  LegalSourceReviewDecision,
+} from "@/features/knowledge/knowledge-models";
+import {
+  KNOWLEDGE_EVIDENCE_CHANGE_ITEM_PAGE_SIZE,
+  KNOWLEDGE_EVIDENCE_CONTENT_PAGE_SIZE,
+  KNOWLEDGE_EVIDENCE_SECTION_PAGE_SIZE,
+  KNOWLEDGE_MIN_ANSWER_CONFIDENCE,
+} from "@/features/knowledge/knowledge-models";
 import { formatDateTime } from "@/lib/format";
 import {
   blockReasonSummary,
@@ -69,6 +99,24 @@ type AssistedSafetyRpcClient = {
   };
 };
 
+type KnowledgeRpcResponse = {
+  data: unknown;
+  error: { code?: string; message?: string } | null;
+};
+
+type KnowledgeReadRpcClient = {
+  rpc(
+    functionName: string,
+    args: Record<string, unknown>,
+  ): {
+    abortSignal(signal: AbortSignal): Promise<KnowledgeRpcResponse>;
+  };
+};
+
+type KnowledgeWriteRpcClient = {
+  rpc(functionName: string, args: Record<string, unknown>): Promise<KnowledgeRpcResponse>;
+};
+
 class FiscalDataError extends Error {
   constructor(readonly code: string) {
     super(`fiscal_data_error:${code}`);
@@ -107,6 +155,122 @@ function objectValue(value: unknown): Record<string, unknown> {
   return value != null && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {};
+}
+
+function strictObject(value: unknown, code: string): Row {
+  if (value == null || typeof value !== "object" || Array.isArray(value)) {
+    throw new FiscalDataError(code);
+  }
+  return value as Row;
+}
+
+function strictArray(value: unknown, code: string): unknown[] {
+  if (!Array.isArray(value)) throw new FiscalDataError(code);
+  return value;
+}
+
+function strictString(value: unknown, code: string): string {
+  if (typeof value !== "string" || !value.trim()) throw new FiscalDataError(code);
+  return value;
+}
+
+function strictText(value: unknown, code: string): string {
+  if (typeof value !== "string") throw new FiscalDataError(code);
+  return value;
+}
+
+function strictNullableString(value: unknown, code: string): string | null {
+  if (value === null) return null;
+  if (typeof value !== "string") throw new FiscalDataError(code);
+  return value || null;
+}
+
+function strictOptionalNullableString(value: unknown, code: string): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "string") throw new FiscalDataError(code);
+  return value || null;
+}
+
+function strictNumber(value: unknown, code: string): number {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    throw new FiscalDataError(code);
+  }
+  return value;
+}
+
+function strictInteger(value: unknown, code: string): number {
+  const parsed = strictNumber(value, code);
+  if (!Number.isSafeInteger(parsed)) throw new FiscalDataError(code);
+  return parsed;
+}
+
+function strictUnitInterval(value: unknown, code: string): number {
+  const parsed = strictNumber(value, code);
+  if (parsed > 1) throw new FiscalDataError(code);
+  return parsed;
+}
+
+function strictNullableNumber(value: unknown, code: string): number | null {
+  if (value === null) return null;
+  return strictNumber(value, code);
+}
+
+function strictNullableInteger(value: unknown, code: string): number | null {
+  if (value === null) return null;
+  return strictInteger(value, code);
+}
+
+function strictBoolean(value: unknown, code: string): boolean {
+  if (typeof value !== "boolean") throw new FiscalDataError(code);
+  return value;
+}
+
+function isSecureHttpUrl(value: string | null): boolean {
+  if (!value) return false;
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function validatedIanaTimeZone(value: unknown): string | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  try {
+    new Intl.DateTimeFormat("pt-BR", { timeZone: value }).format(new Date(0));
+    return value;
+  } catch {
+    return null;
+  }
+}
+
+function currentDateInSaoPaulo(): string {
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function isCurrentLegalCitation(citation: KnowledgeSearchCitation): boolean {
+  const today = currentDateInSaoPaulo();
+  return Boolean(
+    citation.publicationDate &&
+    /^\d{4}-\d{2}-\d{2}$/.test(citation.publicationDate) &&
+    citation.publicationDate <= today &&
+    citation.validFrom &&
+    /^\d{4}-\d{2}-\d{2}$/.test(citation.validFrom) &&
+    citation.validFrom <= today &&
+    (!citation.validUntil ||
+      (/^\d{4}-\d{2}-\d{2}$/.test(citation.validUntil) && citation.validUntil >= today)),
+  );
+}
+
+function strictStringArray(value: unknown, code: string): string[] {
+  const values = strictArray(value, code);
+  if (values.some((item) => typeof item !== "string")) throw new FiscalDataError(code);
+  return values as string[];
 }
 
 function throwIfError(error: { code?: string; message?: string } | null): void {
@@ -408,30 +572,1312 @@ async function listNotificationRecipients(
   }));
 }
 
+function mapKnowledgeCitation(value: unknown, code: string): KnowledgeCitationEvidence {
+  const row = strictObject(value, code);
+  return {
+    citationId: strictString(row["citation_id"], code),
+    citationLabel: strictString(row["citation_label"], code),
+    quotedExcerpt: strictString(row["quoted_excerpt"], code),
+    sourceId: strictString(row["source_id"], code),
+    sourceTitle: strictString(row["source_title"], code),
+    officialIdentifier: strictNullableString(row["official_identifier"], code),
+    officialUrl: strictNullableString(row["official_url"], code),
+    sourceVersionId: strictString(row["source_version_id"], code),
+    sourceVersionNumber: strictInteger(row["source_version_number"], code),
+    sourceVersionStatus: strictString(row["source_version_status"], code),
+    sourceSha256: strictString(row["source_sha256"], code),
+    publicationDate: strictNullableString(row["publication_date"], code),
+    validFrom: strictNullableString(row["valid_from"], code),
+    validUntil: strictNullableString(row["valid_until"], code),
+    sectionId: strictString(row["section_id"], code),
+    sectionKey: strictString(row["section_key"], code),
+    sectionHeading: strictNullableString(row["section_heading"], code),
+    sectionContentSha256: strictString(row["section_content_sha256"], code),
+    isValid: strictBoolean(row["is_valid"], code),
+    blockers: strictStringArray(row["blockers"], code),
+  };
+}
+
+function strictKnowledgeCitations(value: unknown, code: string): KnowledgeCitationEvidence[] {
+  return strictArray(value, code).map((citation) => mapKnowledgeCitation(citation, code));
+}
+
 async function listKnowledgeArticles(municipalityId: string): Promise<KnowledgeArticleReadModel[]> {
   const scopedMunicipalityId = requireMunicipalityId(municipalityId);
   const { data, error } = await getSupabaseClient()
     .from("vw_reusable_knowledge_articles")
     .select("*")
     .eq("municipality_id", scopedMunicipalityId)
+    .eq("is_test", false)
     .order("published_at", { ascending: false })
     .limit(200)
     .abortSignal(fiscalReadSignal());
   throwIfError(error);
-  return ((data as Row[] | null) ?? []).map((row) => ({
-    municipalityId: stringValue(row["municipality_id"]),
-    articleId: stringValue(row["article_id"]),
-    intentKey: stringValue(row["intent_key"]),
-    semanticVersion: numberValue(row["semantic_version"]),
-    canonicalQuestion: stringValue(row["canonical_question"]),
-    taxScope: stringValue(row["tax_scope"]),
-    divergenceScope: stringValue(row["divergence_scope"]),
-    answerBody: stringValue(row["answer_body"]),
-    validFrom: nullableString(row["valid_from"]),
-    validUntil: nullableString(row["valid_until"]),
-    publishedAt: nullableString(row["published_at"]),
-    isTest: booleanValue(row["is_test"]),
-  }));
+  return ((data as Row[] | null) ?? []).map((value) => {
+    const row = strictObject(value, "knowledge_article_invalid");
+    const returnedMunicipalityId = strictString(
+      row["municipality_id"],
+      "knowledge_article_invalid",
+    );
+    if (returnedMunicipalityId !== scopedMunicipalityId) {
+      throw new FiscalDataError("knowledge_article_tenant_mismatch");
+    }
+    const citations = strictKnowledgeCitations(row["citations"], "knowledge_article_invalid");
+    if (
+      citations.length === 0 ||
+      citations.some(
+        (citation) =>
+          !citation.isValid ||
+          citation.blockers.length > 0 ||
+          !isSecureHttpUrl(citation.officialUrl),
+      )
+    ) {
+      throw new FiscalDataError("knowledge_article_evidence_unverified");
+    }
+    return {
+      municipalityId: returnedMunicipalityId,
+      articleId: strictString(row["article_id"], "knowledge_article_invalid"),
+      revisionId: strictString(row["revision_id"], "knowledge_article_invalid"),
+      intentKey: strictString(row["intent_key"], "knowledge_article_invalid"),
+      semanticVersion: strictInteger(row["semantic_version"], "knowledge_article_invalid"),
+      canonicalQuestion: strictString(row["canonical_question"], "knowledge_article_invalid"),
+      taxScope: strictString(row["tax_scope"], "knowledge_article_invalid"),
+      divergenceScope: strictString(row["divergence_scope"], "knowledge_article_invalid"),
+      answerBody: strictString(row["answer_body"], "knowledge_article_invalid"),
+      validFrom: strictNullableString(row["valid_from"], "knowledge_article_invalid"),
+      validUntil: strictNullableString(row["valid_until"], "knowledge_article_invalid"),
+      publishedAt: strictNullableString(row["published_at"], "knowledge_article_invalid"),
+      isTest: strictBoolean(row["is_test"], "knowledge_article_invalid"),
+      citations,
+    };
+  });
+}
+
+function mapKnowledgeSource(value: unknown): KnowledgeOfficialSource {
+  const row = strictObject(value, "knowledge_source_invalid");
+  return {
+    sourceId: strictString(row["source_id"], "knowledge_source_invalid"),
+    title: strictString(row["title"], "knowledge_source_invalid"),
+    officialIdentifier: strictNullableString(
+      row["official_identifier"],
+      "knowledge_source_invalid",
+    ),
+    sourceType: strictString(row["source_type"], "knowledge_source_invalid"),
+    taxScope: strictString(row["tax_scope"], "knowledge_source_invalid"),
+    status: strictString(row["status"], "knowledge_source_invalid"),
+    officialUrl: strictNullableString(row["official_url"], "knowledge_source_invalid"),
+    trustTier: strictString(row["trust_tier"], "knowledge_source_invalid"),
+    endpointStatus: strictString(row["endpoint_status"], "knowledge_source_invalid"),
+    lastFetchStatus: strictString(row["last_fetch_status"], "knowledge_source_invalid"),
+    lastCheckedAt: strictNullableString(row["last_checked_at"], "knowledge_source_invalid"),
+    lastChangeDetectedAt: strictNullableString(
+      row["last_change_detected_at"],
+      "knowledge_source_invalid",
+    ),
+    lastErrorCode: strictNullableString(row["last_error_code"], "knowledge_source_invalid"),
+    lastErrorDetail: strictNullableString(row["last_error_detail"], "knowledge_source_invalid"),
+    latestVersionId: strictNullableString(row["latest_version_id"], "knowledge_source_invalid"),
+    latestVersionNumber: strictNullableNumber(
+      row["latest_version_number"],
+      "knowledge_source_invalid",
+    ),
+    latestVersionStatus: strictNullableString(
+      row["latest_version_status"],
+      "knowledge_source_invalid",
+    ),
+    latestValidFrom: strictNullableString(row["latest_valid_from"], "knowledge_source_invalid"),
+    latestValidUntil: strictNullableString(row["latest_valid_until"], "knowledge_source_invalid"),
+    blockers: strictStringArray(row["blockers"], "knowledge_source_invalid"),
+    canReview: strictBoolean(row["can_review"], "knowledge_source_invalid"),
+    canPublish: strictBoolean(row["can_publish"], "knowledge_source_invalid"),
+  };
+}
+
+function mapKnowledgeChange(value: unknown): KnowledgeSourceChange {
+  const row = strictObject(value, "knowledge_change_invalid");
+  return {
+    changeSetId: strictString(row["change_set_id"], "knowledge_change_invalid"),
+    sourceId: strictString(row["source_id"], "knowledge_change_invalid"),
+    sourceTitle: strictString(row["source_title"], "knowledge_change_invalid"),
+    changeType: strictString(row["change_type"], "knowledge_change_invalid"),
+    status: strictString(row["status"], "knowledge_change_invalid"),
+    detectedAt: strictNullableString(row["detected_at"], "knowledge_change_invalid"),
+    fromSha256: strictNullableString(row["from_sha256"], "knowledge_change_invalid"),
+    toSha256: strictString(row["to_sha256"], "knowledge_change_invalid"),
+    candidateVersionId: strictNullableString(
+      row["candidate_version_id"],
+      "knowledge_change_invalid",
+    ),
+    candidateVersionNumber: strictNullableNumber(
+      row["candidate_version_number"],
+      "knowledge_change_invalid",
+    ),
+    candidateVersionStatus: strictNullableString(
+      row["candidate_version_status"],
+      "knowledge_change_invalid",
+    ),
+    candidateValidFrom: strictNullableString(
+      row["candidate_valid_from"],
+      "knowledge_change_invalid",
+    ),
+    candidateValidUntil: strictNullableString(
+      row["candidate_valid_until"],
+      "knowledge_change_invalid",
+    ),
+    officialUrl: strictNullableString(row["official_url"], "knowledge_change_invalid"),
+    candidateContentPreview: strictNullableString(
+      row["candidate_content_preview"],
+      "knowledge_change_invalid",
+    ),
+    sectionCount: strictNullableNumber(row["section_count"], "knowledge_change_invalid"),
+    diffSummary: strictNullableString(row["diff_summary"], "knowledge_change_invalid"),
+    blockers: strictStringArray(row["blockers"], "knowledge_change_invalid"),
+    canReview: strictBoolean(row["can_review"], "knowledge_change_invalid"),
+    canPublish: strictBoolean(row["can_publish"], "knowledge_change_invalid"),
+  };
+}
+
+function mapKnowledgeReview(value: unknown): KnowledgeReviewQueueItem {
+  const row = strictObject(value, "knowledge_review_invalid");
+  const queueKind = strictString(row["queue_kind"], "knowledge_review_invalid");
+  if (
+    queueKind !== "source_version" &&
+    queueKind !== "knowledge_article" &&
+    queueKind !== "learning_candidate"
+  ) {
+    throw new FiscalDataError("knowledge_review_invalid");
+  }
+  const item: KnowledgeReviewQueueItem = {
+    queueKind,
+    itemId: strictString(row["item_id"], "knowledge_review_invalid"),
+    title: strictString(row["title"], "knowledge_review_invalid"),
+    status: strictString(row["status"], "knowledge_review_invalid"),
+    contentSha256: strictNullableString(row["content_sha256"], "knowledge_review_invalid"),
+    submittedAt: strictNullableString(row["submitted_at"], "knowledge_review_invalid"),
+    lastReviewedAt: strictNullableString(row["last_reviewed_at"], "knowledge_review_invalid"),
+    blockers: strictStringArray(row["blockers"], "knowledge_review_invalid"),
+    canReview: strictBoolean(row["can_review"], "knowledge_review_invalid"),
+    canPublish: strictBoolean(row["can_publish"], "knowledge_review_invalid"),
+    sourceId: strictNullableString(row["source_id"], "knowledge_review_invalid"),
+    changeSetId: strictNullableString(row["change_set_id"], "knowledge_review_invalid"),
+    candidateVersionId: strictNullableString(
+      row["candidate_version_id"],
+      "knowledge_review_invalid",
+    ),
+    candidateId: strictOptionalNullableString(row["candidate_id"], "knowledge_review_invalid"),
+    question: strictOptionalNullableString(row["question"], "knowledge_review_invalid"),
+    proposedAnswerPreview: strictOptionalNullableString(
+      row["proposed_answer_preview"],
+      "knowledge_review_invalid",
+    ),
+    articleId: strictNullableString(row["article_id"], "knowledge_review_invalid"),
+    revisionId: strictNullableString(row["revision_id"], "knowledge_review_invalid"),
+    revisionNumber: strictNullableNumber(row["revision_number"], "knowledge_review_invalid"),
+    answerPreview: strictNullableString(row["answer_preview"], "knowledge_review_invalid"),
+    citationCount: strictNullableNumber(row["citation_count"], "knowledge_review_invalid"),
+    isTest:
+      row["is_test"] === null ? null : strictBoolean(row["is_test"], "knowledge_review_invalid"),
+    taxScope: strictNullableString(row["tax_scope"], "knowledge_review_invalid"),
+    divergenceScope: strictNullableString(row["divergence_scope"], "knowledge_review_invalid"),
+    validFrom: strictNullableString(row["valid_from"], "knowledge_review_invalid"),
+    validUntil: strictNullableString(row["valid_until"], "knowledge_review_invalid"),
+    officialUrl: strictNullableString(row["official_url"], "knowledge_review_invalid"),
+    candidateContentPreview: strictNullableString(
+      row["candidate_content_preview"],
+      "knowledge_review_invalid",
+    ),
+    sectionCount: strictNullableNumber(row["section_count"], "knowledge_review_invalid"),
+  };
+  if (
+    (queueKind === "source_version" &&
+      (!item.changeSetId || !item.sourceId || !item.candidateVersionId)) ||
+    (queueKind === "knowledge_article" && (!item.articleId || !item.revisionId)) ||
+    (queueKind === "learning_candidate" &&
+      (!item.candidateId || !item.question || !item.proposedAnswerPreview))
+  ) {
+    throw new FiscalDataError("knowledge_review_invalid");
+  }
+  return item;
+}
+
+function mapKnowledgeCatalogCoverage(value: unknown): KnowledgeCatalogCoverage {
+  const code = "knowledge_coverage_invalid";
+  const row = strictObject(value, code);
+  const expected = strictNullableInteger(row["expected"], code);
+  const discovered = strictInteger(row["discovered"], code);
+  const identityVerified = strictInteger(row["identity_verified"], code);
+  const extractionQueued = strictInteger(row["extraction_queued"], code);
+  const reviewable = strictInteger(row["reviewable"], code);
+  const published = strictInteger(row["published"], code);
+  const corpusIntegral = strictBoolean(row["corpus_integral"], code);
+  const upstreamStatus = strictString(row["upstream_status"], code);
+  if (
+    !new Set(["unverified", "available", "blocked_403", "blocked_502", "blocked_503"]).has(
+      upstreamStatus,
+    ) ||
+    identityVerified > discovered ||
+    extractionQueued > discovered ||
+    reviewable > discovered ||
+    published > discovered
+  ) {
+    throw new FiscalDataError(code);
+  }
+  const countsProveIntegral = expected !== null && discovered >= expected && published >= expected;
+  if (corpusIntegral !== countsProveIntegral) throw new FiscalDataError(code);
+  return {
+    coverageKey: strictString(row["coverage_key"], code),
+    title: strictString(row["title"], code),
+    expected,
+    discovered,
+    identityVerified,
+    extractionQueued,
+    reviewable,
+    published,
+    corpusIntegral,
+    upstreamStatus: upstreamStatus as KnowledgeCatalogCoverage["upstreamStatus"],
+    blocker: strictNullableString(row["blocker"], code),
+  };
+}
+
+function mapKnowledgeSnapshot(data: unknown, municipalityId: string): KnowledgeOperationsSnapshot {
+  const root = strictObject(data, "knowledge_snapshot_invalid");
+  if (root["verified"] !== true) throw new FiscalDataError("knowledge_snapshot_unverified");
+  const municipality = strictObject(root["municipality"], "knowledge_snapshot_invalid");
+  const returnedMunicipalityId = strictString(municipality["id"], "knowledge_snapshot_invalid");
+  if (returnedMunicipalityId !== municipalityId) {
+    throw new FiscalDataError("knowledge_snapshot_tenant_mismatch");
+  }
+  const capabilities = strictObject(root["capabilities"], "knowledge_snapshot_invalid");
+  const summary = strictObject(root["summary"], "knowledge_snapshot_invalid");
+  const health = strictObject(root["health"], "knowledge_snapshot_invalid");
+  const schedule = strictObject(root["schedule"], "knowledge_snapshot_invalid");
+  const ocr = strictObject(root["ocr"], "knowledge_ocr_status_invalid");
+  const ocrJobs = strictObject(ocr["jobs"], "knowledge_ocr_status_invalid");
+  const ocrLimits = strictObject(ocr["limits"], "knowledge_ocr_status_invalid");
+  const reviewer = strictObject(root["reviewer"], "knowledge_snapshot_invalid");
+  const coverage = strictArray(root["coverage"], "knowledge_coverage_invalid").map(
+    mapKnowledgeCatalogCoverage,
+  );
+  const coverageLabel = strictString(root["coverage_label"], "knowledge_coverage_invalid");
+  const corpusIntegral = strictBoolean(root["corpus_integral"], "knowledge_coverage_invalid");
+  if (
+    coverageLabel !== "Cobertura inicial governada" ||
+    corpusIntegral !== (coverage.length > 0 && coverage.every((item) => item.corpusIntegral))
+  ) {
+    throw new FiscalDataError("knowledge_coverage_invalid");
+  }
+  const healthStatus = strictString(health["status"], "knowledge_snapshot_invalid");
+  if (!new Set(["healthy", "attention", "blocked"]).has(healthStatus)) {
+    throw new FiscalDataError("knowledge_snapshot_invalid");
+  }
+  const eligibleSections = strictInteger(
+    summary["eligible_sections"],
+    "knowledge_snapshot_invalid",
+  );
+  const indexedSections = strictInteger(summary["indexed_sections"], "knowledge_snapshot_invalid");
+  const indexedChunks = strictInteger(summary["indexed_chunks"], "knowledge_snapshot_invalid");
+  const pendingEmbeddings = strictInteger(
+    summary["pending_embeddings"],
+    "knowledge_snapshot_invalid",
+  );
+  const lastIndexedAt = strictNullableString(
+    summary["last_indexed_at"],
+    "knowledge_snapshot_invalid",
+  );
+  const scheduleEnabled = strictBoolean(schedule["enabled"], "knowledge_snapshot_invalid");
+  const runtimeVerified = strictBoolean(schedule["runtime_verified"], "knowledge_snapshot_invalid");
+  const timeZone = validatedIanaTimeZone(schedule["timezone"]);
+  const nextRunAt = strictNullableString(schedule["next_run_at"], "knowledge_snapshot_invalid");
+  const runtimeBlocker = strictOptionalNullableString(
+    schedule["runtime_blocker"],
+    "knowledge_snapshot_invalid",
+  );
+  const scheduleBlockers = [
+    ...(runtimeVerified ? [] : [runtimeBlocker ?? "knowledge_runtime_not_verified"]),
+    ...(timeZone ? [] : ["knowledge_schedule_timezone_not_verified"]),
+    ...(scheduleEnabled && (!nextRunAt || Number.isNaN(Date.parse(nextRunAt)))
+      ? ["knowledge_schedule_next_run_not_verified"]
+      : []),
+  ];
+  const indexInconsistent = indexedSections > eligibleSections;
+  const indexIncomplete = indexedSections < eligibleSections;
+  const indexBlockers = indexInconsistent
+    ? ["knowledge_index_inconsistent"]
+    : eligibleSections === 0
+      ? ["no_eligible_legal_sections"]
+      : [
+          ...(indexIncomplete ? ["knowledge_index_incomplete"] : []),
+          ...(pendingEmbeddings > 0 ? ["knowledge_index_pending"] : []),
+        ];
+  const reviewerVerified = strictBoolean(reviewer["verified"], "knowledge_snapshot_invalid");
+  const reviewerConfigured = strictBoolean(reviewer["configured"], "knowledge_snapshot_invalid");
+  const reviewerBlockers = strictStringArray(reviewer["blockers"], "knowledge_snapshot_invalid");
+  const ocrContractVersion = strictString(ocr["contract_version"], "knowledge_ocr_status_invalid");
+  const ocrPolicyVersion = strictString(ocr["policy_version"], "knowledge_ocr_status_invalid");
+  const ocrRuntimeVerified = strictBoolean(ocr["runtime_verified"], "knowledge_ocr_status_invalid");
+  const ocrHasAttention = strictBoolean(ocr["has_attention"], "knowledge_ocr_status_invalid");
+  const ocrRuntimeBlocker = strictOptionalNullableString(
+    ocr["runtime_blocker"],
+    "knowledge_ocr_status_invalid",
+  );
+  const ocrState = strictString(ocr["state"], "knowledge_ocr_status_invalid");
+  const ocrCandidateStatus = strictString(ocr["candidate_status"], "knowledge_ocr_status_invalid");
+  const ocrAutoPublish = strictBoolean(ocr["auto_publish"], "knowledge_ocr_status_invalid");
+  const ocrAbovePageLimit = strictString(
+    ocrLimits["above_page_limit"],
+    "knowledge_ocr_status_invalid",
+  );
+  const ocrQueued = strictInteger(ocrJobs["queued"], "knowledge_ocr_status_invalid");
+  const ocrProcessing = strictInteger(ocrJobs["processing"], "knowledge_ocr_status_invalid");
+  const ocrCompleted = strictInteger(ocrJobs["completed"], "knowledge_ocr_status_invalid");
+  const ocrDeadLetter = strictInteger(ocrJobs["dead_letter"], "knowledge_ocr_status_invalid");
+  const ocrBlockedPageLimit = strictInteger(
+    ocrJobs["blocked_page_limit"],
+    "knowledge_ocr_status_invalid",
+  );
+  const ocrMaxPages = strictInteger(ocrLimits["max_pages"], "knowledge_ocr_status_invalid");
+  const ocrMaxPageCharacters = strictInteger(
+    ocrLimits["max_page_characters"],
+    "knowledge_ocr_status_invalid",
+  );
+  const ocrMaxTotalCharacters = strictInteger(
+    ocrLimits["max_total_characters"],
+    "knowledge_ocr_status_invalid",
+  );
+  const expectedOcrState = !ocrRuntimeVerified
+    ? "blocked"
+    : ocrHasAttention
+      ? "attention_required"
+      : ocrProcessing > 0
+        ? "processing"
+        : ocrQueued > 0
+          ? "queued"
+          : "ready";
+  const validOcrStates = new Set([
+    "blocked",
+    "processing",
+    "queued",
+    "attention_required",
+    "ready",
+  ]);
+  if (
+    ocrContractVersion !== "ia-fiscal-knowledge-ocr/v1" ||
+    ocrPolicyVersion !== "ia-fiscal-knowledge-ocr-policy/v1" ||
+    !validOcrStates.has(ocrState) ||
+    ocrCandidateStatus !== "under_review" ||
+    ocrAutoPublish !== false ||
+    ocrAbovePageLimit !== "manual_review_required" ||
+    ocrState !== expectedOcrState ||
+    ocrHasAttention !== (ocrDeadLetter > 0 || ocrBlockedPageLimit > 0) ||
+    (ocrRuntimeVerified
+      ? ocrRuntimeBlocker !== null
+      : ocrRuntimeBlocker !== "knowledge_ocr_runtime_not_verified") ||
+    [ocrQueued, ocrProcessing, ocrCompleted, ocrDeadLetter, ocrBlockedPageLimit].some(
+      (value) => value < 0,
+    ) ||
+    ocrMaxPages !== 120 ||
+    ocrMaxPageCharacters !== 1_000_000 ||
+    ocrMaxTotalCharacters !== 8_000_000
+  ) {
+    throw new FiscalDataError("knowledge_ocr_status_invalid");
+  }
+  return {
+    verified: true,
+    municipalityId: returnedMunicipalityId,
+    municipalityName: strictString(municipality["name"], "knowledge_snapshot_invalid"),
+    municipalitySlug: strictString(municipality["slug"], "knowledge_snapshot_invalid"),
+    checkedAt: strictString(root["checked_at"], "knowledge_snapshot_invalid"),
+    capabilities: {
+      canView: strictBoolean(capabilities["can_view"], "knowledge_snapshot_invalid"),
+      canSearch: strictBoolean(capabilities["can_search"], "knowledge_snapshot_invalid"),
+      canSubmitCandidates: strictBoolean(
+        capabilities["can_submit_candidates"],
+        "knowledge_snapshot_invalid",
+      ),
+      canReviewCandidates: strictBoolean(
+        capabilities["can_review_candidates"],
+        "knowledge_snapshot_invalid",
+      ),
+      canReviewSourceVersions: strictBoolean(
+        capabilities["can_review_source_versions"],
+        "knowledge_snapshot_invalid",
+      ),
+      canReviewArticles: strictBoolean(
+        capabilities["can_review_articles"],
+        "knowledge_snapshot_invalid",
+      ),
+      canPublishSourceVersions: strictBoolean(
+        capabilities["can_publish_source_versions"],
+        "knowledge_snapshot_invalid",
+      ),
+      canPublishArticles: strictBoolean(
+        capabilities["can_publish_articles"],
+        "knowledge_snapshot_invalid",
+      ),
+    },
+    summary: {
+      officialSources: strictInteger(summary["official_sources"], "knowledge_snapshot_invalid"),
+      totalSourceVersions: strictInteger(
+        summary["total_source_versions"],
+        "knowledge_snapshot_invalid",
+      ),
+      publishedSourceVersions: strictInteger(
+        summary["published_source_versions"],
+        "knowledge_snapshot_invalid",
+      ),
+      pendingSourceReviews: strictInteger(
+        summary["pending_source_reviews"],
+        "knowledge_snapshot_invalid",
+      ),
+      pendingSourceExtractions: strictInteger(
+        summary["pending_source_extractions"],
+        "knowledge_snapshot_invalid",
+      ),
+      pendingSourcePublications: strictInteger(
+        summary["pending_source_publications"],
+        "knowledge_snapshot_invalid",
+      ),
+      pendingArticleReviews: strictInteger(
+        summary["pending_article_reviews"],
+        "knowledge_snapshot_invalid",
+      ),
+      pendingCandidates: strictInteger(summary["pending_candidates"], "knowledge_snapshot_invalid"),
+      pendingEmbeddings,
+      eligibleSections,
+      indexedSections,
+      indexedChunks,
+      lastIndexedAt,
+      openChanges: strictInteger(summary["open_changes"], "knowledge_snapshot_invalid"),
+      failedFetches24h: strictInteger(summary["failed_fetches_24h"], "knowledge_snapshot_invalid"),
+    },
+    sources: strictArray(root["sources"], "knowledge_snapshot_invalid").map(mapKnowledgeSource),
+    changes: strictArray(root["changes"], "knowledge_snapshot_invalid").map(mapKnowledgeChange),
+    reviews: strictArray(root["reviews"], "knowledge_snapshot_invalid").map(mapKnowledgeReview),
+    health: {
+      status: healthStatus as "healthy" | "attention" | "blocked",
+      staleSources: strictInteger(health["stale_sources"], "knowledge_snapshot_invalid"),
+      failedSources: strictInteger(health["failed_sources"], "knowledge_snapshot_invalid"),
+      blockedSources: strictInteger(health["blocked_sources"], "knowledge_snapshot_invalid"),
+      lastSuccessfulFetchAt: strictNullableString(
+        health["last_successful_fetch_at"],
+        "knowledge_snapshot_invalid",
+      ),
+      blockers: strictStringArray(health["blockers"], "knowledge_snapshot_invalid"),
+    },
+    schedule: {
+      enabled: scheduleEnabled,
+      cadenceLabel: strictString(schedule["cadence"], "knowledge_snapshot_invalid"),
+      timeZone,
+      nextRunAt,
+      lastRunAt: strictNullableString(schedule["last_run_at"], "knowledge_snapshot_invalid"),
+      lastRunStatus:
+        strictOptionalNullableString(schedule["last_run_status"], "knowledge_snapshot_invalid") ??
+        "never_run",
+      runtimeVerified,
+      blockers: [...new Set(scheduleBlockers)],
+    },
+    index: {
+      status:
+        indexInconsistent || eligibleSections === 0
+          ? "blocked"
+          : indexIncomplete || pendingEmbeddings > 0
+            ? "attention"
+            : "healthy",
+      indexedSections,
+      eligibleSections,
+      embeddingModel: indexedChunks > 0 ? "gte-small" : null,
+      lastIndexedAt,
+      blockers: indexBlockers,
+    },
+    ocr: {
+      contractVersion: ocrContractVersion,
+      policyVersion: ocrPolicyVersion,
+      runtimeVerified: ocrRuntimeVerified,
+      hasAttention: ocrHasAttention,
+      state: ocrState as "blocked" | "processing" | "queued" | "attention_required" | "ready",
+      jobs: {
+        queued: ocrQueued,
+        processing: ocrProcessing,
+        completed: ocrCompleted,
+        deadLetter: ocrDeadLetter,
+        blockedPageLimit: ocrBlockedPageLimit,
+      },
+      lastEventAt: strictNullableString(ocr["last_event_at"], "knowledge_ocr_status_invalid"),
+      limits: {
+        maxPages: ocrMaxPages,
+        maxPageCharacters: ocrMaxPageCharacters,
+        maxTotalCharacters: ocrMaxTotalCharacters,
+        abovePageLimit: "manual_review_required",
+      },
+      candidateStatus: "under_review",
+      autoPublish: false,
+      blockers: [
+        ...(ocrRuntimeVerified ? [] : [ocrRuntimeBlocker ?? "knowledge_ocr_runtime_not_verified"]),
+        ...(ocrDeadLetter > 0 ? ["knowledge_ocr_jobs_failed"] : []),
+        ...(ocrBlockedPageLimit > 0 ? ["knowledge_ocr_page_limit_exceeded"] : []),
+      ],
+    },
+    reviewer: {
+      verified: reviewerVerified,
+      configured: reviewerConfigured,
+      activeCount: strictInteger(reviewer["active_count"], "knowledge_snapshot_invalid"),
+      currentUserCanReview: strictBoolean(
+        reviewer["current_user_can_review"],
+        "knowledge_snapshot_invalid",
+      ),
+      blockers: reviewerVerified
+        ? reviewerBlockers
+        : [...new Set([...reviewerBlockers, "reviewer_state_not_verified"])],
+    },
+    coverage,
+    coverageLabel,
+    corpusIntegral,
+  };
+}
+
+function mapKnowledgeSearchCitation(value: unknown): KnowledgeSearchCitation {
+  const code = "knowledge_search_invalid";
+  const row = strictObject(value, code);
+  return {
+    citationId: `${strictString(row["source_version_id"], code)}:${strictString(row["legal_section_id"], code)}`,
+    sourceTitle: strictString(row["source_title"], code),
+    officialIdentifier: strictNullableString(row["official_identifier"], code),
+    officialUrl: strictNullableString(row["official_url"], code),
+    sourceVersionId: strictString(row["source_version_id"], code),
+    sectionId: strictString(row["legal_section_id"], code),
+    sectionKey: strictString(row["section_key"], code),
+    sectionHeading: strictNullableString(row["heading"], code),
+    citationLabel:
+      strictNullableString(row["heading"], code) ?? strictString(row["section_key"], code),
+    quotedExcerpt: strictString(row["excerpt"], code),
+    publicationDate: strictNullableString(row["publication_date"], code),
+    validFrom: strictNullableString(row["valid_from"], code),
+    validUntil: strictNullableString(row["valid_until"], code),
+    relevance: strictUnitInterval(row["score"], code),
+    isValid: isSecureHttpUrl(strictNullableString(row["official_url"], code)),
+    blockers: [],
+  };
+}
+
+function mapKnowledgeSearchResult(
+  payload: unknown,
+  municipalityId: string,
+  query: string,
+): KnowledgeSearchResult {
+  const code = "knowledge_search_invalid";
+  const envelope = strictObject(payload, code);
+  if (strictString(envelope["contract_version"], code) !== "knowledge-search-v1") {
+    throw new FiscalDataError("knowledge_search_contract_mismatch");
+  }
+  const correlationId = strictString(envelope["correlation_id"], code);
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      correlationId,
+    )
+  ) {
+    throw new FiscalDataError("knowledge_search_correlation_invalid");
+  }
+  const row = strictObject(envelope["data"], code);
+  if (row["verified"] !== true) throw new FiscalDataError("knowledge_search_unverified");
+  const returnedMunicipalityId = strictString(row["municipality_id"], code);
+  const returnedQuery = strictString(row["query"], code);
+  if (returnedMunicipalityId !== municipalityId || returnedQuery !== query) {
+    throw new FiscalDataError("knowledge_search_scope_mismatch");
+  }
+
+  const answered = strictBoolean(row["answered"], code);
+  const answer = strictNullableString(row["answer"], code);
+  const citations = strictArray(row["citations"], code).map(mapKnowledgeSearchCitation);
+  const blockers = strictStringArray(row["blockers"], code);
+  const confidence =
+    row["confidence"] === null ? null : strictUnitInterval(row["confidence"], code);
+  const hasVerifiableCitations =
+    citations.length > 0 &&
+    citations.every(
+      (citation) =>
+        citation.isValid &&
+        citation.blockers.length === 0 &&
+        citation.quotedExcerpt.trim().length > 0 &&
+        isSecureHttpUrl(citation.officialUrl) &&
+        isCurrentLegalCitation(citation),
+    );
+  if (
+    answered &&
+    (!answer?.trim() ||
+      confidence === null ||
+      confidence < KNOWLEDGE_MIN_ANSWER_CONFIDENCE ||
+      !hasVerifiableCitations ||
+      blockers.length > 0)
+  ) {
+    throw new FiscalDataError("knowledge_search_evidence_unverified");
+  }
+  if (!answered && answer !== null) {
+    throw new FiscalDataError("knowledge_search_contract_mismatch");
+  }
+
+  return {
+    verified: true,
+    correlationId,
+    municipalityId: returnedMunicipalityId,
+    query: returnedQuery,
+    answered,
+    answer,
+    confidence,
+    retrievalMode: strictString(row["retrieval_mode"], code),
+    searchedAt: strictString(row["searched_at"], code),
+    citations,
+    blockers,
+  };
+}
+
+async function searchLegalKnowledge(
+  municipalityId: string,
+  rawQuery: string,
+): Promise<KnowledgeSearchResult> {
+  const scopedMunicipalityId = requireMunicipalityId(municipalityId);
+  const query = rawQuery.trim();
+  if (query.length < 5 || query.length > 500) {
+    throw new FiscalDataError("invalid_knowledge_search_query");
+  }
+  const { data, error } = await getSupabaseClient().functions.invoke("ia-fiscal-knowledge-search", {
+    body: { municipality_id: scopedMunicipalityId, query, limit: 8 },
+    signal: fiscalReadSignal(),
+  });
+  throwIfError(error);
+  return mapKnowledgeSearchResult(data, scopedMunicipalityId, query);
+}
+
+async function submitKnowledgeCandidate(
+  municipalityId: string,
+  input: KnowledgeCandidateInput,
+): Promise<string> {
+  const scopedMunicipalityId = requireMunicipalityId(municipalityId);
+  const question = input.question.trim();
+  const proposedAnswer = input.proposedAnswer.trim();
+  const citationSectionIds = [
+    ...new Set(input.citationSectionIds.map((value) => value.trim())),
+  ].filter(Boolean);
+  if (question.length < 5 || question.length > 1_000) {
+    throw new FiscalDataError("invalid_knowledge_candidate_question");
+  }
+  if (proposedAnswer.length < 20 || proposedAnswer.length > 8_000) {
+    throw new FiscalDataError("invalid_knowledge_candidate_answer");
+  }
+  if (citationSectionIds.length === 0 || citationSectionIds.length > 20) {
+    throw new FiscalDataError("knowledge_candidate_citation_required");
+  }
+  if (input.confirmation !== "ENVIAR PARA REVISÃO") {
+    throw new FiscalDataError("knowledge_candidate_confirmation_required");
+  }
+  const client = getSupabaseClient() as unknown as KnowledgeWriteRpcClient;
+  const { data, error } = await client.rpc("ia_submit_knowledge_candidate", {
+    p_municipality_id: scopedMunicipalityId,
+    p_question: question,
+    p_proposed_answer: proposedAnswer,
+    p_citation_section_ids: citationSectionIds,
+    p_confirmation: input.confirmation,
+  });
+  throwIfError(error);
+  return strictString(data, "knowledge_candidate_id_missing");
+}
+
+function mapKnowledgeCandidateCitation(value: unknown): KnowledgeSearchCitation {
+  const code = "knowledge_candidate_evidence_invalid";
+  const row = strictObject(value, code);
+  const officialUrl = strictNullableString(row["official_url"], code);
+  const sourceVersionId = strictString(row["source_version_id"], code);
+  const sectionId = strictString(row["legal_section_id"], code);
+  const sectionKey = strictString(row["section_key"], code);
+  const heading = strictNullableString(row["heading"], code);
+  const serverValid = strictBoolean(row["is_valid"], code);
+  return {
+    citationId: `${sourceVersionId}:${sectionId}`,
+    sourceTitle: strictString(row["source_title"], code),
+    officialIdentifier: strictNullableString(row["official_identifier"], code),
+    officialUrl,
+    sourceVersionId,
+    sectionId,
+    sectionKey,
+    sectionHeading: heading,
+    citationLabel: heading ?? sectionKey,
+    quotedExcerpt: strictString(row["excerpt"], code),
+    publicationDate: strictNullableString(row["publication_date"], code),
+    validFrom: strictNullableString(row["valid_from"], code),
+    validUntil: strictNullableString(row["valid_until"], code),
+    relevance: strictUnitInterval(row["score"], code),
+    isValid: serverValid && isSecureHttpUrl(officialUrl),
+    blockers: strictStringArray(row["blockers"], code),
+  };
+}
+
+function mapKnowledgeCandidateEvidence(
+  data: unknown,
+  municipalityId: string,
+  candidateId: string,
+): KnowledgeCandidateEvidence {
+  const code = "knowledge_candidate_evidence_invalid";
+  const row = strictObject(data, code);
+  if (row["verified"] !== true) {
+    throw new FiscalDataError("knowledge_candidate_evidence_unverified");
+  }
+  const returnedMunicipalityId = strictString(row["municipality_id"], code);
+  const returnedCandidateId = strictString(row["candidate_id"], code);
+  if (returnedMunicipalityId !== municipalityId || returnedCandidateId !== candidateId) {
+    throw new FiscalDataError("knowledge_candidate_evidence_scope_mismatch");
+  }
+  const canPublish = strictBoolean(row["can_publish"], code);
+  if (canPublish) throw new FiscalDataError("knowledge_candidate_publication_forbidden");
+  return {
+    verified: true,
+    checkedAt: strictString(row["checked_at"], code),
+    municipalityId: returnedMunicipalityId,
+    candidateId: returnedCandidateId,
+    question: strictString(row["question"], code),
+    proposedAnswer: strictString(row["proposed_answer"], code),
+    contentSha256: strictString(row["content_sha256"], code),
+    status: strictString(row["status"], code),
+    submittedAt: strictString(row["submitted_at"], code),
+    reviewedAt: strictNullableString(row["reviewed_at"], code),
+    citations: strictArray(row["citations"], code).map(mapKnowledgeCandidateCitation),
+    evidenceComplete: strictBoolean(row["evidence_complete"], code),
+    blockers: strictStringArray(row["blockers"], code),
+    canReview: strictBoolean(row["can_review"], code),
+    canPublish: false,
+  };
+}
+
+async function getKnowledgeCandidateEvidence(
+  municipalityId: string,
+  candidateId: string,
+): Promise<KnowledgeCandidateEvidence> {
+  const scopedMunicipalityId = requireMunicipalityId(municipalityId);
+  const scopedCandidateId = requireKnowledgeIdentifier(candidateId, "invalid_candidate_id");
+  const client = getSupabaseClient() as unknown as KnowledgeReadRpcClient;
+  const { data, error } = await client
+    .rpc("ia_get_knowledge_candidate_evidence", {
+      p_municipality_id: scopedMunicipalityId,
+      p_candidate_id: scopedCandidateId,
+    })
+    .abortSignal(fiscalReadSignal());
+  throwIfError(error);
+  return mapKnowledgeCandidateEvidence(data, scopedMunicipalityId, scopedCandidateId);
+}
+
+async function reviewKnowledgeCandidate(
+  municipalityId: string,
+  candidateId: string,
+  decision: KnowledgeCandidateReviewDecision,
+  notes: string,
+  confirmation: string,
+): Promise<string> {
+  const scopedMunicipalityId = requireMunicipalityId(municipalityId);
+  const scopedCandidateId = requireKnowledgeIdentifier(candidateId, "invalid_candidate_id");
+  if (decision !== "approved" && decision !== "rejected") {
+    throw new FiscalDataError("invalid_candidate_review_decision");
+  }
+  const normalizedNotes = notes.trim();
+  if (normalizedNotes.length > 4_000 || (decision === "rejected" && normalizedNotes.length < 10)) {
+    throw new FiscalDataError("invalid_candidate_review_notes");
+  }
+  if (confirmation !== "REVISAR CANDIDATO") {
+    throw new FiscalDataError("candidate_review_confirmation_required");
+  }
+  const client = getSupabaseClient() as unknown as KnowledgeWriteRpcClient;
+  const { data, error } = await client.rpc("ia_review_knowledge_candidate", {
+    p_expected_municipality_id: scopedMunicipalityId,
+    p_candidate_id: scopedCandidateId,
+    p_decision: decision,
+    p_notes: normalizedNotes || null,
+    p_confirmation: confirmation,
+  });
+  throwIfError(error);
+  return strictString(data, "knowledge_candidate_review_id_missing");
+}
+
+function mapKnowledgeArticleEvidence(
+  data: unknown,
+  municipalityId: string,
+  articleId: string,
+  revisionId: string,
+): KnowledgeArticleEvidence {
+  const row = strictObject(data, "knowledge_article_evidence_invalid");
+  if (row["verified"] !== true) {
+    throw new FiscalDataError("knowledge_article_evidence_unverified");
+  }
+  const returnedMunicipalityId = strictString(
+    row["municipality_id"],
+    "knowledge_article_evidence_invalid",
+  );
+  const returnedArticleId = strictString(row["article_id"], "knowledge_article_evidence_invalid");
+  const returnedRevisionId = strictString(row["revision_id"], "knowledge_article_evidence_invalid");
+  if (
+    returnedMunicipalityId !== municipalityId ||
+    returnedArticleId !== articleId ||
+    returnedRevisionId !== revisionId
+  ) {
+    throw new FiscalDataError("knowledge_article_evidence_tenant_mismatch");
+  }
+  const answerBody = strictString(row["answer_body"], "knowledge_article_evidence_invalid");
+  const answerLength = strictInteger(row["answer_length"], "knowledge_article_evidence_invalid");
+  const citations = strictKnowledgeCitations(
+    row["citations"],
+    "knowledge_article_evidence_invalid",
+  );
+  const citationCount = strictInteger(row["citation_count"], "knowledge_article_evidence_invalid");
+  if (Array.from(answerBody).length !== answerLength || citations.length !== citationCount) {
+    throw new FiscalDataError("knowledge_article_evidence_incomplete");
+  }
+  return {
+    verified: true,
+    municipalityId: returnedMunicipalityId,
+    articleId: returnedArticleId,
+    revisionId: returnedRevisionId,
+    contentSha256: strictString(row["content_sha256"], "knowledge_article_evidence_invalid"),
+    canonicalQuestion: strictString(
+      row["canonical_question"],
+      "knowledge_article_evidence_invalid",
+    ),
+    answerBody,
+    answerLength,
+    citationCount,
+    citations,
+    evidenceComplete: strictBoolean(row["evidence_complete"], "knowledge_article_evidence_invalid"),
+    blockers: strictStringArray(row["blockers"], "knowledge_article_evidence_invalid"),
+  };
+}
+
+function mapKnowledgeSourceSection(value: unknown): KnowledgeSourceSectionEvidence {
+  const code = "knowledge_source_evidence_invalid";
+  const row = strictObject(value, code);
+  return {
+    sectionId: strictString(row["section_id"], code),
+    sectionKey: strictString(row["section_key"], code),
+    heading: strictNullableString(row["heading"], code),
+    ordinal: strictInteger(row["ordinal"], code),
+    contentPreview: strictString(row["content_preview"], code),
+    contentTotalChars: strictInteger(row["content_total_chars"], code),
+    contentSha256: strictString(row["content_sha256"], code),
+    chunkCount: strictInteger(row["chunk_count"], code),
+  };
+}
+
+function mapKnowledgeSourceChangeItem(value: unknown): KnowledgeSourceChangeItemEvidence {
+  const code = "knowledge_source_evidence_invalid";
+  const row = strictObject(value, code);
+  return {
+    ordinal: strictInteger(row["ordinal"], code),
+    itemKind: strictString(row["item_kind"], code),
+    itemPath: strictString(row["item_path"], code),
+    beforeSha256: strictNullableString(row["before_sha256"], code),
+    afterSha256: strictNullableString(row["after_sha256"], code),
+    beforeExcerpt: strictNullableString(row["before_excerpt"], code),
+    afterExcerpt: strictNullableString(row["after_excerpt"], code),
+    summary: strictString(row["summary"], code),
+  };
+}
+
+function mapKnowledgeSourceEvidencePage(
+  data: unknown,
+  municipalityId: string,
+  changeSetId: string,
+): KnowledgeSourceChangeEvidence {
+  const code = "knowledge_source_evidence_invalid";
+  const row = strictObject(data, code);
+  if (row["verified"] !== true) throw new FiscalDataError("knowledge_source_evidence_unverified");
+  const returnedMunicipalityId = strictString(row["municipality_id"], code);
+  const returnedChangeSetId = strictString(row["change_set_id"], code);
+  if (returnedMunicipalityId !== municipalityId || returnedChangeSetId !== changeSetId) {
+    throw new FiscalDataError("knowledge_source_evidence_tenant_mismatch");
+  }
+  return {
+    verified: true,
+    municipalityId: returnedMunicipalityId,
+    changeSetId: returnedChangeSetId,
+    changeType: strictString(row["change_type"], code),
+    status: strictString(row["status"], code),
+    sourceId: strictString(row["source_id"], code),
+    sourceTitle: strictString(row["source_title"], code),
+    officialIdentifier: strictNullableString(row["official_identifier"], code),
+    officialUrl: strictNullableString(row["official_url"], code),
+    requestedUrl: strictNullableString(row["requested_url"], code),
+    capturedUrl: strictNullableString(row["captured_url"], code),
+    observedAt: strictNullableString(row["observed_at"], code),
+    rawContentSha256: strictNullableString(row["raw_content_sha256"], code),
+    fromSha256: strictNullableString(row["from_sha256"], code),
+    toSha256: strictString(row["to_sha256"], code),
+    diffSha256: strictString(row["diff_sha256"], code),
+    artifactId: strictNullableString(row["artifact_id"], code),
+    artifactMimeType: strictNullableString(row["artifact_mime_type"], code),
+    artifactByteSize: strictNullableNumber(row["artifact_byte_size"], code),
+    candidateVersionId: strictString(row["candidate_version_id"], code),
+    candidateVersionNumber: strictInteger(row["candidate_version_number"], code),
+    candidateVersionStatus: strictString(row["candidate_version_status"], code),
+    contentSha256: strictString(row["content_sha256"], code),
+    contentText: strictText(row["content_text"], code),
+    contentOffset: strictInteger(row["content_offset"], code),
+    contentLimit: strictInteger(row["content_limit"], code),
+    contentTotalChars: strictInteger(row["content_total_chars"], code),
+    contentHasMore: strictBoolean(row["content_has_more"], code),
+    diffSummary: strictString(row["diff_summary"], code),
+    publicationDate: strictNullableString(row["publication_date"], code),
+    validFrom: strictNullableString(row["valid_from"], code),
+    validUntil: strictNullableString(row["valid_until"], code),
+    sectionOffset: strictInteger(row["section_offset"], code),
+    sectionLimit: strictInteger(row["section_limit"], code),
+    sectionTotal: strictInteger(row["section_total"], code),
+    sectionHasMore: strictBoolean(row["section_has_more"], code),
+    sections: strictArray(row["sections"], code).map(mapKnowledgeSourceSection),
+    changeItems: strictArray(row["change_items"], code).map(mapKnowledgeSourceChangeItem),
+    changeItemOffset: strictInteger(row["change_item_offset"], code),
+    changeItemLimit: strictInteger(row["change_item_limit"], code),
+    changeItemTotal: strictInteger(row["change_item_total"], code),
+    changeItemsHasMore: strictBoolean(row["change_items_has_more"], code),
+    changeItemsFullSha256: strictString(row["change_items_full_sha256"], code),
+    evidenceComplete: strictBoolean(row["evidence_complete"], code),
+    blockers: strictStringArray(row["blockers"], code),
+  };
+}
+
+async function getKnowledgeOperationsSnapshot(
+  municipalityId: string,
+): Promise<KnowledgeOperationsSnapshot> {
+  const scopedMunicipalityId = requireMunicipalityId(municipalityId);
+  const client = getSupabaseClient() as unknown as KnowledgeReadRpcClient;
+  const { data, error } = await client
+    .rpc("ia_get_knowledge_operations_snapshot", { p_municipality_id: scopedMunicipalityId })
+    .abortSignal(fiscalReadSignal());
+  throwIfError(error);
+  return mapKnowledgeSnapshot(data, scopedMunicipalityId);
+}
+
+function mapKnowledgeReviewerGrant(value: unknown): KnowledgeReviewerGrant {
+  const code = "knowledge_reviewer_directory_invalid";
+  const row = strictObject(value, code);
+  return {
+    grantId: strictString(row["grant_id"], code),
+    membershipId: strictString(row["membership_id"], code),
+    role: strictString(row["role"], code),
+    status: strictString(row["status"], code),
+    validFrom: strictString(row["valid_from"], code),
+    validUntil: strictNullableString(row["valid_until"], code),
+    isCurrent: strictBoolean(row["is_current"], code),
+  };
+}
+
+function mapKnowledgeReviewerEligibleStaff(value: unknown): KnowledgeReviewerEligibleStaff {
+  const code = "knowledge_reviewer_directory_invalid";
+  const row = strictObject(value, code);
+  return {
+    membershipId: strictString(row["membership_id"], code),
+    role: strictString(row["role"], code),
+    alreadyConfigured: strictBoolean(row["already_configured"], code),
+  };
+}
+
+function mapKnowledgeReviewerDirectory(
+  data: unknown,
+  municipalityId: string,
+): KnowledgeReviewerDirectory {
+  const code = "knowledge_reviewer_directory_invalid";
+  const row = strictObject(data, code);
+  if (row["verified"] !== true || row["pii_exposed"] !== false) {
+    throw new FiscalDataError(code);
+  }
+  const returnedMunicipalityId = strictString(row["municipality_id"], code);
+  if (returnedMunicipalityId !== municipalityId) {
+    throw new FiscalDataError("knowledge_reviewer_directory_tenant_mismatch");
+  }
+  return {
+    verified: true,
+    municipalityId: returnedMunicipalityId,
+    activeGrants: strictArray(row["active_grants"], code).map(mapKnowledgeReviewerGrant),
+    eligibleStaff: strictArray(row["eligible_staff"], code).map(mapKnowledgeReviewerEligibleStaff),
+    piiExposed: false,
+    checkedAt: strictString(row["checked_at"], code),
+  };
+}
+
+async function listKnowledgeReviewerCapabilities(
+  municipalityId: string,
+): Promise<KnowledgeReviewerDirectory> {
+  const scopedMunicipalityId = requireMunicipalityId(municipalityId);
+  const client = getSupabaseClient() as unknown as KnowledgeReadRpcClient;
+  const { data, error } = await client
+    .rpc("ia_list_legal_reviewer_capabilities", {
+      p_municipality_id: scopedMunicipalityId,
+    })
+    .abortSignal(fiscalReadSignal());
+  throwIfError(error);
+  return mapKnowledgeReviewerDirectory(data, scopedMunicipalityId);
+}
+
+function normalizedReviewerReason(value: string): string {
+  const normalized = value.trim();
+  if (normalized.length < 10 || normalized.length > 1_000) {
+    throw new FiscalDataError("invalid_knowledge_reviewer_reason");
+  }
+  return normalized;
+}
+
+async function grantKnowledgeReviewerCapability(
+  municipalityId: string,
+  targetMembershipId: string,
+  validUntil: string | null,
+  reason: string,
+  confirmation: string,
+): Promise<string> {
+  const scopedMunicipalityId = requireMunicipalityId(municipalityId);
+  const scopedMembershipId = requireKnowledgeIdentifier(
+    targetMembershipId,
+    "invalid_membership_id",
+  );
+  if (confirmation !== "CONFIRMAR REVISOR JURIDICO") {
+    throw new FiscalDataError("knowledge_reviewer_confirmation_required");
+  }
+  if (validUntil !== null && Number.isNaN(Date.parse(validUntil))) {
+    throw new FiscalDataError("invalid_knowledge_reviewer_validity");
+  }
+  const client = getSupabaseClient() as unknown as KnowledgeWriteRpcClient;
+  const { data, error } = await client.rpc("ia_grant_legal_reviewer_capability", {
+    p_municipality_id: scopedMunicipalityId,
+    p_target_membership_id: scopedMembershipId,
+    p_valid_until: validUntil,
+    p_reason: normalizedReviewerReason(reason),
+    p_confirmation: confirmation,
+  });
+  throwIfError(error);
+  return strictString(data, "knowledge_reviewer_grant_id_missing");
+}
+
+async function revokeKnowledgeReviewerCapability(
+  grantId: string,
+  reason: string,
+  confirmation: string,
+): Promise<void> {
+  const scopedGrantId = requireKnowledgeIdentifier(grantId, "invalid_knowledge_reviewer_grant_id");
+  if (confirmation !== "REVOGAR REVISOR JURIDICO") {
+    throw new FiscalDataError("knowledge_reviewer_revocation_confirmation_required");
+  }
+  const client = getSupabaseClient() as unknown as KnowledgeWriteRpcClient;
+  const { error } = await client.rpc("ia_revoke_legal_reviewer_capability", {
+    p_grant_id: scopedGrantId,
+    p_reason: normalizedReviewerReason(reason),
+    p_confirmation: confirmation,
+  });
+  throwIfError(error);
+}
+
+async function getKnowledgeArticleEvidence(
+  municipalityId: string,
+  articleId: string,
+  revisionId: string,
+): Promise<KnowledgeArticleEvidence> {
+  const scopedMunicipalityId = requireMunicipalityId(municipalityId);
+  const scopedArticleId = requireKnowledgeIdentifier(articleId, "invalid_article_id");
+  const scopedRevisionId = requireKnowledgeIdentifier(revisionId, "invalid_revision_id");
+  const client = getSupabaseClient() as unknown as KnowledgeReadRpcClient;
+  const { data, error } = await client
+    .rpc("ia_get_knowledge_article_evidence", {
+      p_municipality_id: scopedMunicipalityId,
+      p_article_id: scopedArticleId,
+      p_revision_id: scopedRevisionId,
+    })
+    .abortSignal(fiscalReadSignal());
+  throwIfError(error);
+  return mapKnowledgeArticleEvidence(data, scopedMunicipalityId, scopedArticleId, scopedRevisionId);
+}
+
+async function getLegalSourceChangeEvidence(
+  municipalityId: string,
+  changeSetId: string,
+  requestedPage: KnowledgeSourceEvidencePageRequest = {
+    contentOffset: 0,
+    sectionOffset: 0,
+    changeItemOffset: 0,
+  },
+): Promise<KnowledgeSourceChangeEvidence> {
+  const scopedMunicipalityId = requireMunicipalityId(municipalityId);
+  const scopedChangeSetId = requireKnowledgeIdentifier(changeSetId, "invalid_change_set_id");
+  const contentOffset = strictInteger(
+    requestedPage.contentOffset,
+    "invalid_knowledge_evidence_page",
+  );
+  const sectionOffset = strictInteger(
+    requestedPage.sectionOffset,
+    "invalid_knowledge_evidence_page",
+  );
+  const changeItemOffset = strictInteger(
+    requestedPage.changeItemOffset,
+    "invalid_knowledge_evidence_page",
+  );
+  const client = getSupabaseClient() as unknown as KnowledgeReadRpcClient;
+  const { data, error } = await client
+    .rpc("ia_get_legal_source_change_evidence", {
+      p_municipality_id: scopedMunicipalityId,
+      p_change_set_id: scopedChangeSetId,
+      p_content_offset: contentOffset,
+      p_content_limit: KNOWLEDGE_EVIDENCE_CONTENT_PAGE_SIZE,
+      p_section_offset: sectionOffset,
+      p_section_limit: KNOWLEDGE_EVIDENCE_SECTION_PAGE_SIZE,
+      p_change_item_offset: changeItemOffset,
+      p_change_item_limit: KNOWLEDGE_EVIDENCE_CHANGE_ITEM_PAGE_SIZE,
+    })
+    .abortSignal(fiscalReadSignal());
+  throwIfError(error);
+  const page = mapKnowledgeSourceEvidencePage(data, scopedMunicipalityId, scopedChangeSetId);
+  const expectedContentLength = Math.min(
+    page.contentLimit,
+    Math.max(page.contentTotalChars - page.contentOffset, 0),
+  );
+  const expectedSectionLength = Math.min(
+    page.sectionLimit,
+    Math.max(page.sectionTotal - page.sectionOffset, 0),
+  );
+  const expectedChangeItemLength = Math.min(
+    page.changeItemLimit,
+    Math.max(page.changeItemTotal - page.changeItemOffset, 0),
+  );
+  if (
+    page.contentOffset !== contentOffset ||
+    page.sectionOffset !== sectionOffset ||
+    page.changeItemOffset !== changeItemOffset ||
+    page.contentLimit !== KNOWLEDGE_EVIDENCE_CONTENT_PAGE_SIZE ||
+    page.sectionLimit !== KNOWLEDGE_EVIDENCE_SECTION_PAGE_SIZE ||
+    page.changeItemLimit !== KNOWLEDGE_EVIDENCE_CHANGE_ITEM_PAGE_SIZE ||
+    Array.from(page.contentText).length !== expectedContentLength ||
+    page.sections.length !== expectedSectionLength ||
+    page.changeItems.length !== expectedChangeItemLength ||
+    page.contentHasMore !== page.contentOffset + page.contentLimit < page.contentTotalChars ||
+    page.sectionHasMore !== page.sectionOffset + page.sectionLimit < page.sectionTotal ||
+    page.changeItemsHasMore !==
+      page.changeItemOffset + page.changeItemLimit < page.changeItemTotal ||
+    new Set(page.sections.map((section) => section.sectionId)).size !== page.sections.length ||
+    new Set(page.changeItems.map((item) => item.ordinal)).size !== page.changeItems.length
+  ) {
+    throw new FiscalDataError("knowledge_source_evidence_page_mismatch");
+  }
+  return page;
+}
+
+function requireKnowledgeIdentifier(value: string, code: string): string {
+  const normalized = value.trim();
+  if (!normalized) throw new FiscalDataError(code);
+  return normalized;
+}
+
+function normalizedReviewNotes(value: string): string | null {
+  const normalized = value.trim();
+  if (normalized.length > 4_000) throw new FiscalDataError("knowledge_review_notes_too_long");
+  return normalized || null;
+}
+
+function normalizedOptionalDate(value: string | null): string | null {
+  if (value === null || value === "") return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(Date.parse(`${value}T00:00:00Z`))) {
+    throw new FiscalDataError("invalid_knowledge_date");
+  }
+  return value;
+}
+
+async function reviewLegalSourceChange(
+  municipalityId: string,
+  changeSetId: string,
+  decision: LegalSourceReviewDecision,
+  notes: string,
+  confirmation: string,
+  metadata: LegalSourceReviewMetadata,
+): Promise<string> {
+  const scopedMunicipalityId = requireMunicipalityId(municipalityId);
+  const scopedChangeSetId = requireKnowledgeIdentifier(changeSetId, "invalid_change_set_id");
+  if (!new Set(["approved", "rejected", "changes_requested"]).has(decision)) {
+    throw new FiscalDataError("invalid_source_review_decision");
+  }
+  if (confirmation !== "REVISAR") throw new FiscalDataError("review_confirmation_required");
+  const publicationDate = normalizedOptionalDate(metadata.publicationDate);
+  const validFrom = normalizedOptionalDate(metadata.validFrom);
+  const validUntil = normalizedOptionalDate(metadata.validUntil);
+  if (validFrom && validUntil && validUntil < validFrom) {
+    throw new FiscalDataError("invalid_knowledge_validity");
+  }
+  const client = getSupabaseClient() as unknown as KnowledgeWriteRpcClient;
+  const { data, error } = await client.rpc("ia_review_legal_source_change", {
+    p_expected_municipality_id: scopedMunicipalityId,
+    p_change_set_id: scopedChangeSetId,
+    p_decision: decision,
+    p_review_notes: normalizedReviewNotes(notes),
+    p_confirmation: confirmation,
+    p_publication_date: publicationDate,
+    p_valid_from: validFrom,
+    p_valid_until: validUntil,
+  });
+  throwIfError(error);
+  return strictString(data, "source_review_id_missing");
+}
+
+async function publishLegalSourceVersion(
+  municipalityId: string,
+  sourceVersionId: string,
+  confirmation: string,
+): Promise<void> {
+  const scopedMunicipalityId = requireMunicipalityId(municipalityId);
+  const scopedVersionId = requireKnowledgeIdentifier(sourceVersionId, "invalid_source_version_id");
+  if (confirmation !== "PUBLICAR") {
+    throw new FiscalDataError("publication_confirmation_required");
+  }
+  const client = getSupabaseClient() as unknown as KnowledgeWriteRpcClient;
+  const { error } = await client.rpc("ia_publish_legal_source_version", {
+    p_expected_municipality_id: scopedMunicipalityId,
+    p_source_version_id: scopedVersionId,
+    p_confirmation: confirmation,
+  });
+  throwIfError(error);
+}
+
+async function reviewKnowledgeArticle(
+  municipalityId: string,
+  articleId: string,
+  revisionId: string,
+  decision: KnowledgeReviewDecision,
+  notes: string,
+  confirmation: string,
+): Promise<string> {
+  const scopedMunicipalityId = requireMunicipalityId(municipalityId);
+  const scopedArticleId = requireKnowledgeIdentifier(articleId, "invalid_article_id");
+  const scopedRevisionId = requireKnowledgeIdentifier(revisionId, "invalid_revision_id");
+  if (!new Set(["approved", "rejected", "revision_requested"]).has(decision)) {
+    throw new FiscalDataError("invalid_knowledge_review_decision");
+  }
+  if (confirmation !== "REVISAR") throw new FiscalDataError("review_confirmation_required");
+  const client = getSupabaseClient() as unknown as KnowledgeWriteRpcClient;
+  const { data, error } = await client.rpc("ia_review_knowledge_article", {
+    p_expected_municipality_id: scopedMunicipalityId,
+    p_article_id: scopedArticleId,
+    p_revision_id: scopedRevisionId,
+    p_decision: decision,
+    p_notes: normalizedReviewNotes(notes),
+    p_confirmation: confirmation,
+  });
+  throwIfError(error);
+  return strictString(data, "knowledge_review_id_missing");
+}
+
+async function publishKnowledgeArticle(
+  municipalityId: string,
+  articleId: string,
+  confirmation: string,
+): Promise<void> {
+  const scopedMunicipalityId = requireMunicipalityId(municipalityId);
+  const scopedArticleId = requireKnowledgeIdentifier(articleId, "invalid_article_id");
+  if (confirmation !== "PUBLICAR") {
+    throw new FiscalDataError("publication_confirmation_required");
+  }
+  const client = getSupabaseClient() as unknown as KnowledgeWriteRpcClient;
+  const { error } = await client.rpc("ia_publish_knowledge_article", {
+    p_expected_municipality_id: scopedMunicipalityId,
+    p_article_id: scopedArticleId,
+    p_confirmation: confirmation,
+  });
+  throwIfError(error);
 }
 
 async function listPortalCases(municipalityId: string): Promise<PortalCaseReadModel[]> {
@@ -980,6 +2426,20 @@ export const supabaseFiscalService: FiscalService = {
   listFiscalCaseRows,
   listNotificationRecipients,
   listKnowledgeArticles,
+  getKnowledgeOperationsSnapshot,
+  listKnowledgeReviewerCapabilities,
+  grantKnowledgeReviewerCapability,
+  revokeKnowledgeReviewerCapability,
+  searchLegalKnowledge,
+  submitKnowledgeCandidate,
+  getKnowledgeCandidateEvidence,
+  reviewKnowledgeCandidate,
+  getKnowledgeArticleEvidence,
+  getLegalSourceChangeEvidence,
+  reviewLegalSourceChange,
+  publishLegalSourceVersion,
+  reviewKnowledgeArticle,
+  publishKnowledgeArticle,
   listPortalCases,
   listCaseMessages,
   getOperationalReport,

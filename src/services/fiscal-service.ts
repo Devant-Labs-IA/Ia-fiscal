@@ -1,4 +1,18 @@
 import { isDemoMode } from "@/config/runtime";
+import type {
+  KnowledgeArticleEvidence,
+  KnowledgeCandidateEvidence,
+  KnowledgeCandidateInput,
+  KnowledgeCandidateReviewDecision,
+  KnowledgeOperationsSnapshot,
+  KnowledgeReviewerDirectory,
+  KnowledgeReviewDecision,
+  KnowledgeSearchResult,
+  KnowledgeSourceChangeEvidence,
+  KnowledgeSourceEvidencePageRequest,
+  LegalSourceReviewMetadata,
+  LegalSourceReviewDecision,
+} from "@/features/knowledge/knowledge-models";
 import { mockFiscalService } from "@/services/mock-fiscal-service";
 import { supabaseFiscalService } from "@/services/supabase-fiscal-service";
 import type {
@@ -52,6 +66,69 @@ export interface FiscalService {
   listFiscalCaseRows(municipalityId: string, taxpayerId?: string): Promise<FiscalCaseReadModel[]>;
   listNotificationRecipients(municipalityId: string): Promise<NotificationRecipientReadModel[]>;
   listKnowledgeArticles(municipalityId: string): Promise<KnowledgeArticleReadModel[]>;
+  getKnowledgeOperationsSnapshot(municipalityId: string): Promise<KnowledgeOperationsSnapshot>;
+  listKnowledgeReviewerCapabilities(municipalityId: string): Promise<KnowledgeReviewerDirectory>;
+  grantKnowledgeReviewerCapability(
+    municipalityId: string,
+    targetMembershipId: string,
+    validUntil: string | null,
+    reason: string,
+    confirmation: string,
+  ): Promise<string>;
+  revokeKnowledgeReviewerCapability(
+    grantId: string,
+    reason: string,
+    confirmation: string,
+  ): Promise<void>;
+  searchLegalKnowledge(municipalityId: string, query: string): Promise<KnowledgeSearchResult>;
+  submitKnowledgeCandidate(municipalityId: string, input: KnowledgeCandidateInput): Promise<string>;
+  getKnowledgeCandidateEvidence(
+    municipalityId: string,
+    candidateId: string,
+  ): Promise<KnowledgeCandidateEvidence>;
+  reviewKnowledgeCandidate(
+    municipalityId: string,
+    candidateId: string,
+    decision: KnowledgeCandidateReviewDecision,
+    notes: string,
+    confirmation: string,
+  ): Promise<string>;
+  getKnowledgeArticleEvidence(
+    municipalityId: string,
+    articleId: string,
+    revisionId: string,
+  ): Promise<KnowledgeArticleEvidence>;
+  getLegalSourceChangeEvidence(
+    municipalityId: string,
+    changeSetId: string,
+    page?: KnowledgeSourceEvidencePageRequest,
+  ): Promise<KnowledgeSourceChangeEvidence>;
+  reviewLegalSourceChange(
+    municipalityId: string,
+    changeSetId: string,
+    decision: LegalSourceReviewDecision,
+    notes: string,
+    confirmation: string,
+    metadata: LegalSourceReviewMetadata,
+  ): Promise<string>;
+  publishLegalSourceVersion(
+    municipalityId: string,
+    sourceVersionId: string,
+    confirmation: string,
+  ): Promise<void>;
+  reviewKnowledgeArticle(
+    municipalityId: string,
+    articleId: string,
+    revisionId: string,
+    decision: KnowledgeReviewDecision,
+    notes: string,
+    confirmation: string,
+  ): Promise<string>;
+  publishKnowledgeArticle(
+    municipalityId: string,
+    articleId: string,
+    confirmation: string,
+  ): Promise<void>;
   listPortalCases(municipalityId: string): Promise<PortalCaseReadModel[]>;
   listCaseMessages(municipalityId: string, caseId: string): Promise<CaseMessageReadModel[]>;
   getOperationalReport(municipalityId: string): Promise<OperationalReport>;
@@ -108,6 +185,66 @@ export const fiscalService: FiscalService = {
   listNotificationRecipients: (municipalityId) =>
     activeService().listNotificationRecipients(municipalityId),
   listKnowledgeArticles: (municipalityId) => activeService().listKnowledgeArticles(municipalityId),
+  getKnowledgeOperationsSnapshot: (municipalityId) =>
+    activeService().getKnowledgeOperationsSnapshot(municipalityId),
+  listKnowledgeReviewerCapabilities: (municipalityId) =>
+    activeService().listKnowledgeReviewerCapabilities(municipalityId),
+  grantKnowledgeReviewerCapability: (
+    municipalityId,
+    targetMembershipId,
+    validUntil,
+    reason,
+    confirmation,
+  ) =>
+    activeService().grantKnowledgeReviewerCapability(
+      municipalityId,
+      targetMembershipId,
+      validUntil,
+      reason,
+      confirmation,
+    ),
+  revokeKnowledgeReviewerCapability: (grantId, reason, confirmation) =>
+    activeService().revokeKnowledgeReviewerCapability(grantId, reason, confirmation),
+  searchLegalKnowledge: (municipalityId, query) =>
+    activeService().searchLegalKnowledge(municipalityId, query),
+  submitKnowledgeCandidate: (municipalityId, input) =>
+    activeService().submitKnowledgeCandidate(municipalityId, input),
+  getKnowledgeCandidateEvidence: (municipalityId, candidateId) =>
+    activeService().getKnowledgeCandidateEvidence(municipalityId, candidateId),
+  reviewKnowledgeCandidate: (municipalityId, candidateId, decision, notes, confirmation) =>
+    activeService().reviewKnowledgeCandidate(
+      municipalityId,
+      candidateId,
+      decision,
+      notes,
+      confirmation,
+    ),
+  getKnowledgeArticleEvidence: (municipalityId, articleId, revisionId) =>
+    activeService().getKnowledgeArticleEvidence(municipalityId, articleId, revisionId),
+  getLegalSourceChangeEvidence: (municipalityId, changeSetId, page) =>
+    activeService().getLegalSourceChangeEvidence(municipalityId, changeSetId, page),
+  reviewLegalSourceChange: (municipalityId, changeSetId, decision, notes, confirmation, metadata) =>
+    activeService().reviewLegalSourceChange(
+      municipalityId,
+      changeSetId,
+      decision,
+      notes,
+      confirmation,
+      metadata,
+    ),
+  publishLegalSourceVersion: (municipalityId, sourceVersionId, confirmation) =>
+    activeService().publishLegalSourceVersion(municipalityId, sourceVersionId, confirmation),
+  reviewKnowledgeArticle: (municipalityId, articleId, revisionId, decision, notes, confirmation) =>
+    activeService().reviewKnowledgeArticle(
+      municipalityId,
+      articleId,
+      revisionId,
+      decision,
+      notes,
+      confirmation,
+    ),
+  publishKnowledgeArticle: (municipalityId, articleId, confirmation) =>
+    activeService().publishKnowledgeArticle(municipalityId, articleId, confirmation),
   listPortalCases: (municipalityId) => activeService().listPortalCases(municipalityId),
   listCaseMessages: (municipalityId, caseId) =>
     activeService().listCaseMessages(municipalityId, caseId),
@@ -150,6 +287,25 @@ export const fiscalKeys = {
   recipients: (municipalityId: string) =>
     ["municipality", municipalityId, "notification-recipients"] as const,
   knowledge: (municipalityId: string) => ["municipality", municipalityId, "knowledge"] as const,
+  knowledgeOperations: (municipalityId: string) =>
+    ["municipality", municipalityId, "knowledge", "operations"] as const,
+  knowledgeReviewers: (municipalityId: string) =>
+    ["municipality", municipalityId, "knowledge", "reviewers"] as const,
+  knowledgeSearch: (municipalityId: string, query: string) =>
+    ["municipality", municipalityId, "knowledge", "search", query] as const,
+  knowledgeArticleEvidence: (municipalityId: string, articleId: string, revisionId: string) =>
+    [
+      "municipality",
+      municipalityId,
+      "knowledge",
+      "article-evidence",
+      articleId,
+      revisionId,
+    ] as const,
+  legalSourceChangeEvidence: (municipalityId: string, changeSetId: string) =>
+    ["municipality", municipalityId, "knowledge", "source-evidence", changeSetId] as const,
+  knowledgeCandidateEvidence: (municipalityId: string, candidateId: string) =>
+    ["municipality", municipalityId, "knowledge", "candidate-evidence", candidateId] as const,
   portal: (municipalityId: string) => ["municipality", municipalityId, "portal-cases"] as const,
   caseMessages: (municipalityId: string, caseId: string) =>
     ["municipality", municipalityId, "case-messages", caseId] as const,
