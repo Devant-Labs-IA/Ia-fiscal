@@ -35,7 +35,6 @@ jobs:
       OCR_DPI: "300"
       OCR_MIN_PAGE_COVERAGE_BPS: "9000"
       OCR_MIN_MEAN_CONFIDENCE_MILLI: "550"
-      OCR_SUMMARY_PATH: ${{ runner.temp }}/knowledge-ocr-summary.json
 
     steps:
       - name: Reject execution outside the protected branch
@@ -44,6 +43,14 @@ jobs:
           set -euo pipefail
           test "$GITHUB_REF" = "refs/heads/main"
           test "$GITHUB_REPOSITORY" = "AlmoreContabilidade/Ia-fiscal"
+
+      - name: Configure runner-local summary path
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${RUNNER_TEMP:?RUNNER_TEMP is required}"
+          printf 'OCR_SUMMARY_PATH=%s\n' \
+            "$RUNNER_TEMP/knowledge-ocr-summary.json" >> "$GITHUB_ENV"
 
       - name: Checkout immutable workflow source
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
