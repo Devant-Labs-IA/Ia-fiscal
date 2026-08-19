@@ -1,0 +1,123 @@
+{
+  "evidence_contract": "knowledge-runtime-ocr-retry-evidence/v2",
+  "generated_at": "2026-08-19T08:47:53Z",
+  "production_snapshot_captured_at": "2026-08-19T08:47:26.300029Z",
+  "project_ref": "qvgenxcrdrqyiyozxtdt",
+  "purpose": "Renew the unchanged knowledge runtime bundle only long enough to execute one governed OCR retry from the exact hardened main workflow; this does not authorize schedule activation, external communication or legal publication.",
+  "source_repository": "AlmoreContabilidade/Ia-fiscal",
+  "source_main_commit": "d7fbd651fd43f6ebeab42be3c9e442f3afedefaa",
+  "prior_release_evidence": {
+    "locator": "https://github.com/AlmoreContabilidade/Ia-fiscal/blob/782c0890de80ba4dff26c9718e65e64828455f44/docs/qa/evidence/knowledge-runtime-bootstrap-2026-08-19.json",
+    "sha256": "77c7f6214204f0c84859b0a95d7e1d381804ff2b33251c31bc1e40a287bca38b"
+  },
+  "prior_runtime_retry_evidence": {
+    "locator": "https://github.com/AlmoreContabilidade/Ia-fiscal/blob/2b93f0666fe2e600c6fe537b19e7d13711a980af/docs/qa/evidence/knowledge-runtime-ocr-retry-2026-08-19.json",
+    "sha256": "fb36ef7af98dec286d953c3072b2bf4249d007548b2c22262f92a70ec87e827b",
+    "superseded_only_for_workflow_commit": true
+  },
+  "edge_manifests_revalidated_in_production": {
+    "ingest": {
+      "contract": "knowledge-ingest-v2",
+      "deployment_id": "ed316143-8ebb-4ea4-a293-559ac1c9f8bd",
+      "version": 5,
+      "status": "ACTIVE",
+      "verify_jwt": false,
+      "ezbr_sha256": "521e165b8d3ccddfc536cd96653b7ccb45b1ff4454cb60e706fdee90d9aa9c40",
+      "release_fingerprint_sha256": "0f7ffacc7b5cd7c225d175f1ed2c3252c7a1f44cb514f88319ec1aa4ee4edc91"
+    },
+    "embed": {
+      "contract": "knowledge-embed-v1",
+      "deployment_id": "34bb78c5-97e0-4390-b0c0-ea97f322a7a3",
+      "version": 1,
+      "status": "ACTIVE",
+      "verify_jwt": false,
+      "ezbr_sha256": "65076c05ae0b767c07bd34099317d4b193722f788c3793e40c73d8c17aa3e031",
+      "release_fingerprint_sha256": "630f6e81cb822ab6eb962930db4f4c83f8b21bbf5b573d82a5abc84cd09bee9a"
+    },
+    "search": {
+      "contract": "knowledge-search-v1",
+      "deployment_id": "47ce1797-4eb8-43a9-afcd-92d89667ea56",
+      "version": 1,
+      "status": "ACTIVE",
+      "verify_jwt": true,
+      "ezbr_sha256": "67de8e41b5ca559263ac83ab456c1d0184518024060d961ac113c55c3341db8a",
+      "release_fingerprint_sha256": "be3df4a48011b199abd1164f67c7fa02fa992ef5a6761b49327daef2e1702159"
+    }
+  },
+  "hardened_ocr_workflow_dependency": {
+    "main_commit_sha": "d7fbd651fd43f6ebeab42be3c9e442f3afedefaa",
+    "path": ".github/workflows/knowledge-ocr.yml",
+    "file_blob_sha1": "323c8c826e236f4be6a5d4c6b60498afd927bfcb",
+    "file_sha256": "5a93f1a83d5fad2dc97e1a9c204bf022bcf63182f3b9430978522eb69afc258d",
+    "file_byte_size": 9136,
+    "pull_request": 7,
+    "pull_request_merged": true,
+    "ci_run_id": 32233782885,
+    "ci_run_number": 89,
+    "ci_head_commit_sha": "90b0f99bb2dca17b6429bbd8735891c79f43a50b",
+    "ci_status": "success"
+  },
+  "previous_workflow_attempt": {
+    "github_run_id": 32230078189,
+    "github_run_number": 9,
+    "workflow_commit_sha": "9b5873ab8ce3da7257243f4a52f207db9b4f6817",
+    "job_id": 95997817093,
+    "job_conclusion": "cancelled",
+    "failed_stage": "Install the locked OCR toolchain",
+    "drain_ocr_queue_step": "skipped",
+    "cancelled_at": "2026-08-19T08:23:51.393103Z",
+    "safe_cause": "The inherited Ubuntu mirror path stopped making progress during apt update; the run was cancelled before toolchain verification, OIDC acquisition or OCR queue drain.",
+    "supabase_oidc_requests_for_run": 0,
+    "database_ocr_mutations_after_queue_creation": 0,
+    "temporary_ocr_gate_id": "beb7eaac-cdbd-46a6-91d5-b547ccf4768e",
+    "temporary_ocr_gate_revoked_at": "2026-08-19T08:24:37.900749Z"
+  },
+  "production_fail_closed_snapshot": {
+    "target_ocr_job_id": "03c5dd76-beee-4363-9d3f-9335e2357da9",
+    "target_ocr_job_status": "queued",
+    "target_ocr_job_attempt": 0,
+    "target_ocr_job_has_lease": false,
+    "target_ocr_post_queue_events": 0,
+    "ocr_oidc_requests_total": 0,
+    "ocr_job_pages": 0,
+    "ocr_results": 0,
+    "ocr_storage_objects": 0,
+    "target_change_set_candidate_version_id": null,
+    "published_versions_for_target_source": 0,
+    "current_ocr_runtime_gates": 0,
+    "enabled_automation_settings": 0,
+    "scheduled_knowledge_cron_jobs": 0,
+    "active_legal_reviewers": 0
+  },
+  "runtime_bundle_observed_current_at_snapshot": {
+    "gate_id": "a4dabd24-b1c2-4689-9317-190bb52ff0fd",
+    "selected_at": "2026-08-19T07:53:05.532785Z",
+    "valid_until": "2026-08-19T09:15:00Z",
+    "revoked": false,
+    "time_valid_at_snapshot": true
+  },
+  "new_temporary_main_gate_constraints": {
+    "planned_valid_until": "2026-08-19T11:00:00Z",
+    "activation_allowed": false,
+    "publication_allowed": false,
+    "external_communication_allowed": false,
+    "allowed_operation": "one governed OCR retry using main commit d7fbd651fd43f6ebeab42be3c9e442f3afedefaa",
+    "must_match_all_three_edge_deployment_ids_and_release_fingerprints": true,
+    "must_outlive_the_selected_ocr_gate": true,
+    "revoke_after_controlled_result": true
+  },
+  "mandatory_preconditions_at_gate_selection": [
+    "Remote main remains exactly d7fbd651fd43f6ebeab42be3c9e442f3afedefaa and the OCR workflow still matches blob 323c8c826e236f4be6a5d4c6b60498afd927bfcb and SHA-256 5a93f1a83d5fad2dc97e1a9c204bf022bcf63182f3b9430978522eb69afc258d.",
+    "The production ingest, embed and search deployments and release fingerprints exactly match this evidence.",
+    "The target OCR job is still queued at attempt 0 with no lease, OIDC request, post-queue event, page, result, OCR storage object or candidate version.",
+    "Automation settings and knowledge cron remain disabled, and no OCR workflow is queued or in progress before the single dispatch.",
+    "Any schedule-triggered overlap is cancelled before OIDC acquisition and the temporary gates are revoked on any mismatch."
+  ],
+  "validation": {
+    "github_ci_89_repository_tests": "292/292 passed",
+    "local_ocr_python_tests": "38/38 passed",
+    "remote_workflow_blob_matches_local_audited_bytes": true,
+    "secrets_detected": false
+  },
+  "activation_decision": "no_go_except_for_one_short_lived_governed_ocr_retry"
+}
