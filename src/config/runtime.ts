@@ -1,6 +1,7 @@
 const DEFAULT_SUPABASE_URL = "https://qvgenxcrdrqyiyozxtdt.supabase.co";
 const DEFAULT_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Frt254fLpExL7A52zWNCnw_ZXLP7k33";
 const APP_ENVIRONMENT = import.meta.env["VITE_APP_ENV"] ?? "assisted_operation";
+const IS_TEST = import.meta.env.MODE === "test";
 
 export type DataMode = "supabase" | "mock";
 
@@ -17,6 +18,9 @@ export const runtimeConfig = {
     import.meta.env["VITE_ALLOW_SIGNUP"],
     APP_ENVIRONMENT === "homologation" || APP_ENVIRONMENT === "assisted_operation",
   ),
+  // Homologação e operação assistida usam somente e-mail e senha.
+  // A exigência de MFA volta automaticamente quando o ambiente for produção.
+  requireMfa: IS_TEST || APP_ENVIRONMENT === "production",
   supabaseUrl: import.meta.env["VITE_SUPABASE_URL"] ?? DEFAULT_SUPABASE_URL,
   supabasePublishableKey:
     import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ?? DEFAULT_SUPABASE_PUBLISHABLE_KEY,
