@@ -1,13 +1,19 @@
 from __future__ import annotations
 
-import json
 import hashlib
+import json
 import re
 import unittest
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[3]
+LOCKED_BWRAP_PROFILE = (
+    ROOT / "scripts/knowledge_ocr/bwrap-userns-restrict.apparmor"
+)
+LOCKED_BWRAP_PROFILE_SHA256 = (
+    "43710aa4047dcf100da71f7d924d28db4f036db4d2ae8b65a6bac2e419d168b2"
+)
 
 
 class WorkflowContractTests(unittest.TestCase):
@@ -60,6 +66,7 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("Acquire::Retries=1", install_step)
         self.assertIn("Acquire::http::Timeout=10", install_step)
         self.assertIn("Acquire::https::Timeout=10", install_step)
+        self.assertIn("APT::Sandbox::User=_apt", install_step)
         self.assertIn("DPkg::Lock::Timeout=30", install_step)
         self.assertIn(
             'timeout --signal=TERM --kill-after=15s "$budget"', install_step
@@ -88,6 +95,52 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertNotIn("trusted=yes", install_step)
         self.assertNotIn("--allow-unauthenticated", install_step)
         self.assertNotIn("Acquire::AllowInsecureRepositories", install_step)
+        self.assertIn(
+            "sudo mktemp -d /var/lib/apt/ia-fiscal-ocr.XXXXXXXX",
+            install_step,
+        )
+        self.assertIn("/var/lib/apt/ia-fiscal-ocr.*)", install_step)
+        self.assertIn("readlink -f --", install_step)
+        self.assertIn(
+            'test "$(dirname -- "$candidate")" = "/var/lib/apt" || return 1',
+            install_step,
+        )
+        self.assertIn('test ! -L "$candidate" || return 1', install_step)
+        self.assertIn(
+            'test "$(readlink -f -- "$candidate")" = "$candidate" || return 1',
+            install_step,
+        )
+        self.assertIn("trap cleanup_apt_state EXIT", install_step)
+        self.assertIn("rm -rf --one-file-system --", install_step)
+        self.assertIn('prepare_lists "$lists" || return 1', install_step)
+        self.assertIn(
+            'for parent in /var /var/lib /var/lib/apt "$apt_state_root" "$lists"',
+            install_step,
+        )
+        self.assertIn('sudo -u _apt test -x "$parent" || return 1', install_step)
+        self.assertIn(
+            'sudo -u _apt test -w "$lists/partial" || return 1',
+            install_step,
+        )
+        self.assertIn('root:root:755', install_step)
+        self.assertIn('_apt:root:700', install_step)
+        self.assertNotIn("$RUNNER_TEMP/knowledge-ocr-apt-primary", install_step)
+        self.assertNotIn("$RUNNER_TEMP/knowledge-ocr-apt-fallback", install_step)
+        self.assertIn(
+            'sudo grep -Fq "Download is performed unsandboxed as root" "$log"',
+            install_step,
+        )
+        self.assertIn("APT sandbox fallback was rejected", install_step)
+        self.assertIn("apt_sandbox_guard_failed=0", install_step)
+        self.assertIn("apt_sandbox_guard_failed=1", install_step)
+        self.assertIn(
+            'if test "$apt_sandbox_guard_failed" -ne 0; then',
+            install_step,
+        )
+        self.assertIn('warning_status=$?', install_step)
+        self.assertIn('case "$warning_status" in', install_step)
+        self.assertIn("APT sandbox log could not be verified", install_step)
+        self.assertIn('if ! candidate="$(', install_step)
 
         job_match = re.search(r"(?m)^    timeout-minutes: (\d+)$", workflow)
         deadline_match = re.search(
@@ -106,6 +159,50 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertLessEqual(
             (45 + 15) + (75 + 15) + (150 + 15),
             6 * 60,
+        )
+
+    def test_locked_bwrap_apparmor_profile_is_loaded_without_global_relaxation(self) -> None:
+        workflow = (ROOT / ".github/workflows/knowledge-ocr.yml").read_text(encoding="utf-8")
+
+        self.assertTrue(LOCKED_BWRAP_PROFILE.is_file())
+        profile = LOCKED_BWRAP_PROFILE.read_text(encoding="utf-8")
+        self.assertEqual(
+            hashlib.sha256(LOCKED_BWRAP_PROFILE.read_bytes()).hexdigest(),
+            LOCKED_BWRAP_PROFILE_SHA256,
+        )
+        self.assertIn("profile bwrap /usr/bin/bwrap", profile)
+        self.assertIn("profile unpriv_bwrap", profile)
+        self.assertIn("allow px /** -> bwrap//&unpriv_bwrap", profile)
+        self.assertIn("audit deny capability", profile)
+        self.assertNotIn("include if exists <local/", profile)
+
+        profile_step = workflow[
+            workflow.index("- name: Load the locked bwrap AppArmor profile") : workflow.index(
+                "- name: Verify toolchain and fail-closed unit tests"
+            )
+        ]
+        self.assertIn(
+            "/proc/sys/kernel/apparmor_restrict_unprivileged_userns",
+            profile_step,
+        )
+        self.assertIn('test "$apparmor_userns_restricted" = "1"', profile_step)
+        self.assertIn("4.0.1really4.0.1-0ubuntu0.24.04.7", profile_step)
+        self.assertIn(LOCKED_BWRAP_PROFILE_SHA256, profile_step)
+        self.assertIn("bwrap-userns-restrict.apparmor", profile_step)
+        self.assertIn("sha256sum --check --status", profile_step)
+        self.assertIn("apparmor_parser --replace --skip-read-cache --quiet", profile_step)
+        self.assertIn('bwrap_path="$(command -v bwrap)"', profile_step)
+        self.assertIn('test "$bwrap_path" = "/usr/bin/bwrap"', profile_step)
+        self.assertIn(
+            'test "$(readlink -f -- "$bwrap_path")" = "/usr/bin/bwrap"',
+            profile_step,
+        )
+        self.assertIn("'bwrap (enforce)'", profile_step)
+        self.assertIn("'unpriv_bwrap (enforce)'", profile_step)
+        self.assertNotRegex(workflow, r"sysctl\s+(?:-w|--write)")
+        self.assertNotRegex(
+            workflow,
+            r"(?:tee|printf|echo).*apparmor_restrict_unprivileged_userns",
         )
 
     def test_job_environment_does_not_use_runner_context(self) -> None:

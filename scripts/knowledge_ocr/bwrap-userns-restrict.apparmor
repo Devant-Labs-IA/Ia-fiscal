@@ -1,0 +1,45 @@
+# Locked IA Fiscal derivative of AppArmor's bwrap-userns-restrict profile.
+# Upstream revision: aa74b9b12d9ed55909489403a0c2514b9ea6a95f
+# The optional local includes are intentionally omitted so runner-local policy
+# cannot widen this profile.
+
+abi <abi/4.0>,
+
+include <tunables/global>
+
+profile bwrap /usr/bin/bwrap flags=(attach_disconnected) {
+  allow capability,
+  allow file rwlkm /{**,},
+  allow network,
+  allow unix,
+  allow ptrace,
+  allow signal,
+  allow mqueue,
+  allow io_uring,
+  allow userns,
+  allow mount,
+  allow umount,
+  allow pivot_root,
+  allow dbus,
+
+  allow px /** -> bwrap//&unpriv_bwrap,
+}
+
+profile unpriv_bwrap flags=(attach_disconnected) {
+  allow file rwlkm /{**,},
+  allow network,
+  allow unix,
+  allow ptrace,
+  allow signal,
+  allow mqueue,
+  allow io_uring,
+  allow userns,
+  allow mount,
+  allow umount,
+  allow pivot_root,
+  allow dbus,
+
+  allow pix /** -> &unpriv_bwrap,
+
+  audit deny capability,
+}
