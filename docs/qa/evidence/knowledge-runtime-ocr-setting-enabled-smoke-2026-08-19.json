@@ -1,0 +1,236 @@
+{
+  "evidence_contract": "knowledge-runtime-ocr-setting-enabled-smoke-evidence/v1",
+  "generated_at": "2026-08-19T10:58:09Z",
+  "production_snapshot_captured_at": "2026-08-19T10:57:33Z",
+  "project_ref": "qvgenxcrdrqyiyozxtdt",
+  "purpose": "Authorize one schedule-only OCR smoke after temporarily enabling only the Araras knowledge_automation_settings row. This is a bounded test prerequisite, not production schedule activation, and it does not authorize a cron job, publication, reviewer enrollment, email or any external communication.",
+  "source_repository": "AlmoreContabilidade/Ia-fiscal",
+  "source_main_commit": "1de86345a8bdc208fcbdfe9001004e50606ecd50",
+  "source_main_tree": "38276a2ef97b99c55bc65eae9ece304e0e1925c0",
+  "release_validation": {
+    "pull_request": 8,
+    "merged": true,
+    "ci_run_id": 32239395922,
+    "ci_run_number": 91,
+    "ci_status": "success",
+    "repository_tests": "309/309 passed",
+    "local_ocr_python_tests": "40/40 passed",
+    "vercel_status": "success"
+  },
+  "edge_manifests_revalidated_in_production": {
+    "ingest": {
+      "contract": "knowledge-ingest-v2",
+      "deployment_id": "ed316143-8ebb-4ea4-a293-559ac1c9f8bd",
+      "version": 5,
+      "status": "ACTIVE",
+      "verify_jwt": false,
+      "ezbr_sha256": "521e165b8d3ccddfc536cd96653b7ccb45b1ff4454cb60e706fdee90d9aa9c40",
+      "release_fingerprint_sha256": "0f7ffacc7b5cd7c225d175f1ed2c3252c7a1f44cb514f88319ec1aa4ee4edc91"
+    },
+    "embed": {
+      "contract": "knowledge-embed-v1",
+      "deployment_id": "34bb78c5-97e0-4390-b0c0-ea97f322a7a3",
+      "version": 2,
+      "status": "ACTIVE",
+      "verify_jwt": false,
+      "ezbr_sha256": "924a442d7b1792bad0232efc78b4df769af3aa4da4a1d81cbfc49552b4f5795a",
+      "release_fingerprint_sha256": "f416fb461f45c4d800aaeb7f5a55bd37b0a718b506e87577e83b03baaf69bc23",
+      "runtime_behavior": "retired_noop",
+      "semantic_status": "unsupported_language"
+    },
+    "search": {
+      "contract": "knowledge-search-v1",
+      "deployment_id": "47ce1797-4eb8-43a9-afcd-92d89667ea56",
+      "version": 2,
+      "status": "ACTIVE",
+      "verify_jwt": true,
+      "ezbr_sha256": "c68d9924006e5e398a3bd8d19ed6e5077a48146fca55559f9ae610cce7936235",
+      "release_fingerprint_sha256": "79364d65f1dcf02a35105ca705a8b16dd7ef283cb8da51274ce4edca1bfa4257",
+      "retrieval_mode": "lexical_portuguese",
+      "query_embedding": null
+    }
+  },
+  "merged_workflow_dependency": {
+    "path": ".github/workflows/knowledge-ocr.yml",
+    "main_commit_sha": "1de86345a8bdc208fcbdfe9001004e50606ecd50",
+    "file_blob_sha1": "f43de89b402cc4b03119b3613a9b722839aca1aa",
+    "file_sha256": "dfc4a06da4a18046bbb05a3787973f3af7cd98f0ad474471a3199b556977b899",
+    "file_byte_size": 14442,
+    "app_armor_profile_sha256": "43710aa4047dcf100da71f7d924d28db4f036db4d2ae8b65a6bac2e419d168b2",
+    "worker_extraction_sha256": "d2757cf23f17fdf30199a4d3b88b8acae6cd869a7f044d3c2705e4c7d53588c1",
+    "workflow_contract_test_sha256": "09394b64dc69a9ed9e0e9e9e5d283605dc62476ea99537afa02fcfd4c2ecea18"
+  },
+  "first_apparmor_hardened_schedule_run": {
+    "github_run_id": 32244480872,
+    "github_run_number": 13,
+    "github_job_id": 96041926786,
+    "event_name": "schedule",
+    "workflow_commit_sha": "1de86345a8bdc208fcbdfe9001004e50606ecd50",
+    "created_at": "2026-08-19T10:48:31Z",
+    "started_at": "2026-08-19T10:48:31Z",
+    "completed_at": "2026-08-19T10:50:08Z",
+    "conclusion": "success",
+    "all_job_steps_conclusion": "success",
+    "summary_artifact": {
+      "artifact_id": 9362087507,
+      "byte_size": 271,
+      "digest": "sha256:327c1a997589097f848a49d9e0022e494bc3d63a19e058f60ea722ff5df082fc",
+      "result": "completed",
+      "fatal_error": null,
+      "jobs_claimed": 0,
+      "jobs_completed": 0,
+      "jobs_failed": 0,
+      "jobs": []
+    },
+    "oidc_receipt": {
+      "id": "f8d239dc-c520-47a0-a68c-fbe51e3c3c89",
+      "request_action": "claim",
+      "consumed_at": "2026-08-19T10:50:03.060512Z",
+      "token_expires_at": "2026-08-19T10:55:01Z",
+      "run_attempt": 1,
+      "workflow_sha": "1de86345a8bdc208fcbdfe9001004e50606ecd50",
+      "repository": "AlmoreContabilidade/Ia-fiscal",
+      "repository_id": "1320619695",
+      "repository_owner_id": "296187202",
+      "git_ref": "refs/heads/main",
+      "environment": "knowledge-ocr",
+      "runner_environment": "github-hosted",
+      "jti_or_subject_hash_disclosed": false
+    },
+    "governance_result": "failed_smoke_no_job_claimed",
+    "diagnosis": "The claim OIDC request was accepted, but the claim query correctly returned empty because every knowledge_automation_settings row was disabled. A successful GitHub job with jobs_claimed=0 is not a successful OCR smoke."
+  },
+  "production_fail_closed_snapshot": {
+    "target_ocr_job_id": "03c5dd76-beee-4363-9d3f-9335e2357da9",
+    "target_municipality_id": "441927cd-c989-4181-a5c7-66559cde409e",
+    "target_municipality_slug": "araras-sp",
+    "target_municipality_status": "homologation",
+    "target_ocr_job_status": "queued",
+    "target_ocr_job_attempt": 0,
+    "target_ocr_job_available_at": "2026-08-19T06:39:32.861403Z",
+    "target_ocr_job_available_now": true,
+    "target_ocr_job_has_lease": false,
+    "target_ocr_job_has_error": false,
+    "target_ocr_job_completed_at": null,
+    "target_ocr_event_count": 1,
+    "target_ocr_only_event": {
+      "id": 6,
+      "event_type": "queued",
+      "attempt": 0,
+      "event_at": "2026-08-19T06:39:32.861403Z"
+    },
+    "ocr_oidc_requests_total": 1,
+    "ocr_job_pages": 0,
+    "ocr_results": 0,
+    "ocr_storage_objects": 0,
+    "target_change_set_candidate_version_id": null,
+    "published_versions_total": 0,
+    "current_main_runtime_gates": 0,
+    "current_ocr_runtime_gates": 0,
+    "enabled_automation_settings": 0,
+    "araras_setting_enabled": false,
+    "cordeiropolis_setting_enabled": false,
+    "scheduled_knowledge_cron_jobs": 0,
+    "knowledge_schedule_activation_events_total": 0,
+    "active_legal_reviewers": 0
+  },
+  "temporary_araras_setting_authorization": {
+    "authorization_scope": "only_this_setting_row_and_its_two_append_only_audit_events",
+    "table": "private.knowledge_automation_settings",
+    "municipality_id": "441927cd-c989-4181-a5c7-66559cde409e",
+    "municipality_slug": "araras-sp",
+    "before_enabled": false,
+    "temporarily_enabled": true,
+    "required_next_run_at": "2026-08-20T06:15:00Z",
+    "next_run_at_is_after_main_gate_expiry": true,
+    "unchanged_fields": {
+      "cadence_minutes": 1440,
+      "local_run_time": "03:15:00",
+      "timezone": "America/Sao_Paulo"
+    },
+    "other_municipalities_must_remain_disabled": true,
+    "knowledge_cron_must_remain_absent": true,
+    "correlation_key": "ocr_setting_enabled_smoke_20260819_1117z_03c5dd76",
+    "activation_event": {
+      "table": "private.knowledge_schedule_activation_events",
+      "enabled": true,
+      "actor_kind": "release_migration",
+      "actor_membership_id": null,
+      "runtime_gate_id": "must_equal_the_selected_temporary_main_runtime_gate_id",
+      "reason_code": "ocr_setting_enabled_smoke_started",
+      "metadata_must_include": [
+        "correlation_key",
+        "target_ocr_job_id",
+        "scheduled_for",
+        "scope=single_governed_ocr_smoke",
+        "client_communication_enabled=false"
+      ]
+    },
+    "mandatory_deactivation": {
+      "timing": "immediately_after_the_selected_workflow_reaches_a_terminal_result_and_before_runtime_gate_revocation",
+      "restore_enabled": false,
+      "preserve_next_run_at": "2026-08-20T06:15:00Z",
+      "deactivation_event": {
+        "table": "private.knowledge_schedule_activation_events",
+        "enabled": false,
+        "actor_kind": "release_migration",
+        "actor_membership_id": null,
+        "runtime_gate_id": "must_equal_the_activation_event_runtime_gate_id",
+        "reason_code": "ocr_setting_enabled_smoke_stopped",
+        "metadata_must_include": [
+          "same_correlation_key",
+          "activation_event_id",
+          "github_run_id",
+          "jobs_claimed",
+          "terminal_conclusion"
+        ]
+      }
+    }
+  },
+  "single_schedule_window": {
+    "allowed_event_name": "schedule",
+    "workflow_dispatch_allowed": false,
+    "selected_schedule_at": "2026-08-19T11:17:00Z",
+    "next_schedule_at": "2026-08-19T12:17:00Z",
+    "next_schedule_occurs_after_both_gate_expiries": true,
+    "concurrency_group": "ia-fiscal-governed-knowledge-ocr-production",
+    "cancel_in_progress": false,
+    "at_most_one_run_may_reach_oidc_during_the_window": true
+  },
+  "new_temporary_main_gate_constraints": {
+    "planned_valid_until": "2026-08-19T12:16:00Z",
+    "must_outlive_the_ocr_gate": true,
+    "allowed_activation": "temporary_enable_of_only_the_araras_knowledge_automation_settings_row_for_the_selected_schedule_run",
+    "all_other_schedule_activation_allowed": false,
+    "publication_allowed": false,
+    "reviewer_enrollment_allowed": false,
+    "email_allowed": false,
+    "external_communication_allowed": false,
+    "must_match_all_three_edge_deployment_ids_and_release_fingerprints": true,
+    "revoke_after_controlled_result": true
+  },
+  "success_criteria": {
+    "jobs_claimed_must_equal": 1,
+    "jobs_claimed_zero_is_failure": true,
+    "target_job_must_be_the_only_claimed_job": "03c5dd76-beee-4363-9d3f-9335e2357da9",
+    "successful_candidate_status": "under_review",
+    "automatic_approval_or_publication_allowed": false,
+    "temporary_setting_must_be_disabled_after_terminal_result": true,
+    "both_runtime_gates_must_be_revoked_after_terminal_result": true
+  },
+  "mandatory_preconditions": [
+    "Remote main and all workflow, AppArmor, worker and Edge bytes still exactly match this evidence.",
+    "The target OCR job remains queued at attempt 0 and its only event remains queued event 6; no page, result, storage object or candidate version exists.",
+    "Exactly the historical run 13 claim OIDC receipt exists before the second smoke; no new OCR workflow has reached OIDC.",
+    "No runtime gate is current, every automation setting is disabled, knowledge cron is absent, and no legal version is published.",
+    "The setting enable, activation event and both runtime gate attestations occur atomically before the 11:17Z schedule; any mismatch aborts the transaction."
+  ],
+  "mandatory_postconditions": [
+    "The selected run reports jobs_claimed=1; jobs_claimed=0 is a failed smoke even if GitHub reports success.",
+    "Only OCR job 03c5dd76-beee-4363-9d3f-9335e2357da9 may be claimed.",
+    "The Araras setting is disabled and its paired deactivation event is appended before both gates are revoked.",
+    "No cron, reviewer grant, approval, publication, email or external delivery is created.",
+    "A successful OCR result remains under_review and WORM/hash-verifiable."
+  ],
+  "activation_decision": "no_go_except_for_the_single_temporary_araras_setting_and_schedule_only_ocr_smoke"
+}
