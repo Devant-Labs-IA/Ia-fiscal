@@ -15,6 +15,9 @@ describe("knowledge ingest Edge contract", () => {
     "supabase/functions/ia-fiscal-knowledge-ingest/official-pdf.smoke.ts",
   );
   const core = source("supabase/migrations/20260819040404_knowledge_phase2_core.sql");
+  const rawIdentityFix = source(
+    "supabase/migrations/20260819063856_fix_capture_v2_raw_ocr_identity.sql",
+  );
   const schedulerAuth = source("supabase/functions/_shared/knowledge-scheduler-auth.ts");
   const config = source("supabase/config.toml");
 
@@ -70,6 +73,13 @@ describe("knowledge ingest Edge contract", () => {
     expect(core).toContain("Force every pooled session to recompile the Phase-1 capture body");
     expect(core).toContain("private.knowledge_staging_matches_payload(");
     expect(core).toContain("staged evidence does not exactly match the capture v2 payload");
+    expect(rawIdentityFix).toContain(
+      "Raw catalog/PDF captures legitimately create an auditable change set",
+    );
+    expect(rawIdentityFix).toContain("raw capture cannot create a candidate version");
+    expect(rawIdentityFix).not.toContain(
+      "(v_change_set_id is null) <> (v_candidate_version_id is null)",
+    );
   });
 
   it("keeps one failed fetch audit after rollback without conflicting after commit", () => {

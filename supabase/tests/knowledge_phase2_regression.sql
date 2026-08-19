@@ -2210,4 +2210,75 @@ end
 $coverage_snapshot$;
 reset role;
 
+-- A raw legal-body capture is a valid intermediate state: it must preserve an
+-- auditable change set while leaving the candidate null until governed
+-- extraction/OCR completes.  This is intentionally last so it cannot alter
+-- the earlier snapshot/count assertions.
+do $raw_capture_fixture$
+declare
+  v_sha text := encode(
+    extensions.digest('atomic raw artifact pending extraction', 'sha256'),
+    'hex'
+  );
+begin
+  insert into storage.objects (bucket_id, name, metadata)
+  values (
+    'legal-source-artifacts',
+    'qa-phase2-a/00000000-0000-4000-8000-00000000d305/' ||
+      v_sha || '/artifact.txt',
+    jsonb_build_object('size', 321, 'mimetype', 'text/plain')
+  );
+end
+$raw_capture_fixture$;
+
+set local role service_role;
+select set_config('request.jwt.claim.sub', '', true);
+select set_config('request.jwt.claims', '{"role":"service_role","aal":"aal2"}', true);
+do $raw_capture_identity$
+declare
+  v_sha text := encode(
+    extensions.digest('atomic raw artifact pending extraction', 'sha256'),
+    'hex'
+  );
+  v_capture jsonb;
+begin
+  v_capture := public.ia_fiscal_capture_knowledge_source_v2(
+    '00000000-0000-4000-8000-00000000d305',
+    'https://qa-siscam.example.invalid/arquivo/atomic.txt',
+    'https://qa-siscam.example.invalid/arquivo/atomic.txt',
+    v_sha,
+    'text/plain',
+    321,
+    'legal-source-artifacts',
+    'qa-phase2-a/00000000-0000-4000-8000-00000000d305/' ||
+      v_sha || '/artifact.txt',
+    null,
+    null,
+    null,
+    null,
+    200,
+    now(),
+    '00000000-0000-4000-8000-00000000da04',
+    jsonb_build_object(
+      'extraction_complete', false,
+      'content_truncated', false,
+      'extracted_char_count', 0,
+      'extraction_blocker', 'source_pdf_text_missing',
+      'extraction_page_count', 81
+    )
+  );
+
+  if v_capture ->> 'status' <> 'captured'
+     or v_capture ->> 'processing_status' <> 'requires_extraction'
+     or nullif(v_capture ->> 'change_set_id', '') is null
+     or nullif(v_capture ->> 'candidate_version_id', '') is not null
+     or v_capture ->> 'staging_status' <> 'not_applicable'
+     or (v_capture ->> 'staged_sections')::integer <> 0
+     or (v_capture ->> 'staged_chunks')::integer <> 0 then
+    raise exception 'raw capture did not preserve its governed pre-extraction identity';
+  end if;
+end
+$raw_capture_identity$;
+reset role;
+
 rollback;

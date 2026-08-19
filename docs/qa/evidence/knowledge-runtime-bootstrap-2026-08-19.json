@@ -1,0 +1,209 @@
+{
+  "evidence_contract": "knowledge-runtime-bootstrap-evidence/v1",
+  "generated_at": "2026-08-19T06:47:55.668067Z",
+  "project_ref": "qvgenxcrdrqyiyozxtdt",
+  "source_repository": "AlmoreContabilidade/Ia-fiscal",
+  "source_base_commit": "71ca458b714c630bfbf2aaff38902789850c37a0",
+  "release_manifest_canonicalization": {
+    "algorithm": "sha256(utf8(JSON.stringify(recursively-key-sorted-object)))",
+    "note": "The release fingerprints below are hashes of the complete canonical manifest objects included in this file; they are not aliases for the EZBR hashes."
+  },
+  "edge_manifests": {
+    "ingest": {
+      "release_fingerprint_sha256": "0f7ffacc7b5cd7c225d175f1ed2c3252c7a1f44cb514f88319ec1aa4ee4edc91",
+      "manifest": {
+        "contract": "knowledge-ingest-v2",
+        "deployment_id": "ed316143-8ebb-4ea4-a293-559ac1c9f8bd",
+        "entrypoint_path": "ia-fiscal-knowledge-ingest/index.ts",
+        "ezbr_sha256": "521e165b8d3ccddfc536cd96653b7ccb45b1ff4454cb60e706fdee90d9aa9c40",
+        "import_map_path": "ia-fiscal-knowledge-ingest/deno.json",
+        "source_files": {
+          "supabase/functions/_shared/knowledge-scheduler-auth.ts": "d2857e7ef883f3992305a55e66e42f430abee4f0a271fbdc96be7cbf95d13674",
+          "supabase/functions/ia-fiscal-knowledge-ingest/deno.json": "3c3a8724f092fe4de9a3ead06ec13d7298567d55d8e4b39878392c79b69fe2e1",
+          "supabase/functions/ia-fiscal-knowledge-ingest/extraction.ts": "c8e00c4a9fac2d828858860e6a2b1700477a7db88221a6220c9bb4fa37cb8e03",
+          "supabase/functions/ia-fiscal-knowledge-ingest/index.ts": "a0d9ff41e903a0241ff2a7bc0a5ba301a9a5629acadc48f7870fd54337d4a174",
+          "supabase/functions/ia-fiscal-knowledge-ingest/policy.ts": "4d21c711ecf821f1fc707b9b84403f09561d791fbfb5cb67b714dbdeba0f7e21"
+        },
+        "verify_jwt": false,
+        "version": 5
+      }
+    },
+    "embed": {
+      "release_fingerprint_sha256": "630f6e81cb822ab6eb962930db4f4c83f8b21bbf5b573d82a5abc84cd09bee9a",
+      "manifest": {
+        "contract": "knowledge-embed-v1",
+        "deployment_id": "34bb78c5-97e0-4390-b0c0-ea97f322a7a3",
+        "entrypoint_path": "ia-fiscal-knowledge-embed/index.ts",
+        "ezbr_sha256": "65076c05ae0b767c07bd34099317d4b193722f788c3793e40c73d8c17aa3e031",
+        "import_map_path": "ia-fiscal-knowledge-embed/deno.json",
+        "source_files": {
+          "supabase/functions/_shared/knowledge-scheduler-auth.ts": "d2857e7ef883f3992305a55e66e42f430abee4f0a271fbdc96be7cbf95d13674",
+          "supabase/functions/ia-fiscal-knowledge-embed/deno.json": "70c2956f113c53f1e248ca57f4100ded58c999c295b2fb8aabe446420dda34dd",
+          "supabase/functions/ia-fiscal-knowledge-embed/index.ts": "6df685d7c363c39dc6820e91c1e1d3acf365a7dcb50c5ee7b44c4cc198f6adcf",
+          "supabase/functions/ia-fiscal-knowledge-embed/policy.ts": "dd1d71cf739317462b23542abe39a54e663a8f3032b453d3a53c9e5c5bf1e56a"
+        },
+        "verify_jwt": false,
+        "version": 1
+      }
+    },
+    "search": {
+      "release_fingerprint_sha256": "be3df4a48011b199abd1164f67c7fa02fa992ef5a6761b49327daef2e1702159",
+      "manifest": {
+        "contract": "knowledge-search-v1",
+        "deployment_id": "47ce1797-4eb8-43a9-afcd-92d89667ea56",
+        "entrypoint_path": "ia-fiscal-knowledge-search/index.ts",
+        "ezbr_sha256": "67de8e41b5ca559263ac83ab456c1d0184518024060d961ac113c55c3341db8a",
+        "import_map_path": "ia-fiscal-knowledge-search/deno.json",
+        "source_files": {
+          "supabase/functions/ia-fiscal-knowledge-search/deno.json": "70c2956f113c53f1e248ca57f4100ded58c999c295b2fb8aabe446420dda34dd",
+          "supabase/functions/ia-fiscal-knowledge-search/index.ts": "c2a0607d71d6225e43a854843bde453a4c289a2704efc0e80a210fd8d970271f",
+          "supabase/functions/ia-fiscal-knowledge-search/policy.ts": "484ed4f688099def7fd57794fb9de578eef2e8b046e4543dd6d19cac04fd2fcd"
+        },
+        "verify_jwt": true,
+        "version": 1
+      }
+    },
+    "ocr": {
+      "contract": "knowledge-ocr-v1",
+      "deployment_id": "685ece05-684e-4812-8441-f81b46286169",
+      "ezbr_sha256": "c530312a53cb025466198df3520e73561f01599d11c698d4b8c15ae3194d463d",
+      "policy_version": "ia-fiscal-knowledge-ocr-policy/v1",
+      "toolchain_lock_sha256": "6bb5c3a93dad84e38ea05cedb47e1aeee13c8a22899f0cb9f693e114e5e5cd60",
+      "verify_jwt": false,
+      "version": 1,
+      "workflow_sha_requirement": "The immutable final main commit containing .github/workflows/knowledge-ocr.yml must be supplied at attestation time."
+    }
+  },
+  "database_release_files": {
+    "supabase/migrations/20260819062726_queue_araras_3362_ocr_capture.sql": "2a1a8a6359d106b942a2de7c11f63577fe97221beba85e2b2ba1f1c622472b22",
+    "supabase/migrations/20260819063013_retry_araras_3362_capture_after_ingest_v4.sql": "7188c33d1b3083c1801008b95eb9949edb510e02d0a12a7c6aa13aaa7f9025bf",
+    "supabase/migrations/20260819063403_diagnose_araras_capture_rpc.sql": "af275a30d359db1685314e7bf0985e6352d598693d28768e750423eb1bb5f9e4",
+    "supabase/migrations/20260819063856_fix_capture_v2_raw_ocr_identity.sql": "274b4f462b6f2b9b66c2fd9ab780b72b6118f85c2b8d03b428c5839ba276b1b9",
+    "supabase/migrations/20260819063931_capture_araras_3362_after_raw_identity_fix.sql": "03fa42bed0d90a43e368da92a1d552232070a472531a5fd62855f549aa111c61",
+    "supabase/migrations/20260819064031_reconcile_araras_3362_capture_dispatch.sql": "4782a15271b1c724e1394b080282c1f0b2d459c1bb48c6572a26e7c2ce4fe1e9",
+    "supabase/migrations/20260819064229_queue_ingest_v5_auth_smokes.sql": "7bfd94670dd5037e7060a65696ff074765e08470df3e0671289b6148b2f760bd",
+    "supabase/tests/knowledge_phase2_contract.test.ts": "e218a54c72264a60a4afdf88482cd08ec905d3fe35797eec57ac14b92ec5e54e",
+    "supabase/tests/knowledge_phase2_regression.sql": "6c5151fb563b069ae41801ae77d4c5bf99693ed76f73d4e2cd125e9ce5659c06"
+  },
+  "local_release_gates": {
+    "build": "passed",
+    "format_check": "passed",
+    "git_diff_check": "passed",
+    "lint_quiet": "passed",
+    "ocr_python_unittest": {
+      "passed": 36,
+      "total": 36
+    },
+    "typecheck": "passed",
+    "vitest": {
+      "final_full_run_passed": 292,
+      "final_full_run_total": 292,
+      "first_run_observation": "One portal integration timeout under contention; the case passed in isolation and the complete suite passed on the immediate uncontended rerun."
+    },
+    "warnings": [
+      "The production client chunk is 530.02 kB, above Vite's 500 kB advisory threshold.",
+      "The vite-tsconfig-paths plugin is redundant with the current Vite release."
+    ]
+  },
+  "postgres_runtime_validation": {
+    "capture_v2_raw_ocr_hotfix": {
+      "result": "passed_and_rolled_back",
+      "proved": [
+        "raw scanned PDF may create a change set without a candidate version",
+        "candidate version without a change set remains rejected",
+        "raw OCR capture creates no section or chunk before extraction"
+      ]
+    },
+    "knowledge_phase2_regression": {
+      "result": "passed_and_rolled_back",
+      "rollback_sentinel": "intentional_phase2_regression_rollback"
+    },
+    "knowledge_ocr_regression": {
+      "result": "passed_and_rolled_back",
+      "rollback_sentinel": "OCR_REGRESSION_PASSED_AND_ROLLED_BACK"
+    }
+  },
+  "live_http_smokes": {
+    "ingest_v5_authorization": [
+      { "request_id": 23, "scenario": "missing bearer", "status_code": 403 },
+      { "request_id": 24, "scenario": "wrong bearer", "status_code": 403 },
+      { "request_id": 25, "scenario": "expired issued_at", "status_code": 403 },
+      { "request_id": 26, "scenario": "replayed nonce", "status_code": 403 },
+      { "request_id": 27, "scenario": "valid one-time dry run", "status_code": 200 }
+    ],
+    "embed": [
+      { "scenario": "missing or invalid scheduler authorization", "status_code": 403 },
+      { "scenario": "valid request before runtime gate", "status_code": 503 }
+    ],
+    "search": [
+      { "scenario": "missing JWT", "status_code": 401 },
+      {
+        "scenario": "official and homologation CORS preflights",
+        "method": "OPTIONS",
+        "status_code": 204
+      }
+    ]
+  },
+  "official_source_smokes": {
+    "cordeiropolis_lc399": {
+      "artifact_id": "fadda6f7-6351-41cd-9eb7-ac2393ab407a",
+      "candidate_version_id": "704233b4-99c4-468c-95dd-0c02674b9ce0",
+      "change_set_id": "123f70f3-b3b9-4a8a-abb8-1397982fbf68",
+      "content_sha256": "f75e85eeb99a6d512bea0755ab089e3217136ef7be8e3efc10f04c534f459dc6",
+      "extracted_characters": 211951,
+      "extraction_page_count": 32,
+      "first_capture_http": 201,
+      "processing_status": "under_review",
+      "replay_http": 200,
+      "replay_status": "already_exists",
+      "staged_chunks": 39,
+      "staged_sections": 1
+    },
+    "araras_law_3362": {
+      "artifact_id": "b96620c5-93b6-482c-a992-8264a38af22f",
+      "byte_size": 1541984,
+      "candidate_version_id": null,
+      "change_set_id": "aa0df17f-8b6f-4b9f-bc63-844b085cdb83",
+      "content_sha256": "b7642e1ec74b03eba3b3ee626a900e9bcf82e2e89330e97bea31e5188e63eeed",
+      "extraction_blocker": "source_pdf_text_missing",
+      "extraction_page_count": 81,
+      "extraction_status": "requires_extraction",
+      "mime_type": "application/pdf",
+      "ocr_job_attempt": 0,
+      "ocr_job_id": "03c5dd76-beee-4363-9d3f-9335e2357da9",
+      "ocr_job_status": "queued",
+      "published_versions": 0
+    }
+  },
+  "production_fail_closed_snapshot": {
+    "captured_at": "2026-08-19T06:47:55.668067Z",
+    "embeddings": 0,
+    "embedding_jobs_queued": 39,
+    "enabled_automation_settings": 0,
+    "legal_reviewers_active": 0,
+    "main_runtime_current_gates": 0,
+    "ocr_jobs_queued": 1,
+    "ocr_results": 0,
+    "ocr_runtime_current_gates": 0,
+    "published_versions": 0,
+    "scheduled_knowledge_cron_jobs": 0
+  },
+  "frontend_release": {
+    "base_commit_vercel_status": "success",
+    "live_url": "https://ia-fiscal-homologacao.vercel.app/segundo-cerebro",
+    "public_logged_out_smoke": "passed",
+    "title": "Segundo Cérebro — IA Fiscal"
+  },
+  "known_limits_and_post_attestation_gates": [
+    "The live positive embedding call is intentionally blocked until a current main runtime gate exists; its authorization, tenant isolation and 384-dimensional persistence are covered by the real PostgreSQL rollback regression before the controlled live smoke.",
+    "The live authenticated search smoke was not performed with a human credential. Missing JWT was rejected by the gateway, while AAL2 and tenant boundaries were exercised in the real PostgreSQL rollback regression.",
+    "The queued Araras OCR job has not run yet. A temporary short-lived main gate and OCR gate must be opened against the immutable release, exactly one workflow must complete, and the OCR gate must then be revoked before final attestation.",
+    "No legal content is published automatically. Human legal review remains mandatory.",
+    "A legal reviewer has not been designated because an exact user email was not supplied."
+  ],
+  "activation_decision": {
+    "decision": "no_go_until_controlled_runtime_smokes_and_final_attestations",
+    "communication_side_effects": "none",
+    "publication_side_effects": "none"
+  }
+}

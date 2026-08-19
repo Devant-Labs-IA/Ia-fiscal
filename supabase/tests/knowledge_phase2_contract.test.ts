@@ -11,6 +11,9 @@ const postgresRuntimeFixes = [
   read("supabase/migrations/20260819041252_fix_knowledge_embedding_claim_event_returning.sql"),
   read("supabase/migrations/20260819041525_fix_knowledge_halfvec_operator_schema.sql"),
 ];
+const rawCaptureIdentityFix = read(
+  "supabase/migrations/20260819063856_fix_capture_v2_raw_ocr_identity.sql",
+);
 const regression = read("supabase/tests/knowledge_phase2_regression.sql");
 const config = read("supabase/config.toml");
 const searchEdge = read("supabase/functions/ia-fiscal-knowledge-search/index.ts");
@@ -19,6 +22,18 @@ const ingestPolicy = read("supabase/functions/ia-fiscal-knowledge-ingest/policy.
 const ingestExtraction = read("supabase/functions/ia-fiscal-knowledge-ingest/extraction.ts");
 
 describe("Segundo Cérebro phase 2 database contract", () => {
+  it("keeps raw official evidence pre-candidate until governed extraction", () => {
+    expect(rawCaptureIdentityFix).toContain(
+      "Raw catalog/PDF captures legitimately create an auditable change set",
+    );
+    expect(rawCaptureIdentityFix).toContain(
+      "elsif v_change_set_id is not null and v_candidate_version_id is null",
+    );
+    expect(regression).toContain(
+      "raw capture did not preserve its governed pre-extraction identity",
+    );
+  });
+
   it("keeps the legal reviewer capability narrow and leaves global role helpers untouched", () => {
     expect(core).not.toMatch(
       /create\s+or\s+replace\s+function\s+private\.(?:has_municipality_role|current_municipality_membership_id)/i,
