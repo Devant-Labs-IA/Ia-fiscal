@@ -14,14 +14,21 @@ describe("knowledge embedding Edge contract", () => {
     expect(source).not.toContain("SUPABASE_ANON_KEY");
   });
 
-  it("uses only the pinned built-in embedding model and governed job RPCs", () => {
-    expect(source).toContain("new Supabase.ai.Session(EMBEDDING_MODEL)");
-    expect(source).toContain('mean_pool: true');
-    expect(source).toContain('normalize: true');
-    expect(source).toContain('"ia_fiscal_claim_legal_embedding_jobs"');
-    expect(source).toContain('"ia_fiscal_complete_legal_embedding_job"');
-    expect(source).toContain('"ia_fiscal_fail_legal_embedding_job"');
-    expect(source).not.toContain("content: job.content_text");
-    expect(source).not.toContain("console.log(job.content_text");
+  it("preserves the authenticated HTTP contract as a retired-model no-op", () => {
+    expect(source).toContain('event: "knowledge_embedding_retired_noop"');
+    expect(source).toContain('status: "retired_noop"');
+    expect(source).toContain('semantic_status: "unsupported_language"');
+    expect(source).toContain("claimed: 0");
+    expect(source).toContain("completed: 0");
+    expect(source).toContain("failed: 0");
+  });
+
+  it("cannot call Supabase AI or mutate a retired embedding job", () => {
+    expect(source).not.toContain("Supabase.ai");
+    expect(source).not.toContain("session.run");
+    expect(source).not.toContain("ia_fiscal_claim_legal_embedding_jobs");
+    expect(source).not.toContain("ia_fiscal_complete_legal_embedding_job");
+    expect(source).not.toContain("ia_fiscal_fail_legal_embedding_job");
+    expect(source).not.toMatch(/embedding_generation|p_embedding|mean_pool|normalize:/);
   });
 });

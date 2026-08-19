@@ -1,6 +1,7 @@
 export const SEARCH_CONTRACT_VERSION = "knowledge-search-v1";
-export const SEARCH_EMBEDDING_MODEL = "gte-small";
-export const SEARCH_EMBEDDING_DIMENSIONS = 384;
+export const SEARCH_RETRIEVAL_MODE = "lexical_portuguese";
+export const SEARCH_LEXICAL_LANGUAGE = "pt-BR";
+export const SEARCH_SEMANTIC_STATUS = "unsupported_language";
 export const MAX_SEARCH_REQUEST_BYTES = 4_096;
 export const BUILT_IN_SEARCH_ALLOWED_ORIGINS = Object.freeze([
   "https://ia-fiscal-homologacao-diego-4685-diego-4685s-projects.vercel.app",
@@ -64,21 +65,6 @@ export async function parseKnowledgeSearchRequest(request: Request): Promise<Par
     throw new KnowledgeSearchPolicyError("invalid_limit", 400);
   }
   return { municipalityId, query, limit: Number(limit) };
-}
-
-export function normalizeSearchEmbedding(value: unknown): number[] {
-  const vector = ArrayBuffer.isView(value)
-    ? Array.from(value as unknown as ArrayLike<number>)
-    : Array.isArray(value)
-    ? value
-    : null;
-  if (
-    !vector || vector.length !== SEARCH_EMBEDDING_DIMENSIONS ||
-    !vector.every((entry) => typeof entry === "number" && Number.isFinite(entry))
-  ) {
-    throw new KnowledgeSearchPolicyError("query_embedding_invalid", 502);
-  }
-  return vector as number[];
 }
 
 export function knowledgeSearchCorsHeaders(

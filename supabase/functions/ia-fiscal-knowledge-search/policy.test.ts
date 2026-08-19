@@ -2,9 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   knowledgeSearchCorsHeaders,
-  normalizeSearchEmbedding,
   parseKnowledgeSearchRequest,
-  SEARCH_EMBEDDING_DIMENSIONS,
+  SEARCH_LEXICAL_LANGUAGE,
+  SEARCH_RETRIEVAL_MODE,
+  SEARCH_SEMANTIC_STATUS,
 } from "./policy.ts";
 
 describe("knowledge search request", () => {
@@ -23,10 +24,10 @@ describe("knowledge search request", () => {
     });
   });
 
-  it("requires exactly 384 finite query-vector values", () => {
-    expect(SEARCH_EMBEDDING_DIMENSIONS).toBe(384);
-    expect(normalizeSearchEmbedding(new Float32Array(384))).toHaveLength(384);
-    expect(() => normalizeSearchEmbedding([Number.NaN, ...Array(383).fill(0)])).toThrow();
+  it("declares Portuguese lexical retrieval and the semantic limitation honestly", () => {
+    expect(SEARCH_RETRIEVAL_MODE).toBe("lexical_portuguese");
+    expect(SEARCH_LEXICAL_LANGUAGE).toBe("pt-BR");
+    expect(SEARCH_SEMANTIC_STATUS).toBe("unsupported_language");
   });
 
   it("allows the live alias and never reflects an arbitrary origin", () => {

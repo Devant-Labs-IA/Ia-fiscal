@@ -90,9 +90,9 @@ const BLOCKER_LABELS: Record<string, string> = {
   hash_mismatch: "O conteúdo mudou depois da revisão",
   test_content: "Conteúdo de teste não pode ser publicado",
   unverified_state: "Estado operacional não verificado",
-  knowledge_index_pending: "Há dispositivos oficiais aguardando indexação para a busca inteligente",
+  knowledge_index_pending: "Há dispositivos oficiais aguardando indexação textual em português",
   knowledge_index_incomplete:
-    "Há dispositivos oficiais vigentes ainda não disponíveis na busca inteligente",
+    "Há dispositivos oficiais vigentes ainda não disponíveis na busca textual em português",
   knowledge_index_inconsistent:
     "A contagem do índice é incompatível com os dispositivos oficiais elegíveis",
   knowledge_runtime_not_verified:
@@ -127,7 +127,7 @@ const BLOCKER_LABELS: Record<string, string> = {
 const HEALTH_LABELS: Record<string, string> = {
   article_citations: "Citações dos artigos",
   collection: "Coleta das fontes oficiais",
-  embeddings: "Índice de busca inteligente",
+  embeddings: "Índice de busca textual em português",
   legal_sources: "Fontes legais vigentes",
   publication: "Publicação governada",
   source_freshness: "Atualização das fontes",

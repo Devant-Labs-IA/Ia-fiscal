@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -6,6 +6,16 @@ const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8"
 const core = read("supabase/migrations/20260819040404_knowledge_phase2_core.sql");
 const catalog = read("supabase/migrations/20260819042149_knowledge_phase2_catalog_coverage.sql");
 const activation = read("supabase/release/activate_knowledge_phase2_schedule.sql");
+const lexicalMigrationNames = readdirSync(resolve(process.cwd(), "supabase/migrations")).filter(
+  (name) => name.endsWith("_make_portuguese_lexical_search_canonical.sql"),
+);
+if (lexicalMigrationNames.length !== 1) {
+  throw new Error(
+    `expected one canonical PT-BR lexical migration, found ${lexicalMigrationNames.length}`,
+  );
+}
+const [lexicalMigrationName] = lexicalMigrationNames;
+const lexical = read(`supabase/migrations/${lexicalMigrationName}`);
 const postgresRuntimeFixes = [
   read("supabase/migrations/20260819041131_fix_knowledge_embedding_claim_event_alias.sql"),
   read("supabase/migrations/20260819041252_fix_knowledge_embedding_claim_event_returning.sql"),
@@ -93,8 +103,9 @@ describe("Segundo Cérebro phase 2 database contract", () => {
     expect(core).toContain("search_release_fingerprint");
     expect(core).toContain("ia_fiscal_revoke_knowledge_runtime_gate");
     expect(activation).toContain("if not private.knowledge_runtime_is_verified() then");
-    expect(activation).toContain("phase2_activation_backfill");
-    expect(activation).toContain("on conflict (");
+    expect(activation).not.toContain("phase2_activation_backfill");
+    expect(activation).not.toMatch(/insert\s+into\s+private\.legal_embedding_jobs/i);
+    expect(activation).toContain("retired semantic jobs remain claimable before activation");
     expect(activation).toContain("cron.schedule(");
     expect(activation).toContain("municipality.slug in ('cordeiropolis-sp', 'araras-sp')");
     expect(activation).toContain("('cordeiropolis-sp'::text, 'active'::text)");
@@ -113,7 +124,13 @@ describe("Segundo Cérebro phase 2 database contract", () => {
     expect(activation).toContain(
       "a non-target municipality already has knowledge automation enabled",
     );
-    expect(activation).toContain("join target on target.id = chunk.municipality_id");
+    expect(lexical).toContain("'embedding_dispatch', false");
+    const canonicalDispatcher = lexical.slice(
+      lexical.indexOf("create or replace function private.ia_fiscal_dispatch_due_knowledge_work("),
+      lexical.indexOf("alter function public.ia_get_knowledge_operations_snapshot(uuid)"),
+    );
+    expect(canonicalDispatcher).not.toContain("ia-fiscal-knowledge-embed");
+    expect(canonicalDispatcher).not.toContain("private.legal_embedding_jobs");
     expect(core).toContain("knowledge_schedule_activation_events");
     expect(core).toContain("p_confirmation <> (case when p_enabled");
     expect(core).not.toContain("p_confirmation <> case when p_enabled");
@@ -163,7 +180,7 @@ describe("Segundo Cérebro phase 2 database contract", () => {
     );
     expect(regression).toContain("pg_net response was not reconciled into one retry event");
     expect(regression).toContain("HTTP 207 embed response bypassed retry and breaker accounting");
-    expect(regression).toContain("disabled third tenant advanced in the embedding queue");
+    expect(regression).toContain("retired semantic work became claimable for a disabled tenant");
     expect(core).toMatch(
       /legal_source_version_is_current_citable[\s\S]*legal_source_artifact_versions[\s\S]*join storage\.objects object[\s\S]*fetch_run\.status = 'completed_changed'/,
     );

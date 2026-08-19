@@ -4,10 +4,11 @@ import { createClient } from "npm:@supabase/supabase-js@2.111.0";
 import {
   KnowledgeSearchPolicyError,
   knowledgeSearchCorsHeaders,
-  normalizeSearchEmbedding,
   parseKnowledgeSearchRequest,
   SEARCH_CONTRACT_VERSION,
-  SEARCH_EMBEDDING_MODEL,
+  SEARCH_LEXICAL_LANGUAGE,
+  SEARCH_RETRIEVAL_MODE,
+  SEARCH_SEMANTIC_STATUS,
 } from "./policy.ts";
 
 function requiredEnv(name: string): string {
@@ -75,20 +76,10 @@ Deno.serve(async (request: Request) => {
       throw new KnowledgeSearchPolicyError("aal2_required", 403);
     }
 
-    let queryEmbedding: string | null = null;
-    try {
-      const session = new Supabase.ai.Session(SEARCH_EMBEDDING_MODEL);
-      const raw = await session.run(input.query, { mean_pool: true, normalize: true });
-      queryEmbedding = JSON.stringify(normalizeSearchEmbedding(raw));
-    } catch {
-      // Lexical retrieval remains fail-closed to current, published tenant evidence.
-      queryEmbedding = null;
-    }
-
     const { data, error } = await client.rpc("ia_fiscal_hybrid_search_legal_knowledge", {
       p_municipality_id: input.municipalityId,
       p_query: input.query,
-      p_query_embedding: queryEmbedding,
+      p_query_embedding: null,
       p_limit: input.limit,
     });
     if (error) {
@@ -101,6 +92,13 @@ Deno.serve(async (request: Request) => {
     const result = data && typeof data === "object" && !Array.isArray(data)
       ? data as Record<string, unknown>
       : {};
+    if (
+      result.retrieval_mode !== SEARCH_RETRIEVAL_MODE ||
+      result.lexical_language !== SEARCH_LEXICAL_LANGUAGE ||
+      result.semantic_status !== SEARCH_SEMANTIC_STATUS
+    ) {
+      throw new KnowledgeSearchPolicyError("knowledge_search_contract_invalid", 503);
+    }
     const blockers = Array.isArray(result.blockers)
       ? result.blockers.filter((value): value is string => typeof value === "string").slice(0, 10)
       : [];
@@ -115,6 +113,7 @@ Deno.serve(async (request: Request) => {
       retrieval_mode: typeof result.retrieval_mode === "string"
         ? result.retrieval_mode
         : "unknown",
+      semantic_status: result.semantic_status,
       duration_ms: Math.max(0, Math.round(performance.now() - startedAt)),
     }));
     return json(request, 200, {

@@ -140,10 +140,8 @@ function confidenceLabel(value: number | null): string {
 }
 
 function retrievalLabel(value: string): string {
-  if (value === "hybrid") return "Busca combinada por termos e significado";
-  if (value === "lexical") return "Busca por termos da legislação";
-  if (value === "semantic") return "Busca por significado";
-  return "Busca inteligente na legislação oficial";
+  if (value === "lexical_portuguese") return "Busca textual integral em português";
+  return "Método de busca não verificado";
 }
 
 function KnowledgeSearchCitations({ citations }: { citations: KnowledgeSearchCitation[] }) {
@@ -461,8 +459,8 @@ export function KnowledgeSearchPanel({
 
   return (
     <SectionCard
-      title="Consulta inteligente à legislação"
-      description="Faça uma pergunta em linguagem natural. O sistema localiza o trecho oficial vigente mais aderente, sem gerar parecer automático."
+      title="Consulta à legislação oficial"
+      description="Faça uma pergunta em português. O sistema pesquisa integralmente o texto oficial vigente, sem gerar parecer automático."
       action={
         <Badge
           variant="outline"
@@ -917,8 +915,8 @@ export function KnowledgeAutomationPanel({
       </SectionCard>
 
       <SectionCard
-        title="Cobertura da busca inteligente"
-        description="Somente dispositivos de versões oficiais publicadas e vigentes entram no índice."
+        title="Cobertura da busca oficial em português"
+        description="Somente dispositivos integrais de versões oficiais publicadas e vigentes entram no índice lexical."
         action={<KnowledgeStateBadge status={index.status} />}
       >
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-center">
@@ -963,9 +961,21 @@ export function KnowledgeAutomationPanel({
             </div>
             <div className="mt-3 border-t border-border pt-3">
               <dt className="text-muted-foreground">Mecanismo de representação</dt>
+              <dd className="mt-0.5 font-medium">Índice lexical PT-BR integral</dd>
+            </div>
+            <div className="mt-3 border-t border-border pt-3">
+              <dt className="text-muted-foreground">Busca semântica suplementar</dt>
               <dd className="mt-0.5 font-medium">
-                {index.embeddingModel ? "Busca semântica versionada" : "Não configurado"}
+                {index.semanticStatus === "unsupported_language"
+                  ? "Indisponível: modelo instalado incompatível com PT-BR"
+                  : "Estado não verificado"}
               </dd>
+              {index.semanticHistoricalChunks > 0 ? (
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  {index.semanticHistoricalChunks.toLocaleString("pt-BR")} vetor(es) legado(s)
+                  preservado(s) apenas para auditoria, sem uso na consulta.
+                </p>
+              ) : null}
             </div>
           </dl>
         </div>
