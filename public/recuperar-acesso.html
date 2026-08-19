@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="referrer" content="no-referrer" />
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src https://qvgenxcrdrqyiyozxtdt.supabase.co; img-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    />
+    <title>Recuperação de acesso — IA Fiscal</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #f4f7fb;
+        color: #172033;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        min-height: 100vh;
+        margin: 0;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        background:
+          radial-gradient(circle at top left, rgba(34, 108, 193, 0.12), transparent 42%),
+          #f4f7fb;
+      }
+
+      main {
+        width: min(100%, 520px);
+        padding: 38px;
+        border: 1px solid rgba(23, 32, 51, 0.1);
+        border-radius: 22px;
+        background: rgba(255, 255, 255, 0.96);
+        box-shadow: 0 22px 70px rgba(23, 32, 51, 0.12);
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 26px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+
+      .mark {
+        width: 42px;
+        height: 42px;
+        display: grid;
+        place-items: center;
+        border-radius: 13px;
+        background: #173f73;
+        color: #fff;
+        font-size: 14px;
+      }
+
+      h1 {
+        margin: 0 0 12px;
+        font-size: clamp(25px, 6vw, 34px);
+        line-height: 1.1;
+        letter-spacing: -0.04em;
+      }
+
+      p {
+        margin: 0;
+        color: #5c667a;
+        font-size: 16px;
+        line-height: 1.65;
+      }
+
+      .status {
+        display: flex;
+        gap: 14px;
+        align-items: flex-start;
+        margin-top: 26px;
+        padding: 18px;
+        border-radius: 15px;
+        background: #eef5ff;
+        color: #173f73;
+      }
+
+      .spinner {
+        width: 22px;
+        height: 22px;
+        flex: 0 0 auto;
+        margin-top: 1px;
+        border: 3px solid rgba(23, 63, 115, 0.2);
+        border-top-color: #173f73;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+
+      .status strong {
+        display: block;
+        margin-bottom: 4px;
+      }
+
+      .status p {
+        color: inherit;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      .status.error {
+        background: #fff1f1;
+        color: #9d2424;
+      }
+
+      .status.error .spinner {
+        display: none;
+      }
+
+      a {
+        display: inline-flex;
+        margin-top: 20px;
+        color: #173f73;
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      a:hover {
+        text-decoration: underline;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="brand">
+        <div class="mark" aria-hidden="true">IA</div>
+        <span>IA Fiscal</span>
+      </div>
+
+      <h1>Validando seu acesso</h1>
+      <p>Esta etapa confirma o link e abre a tela segura para você definir uma nova senha.</p>
+
+      <div id="status" class="status" role="status" aria-live="polite">
+        <div class="spinner" aria-hidden="true"></div>
+        <div>
+          <strong>Validação em andamento</strong>
+          <p>Não feche esta página.</p>
+        </div>
+      </div>
+
+      <a id="back" href="/" hidden>Voltar para o login</a>
+    </main>
+
+    <script>
+      (() => {
+        "use strict";
+
+        const SUPABASE_URL = "https://qvgenxcrdrqyiyozxtdt.supabase.co";
+        const SUPABASE_PUBLISHABLE_KEY =
+          "sb_publishable_Frt254fLpExL7A52zWNCnw_ZXLP7k33";
+        const status = document.getElementById("status");
+        const back = document.getElementById("back");
+
+        function showError(title, message) {
+          status.classList.add("error");
+          status.innerHTML = `<div><strong>${title}</strong><p>${message}</p></div>`;
+          back.hidden = false;
+        }
+
+        function safeFlowType(value) {
+          return value === "recovery" || value === "invite" ? value : null;
+        }
+
+        async function exchangeToken() {
+          const query = new URLSearchParams(window.location.search);
+          const fragment = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+          const tokenHash = fragment.get("token_hash") || query.get("token_hash");
+          const flowType = safeFlowType(fragment.get("type") || query.get("type"));
+
+          window.history.replaceState({}, "", "/recuperar-acesso.html");
+
+          if (!tokenHash || !flowType) {
+            showError(
+              "Link incompleto",
+              "Abra novamente o link mais recente recebido por e-mail. Links antigos ou já utilizados não funcionam.",
+            );
+            return;
+          }
+
+          try {
+            const response = await fetch(`${SUPABASE_URL}/auth/v1/verify`, {
+              method: "POST",
+              headers: {
+                apikey: SUPABASE_PUBLISHABLE_KEY,
+                Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+                "Content-Type": "application/json",
+                "X-Client-Info": "ia-fiscal-recovery-bridge/1.0",
+              },
+              body: JSON.stringify({ token_hash: tokenHash, type: flowType }),
+            });
+
+            const payload = await response.json().catch(() => ({}));
+            const session = payload.session || payload;
+
+            if (
+              !response.ok ||
+              typeof session.access_token !== "string" ||
+              typeof session.refresh_token !== "string"
+            ) {
+              showError(
+                "Link inválido ou já utilizado",
+                "Use somente o e-mail de recuperação mais recente. Caso ele já tenha sido aberto, solicite um novo acesso.",
+              );
+              return;
+            }
+
+            const expiresIn = Number(session.expires_in) || 3600;
+            const authFragment = new URLSearchParams({
+              access_token: session.access_token,
+              refresh_token: session.refresh_token,
+              expires_in: String(expiresIn),
+              expires_at: String(Math.floor(Date.now() / 1000) + expiresIn),
+              token_type: session.token_type || "bearer",
+              type: flowType,
+            });
+
+            window.location.replace(`/?recovery=1#${authFragment.toString()}`);
+          } catch {
+            showError(
+              "Não foi possível validar agora",
+              "Verifique sua conexão e abra novamente o link mais recente recebido por e-mail.",
+            );
+          }
+        }
+
+        void exchangeToken();
+      })();
+    </script>
+  </body>
+</html>
