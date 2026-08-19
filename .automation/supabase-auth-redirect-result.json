@@ -1,0 +1,7 @@
+{
+  "result": "missing_management_credential",
+  "detail": "repository_secret_not_configured",
+  "site_url": "https://ia-fiscal-homologacao.vercel.app",
+  "run_id": "32199728292",
+  "checked_at": "2026-08-19T00:03:34Z"
+}
