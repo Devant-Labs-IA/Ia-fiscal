@@ -325,7 +325,17 @@ async function captureArtifact(
       },
     },
   });
-  if (error) throw new IngestPolicyError("capture_rpc_failed", 502);
+  if (error) {
+    safeLog("knowledge_capture_rpc_rejected", {
+      correlation_id: correlationId,
+      endpoint_id: endpoint.endpoint_id,
+      municipality_slug: endpoint.municipality_slug,
+      db_code: typeof error.code === "string" ? error.code.slice(0, 32) : "unknown",
+      db_message:
+        typeof error.message === "string" ? error.message.slice(0, 240) : "capture rejected",
+    });
+    throw new IngestPolicyError("capture_rpc_failed", 502);
+  }
   onRpcCommitted();
   return publicCaptureResult(data);
 }
