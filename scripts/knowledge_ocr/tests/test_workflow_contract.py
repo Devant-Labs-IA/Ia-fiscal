@@ -46,6 +46,26 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("knowledge-ocr-summary.json", workflow)
         self.assertIn("sensitive summary field rejected", workflow)
 
+    def test_job_environment_does_not_use_runner_context(self) -> None:
+        workflow = (ROOT / ".github/workflows/knowledge-ocr.yml").read_text(encoding="utf-8")
+        lines = workflow.splitlines()
+        job_env_start = lines.index("    env:")
+        job_env_lines: list[str] = []
+        for line in lines[job_env_start + 1 :]:
+            indentation = len(line) - len(line.lstrip())
+            if line.strip() and indentation < 6:
+                break
+            job_env_lines.append(line)
+
+        job_environment = "\n".join(job_env_lines)
+        self.assertNotIn("${{ runner.", job_environment)
+        self.assertNotIn("OCR_SUMMARY_PATH:", job_environment)
+        self.assertIn(': "${RUNNER_TEMP:?RUNNER_TEMP is required}"', workflow)
+        self.assertIn(
+            '"$RUNNER_TEMP/knowledge-ocr-summary.json" >> "$GITHUB_ENV"',
+            workflow,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
