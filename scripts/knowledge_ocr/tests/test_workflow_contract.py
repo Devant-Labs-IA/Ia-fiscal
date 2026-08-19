@@ -38,13 +38,75 @@ class WorkflowContractTests(unittest.TestCase):
 
     def test_workflow_has_timeouts_and_metadata_only_artifact(self) -> None:
         workflow = (ROOT / ".github/workflows/knowledge-ocr.yml").read_text(encoding="utf-8")
-        self.assertIn("timeout-minutes: 55", workflow)
+        self.assertIn("timeout-minutes: 65", workflow)
         self.assertIn("timeout --signal=TERM --kill-after=60s 45m", workflow)
         self.assertIn('OCR_MAX_JOBS: "1"', workflow)
         self.assertIn('OCR_ALLOWED_REPOSITORY_ID: "1320619695"', workflow)
         self.assertIn('OCR_ALLOWED_REPOSITORY_OWNER_ID: "296187202"', workflow)
         self.assertIn("knowledge-ocr-summary.json", workflow)
         self.assertIn("sensitive summary field rejected", workflow)
+
+    def test_apt_install_is_bounded_and_has_official_ubuntu_fallback(self) -> None:
+        workflow = (ROOT / ".github/workflows/knowledge-ocr.yml").read_text(encoding="utf-8")
+        install_step = workflow[
+            workflow.index("- name: Install the locked OCR toolchain") : workflow.index(
+                "- name: Verify toolchain and fail-closed unit tests"
+            )
+        ]
+
+        self.assertIn("timeout-minutes: 6", install_step)
+        self.assertIn('test "$os_version" = "24.04"', install_step)
+        self.assertIn('test "$(dpkg --print-architecture)" = "amd64"', install_step)
+        self.assertIn("Acquire::Retries=1", install_step)
+        self.assertIn("Acquire::http::Timeout=10", install_step)
+        self.assertIn("Acquire::https::Timeout=10", install_step)
+        self.assertIn("DPkg::Lock::Timeout=30", install_step)
+        self.assertIn(
+            'timeout --signal=TERM --kill-after=15s "$budget"', install_step
+        )
+        self.assertIn(
+            'apt_update "$primary_sources" "$primary_lists" 45s', install_step
+        )
+        self.assertIn(
+            'apt_update "$fallback_sources" "$fallback_lists" 75s', install_step
+        )
+        self.assertIn("timeout --signal=TERM --kill-after=15s 150s", install_step)
+        self.assertIn("http://azure.archive.ubuntu.com/ubuntu/", install_step)
+        self.assertIn("http://archive.ubuntu.com/ubuntu/", install_step)
+        self.assertGreaterEqual(
+            install_step.count("http://security.ubuntu.com/ubuntu/"),
+            2,
+        )
+        self.assertEqual(
+            install_step.count(
+                "Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg"
+            ),
+            4,
+        )
+        self.assertIn('Dir::Etc::sourceparts="-"', install_step)
+        self.assertNotRegex(install_step, r"\b(?:curl|wget)\b")
+        self.assertNotIn("trusted=yes", install_step)
+        self.assertNotIn("--allow-unauthenticated", install_step)
+        self.assertNotIn("Acquire::AllowInsecureRepositories", install_step)
+
+        job_match = re.search(r"(?m)^    timeout-minutes: (\d+)$", workflow)
+        deadline_match = re.search(
+            r'(?m)^      OCR_JOB_DEADLINE_SECONDS: "(\d+)"$', workflow
+        )
+        self.assertIsNotNone(job_match)
+        self.assertIsNotNone(deadline_match)
+        assert job_match is not None
+        assert deadline_match is not None
+        job_minutes = int(job_match.group(1))
+        deadline_seconds = int(deadline_match.group(1))
+        self.assertGreaterEqual(
+            (job_minutes - 6) * 60 - deadline_seconds,
+            9 * 60,
+        )
+        self.assertLessEqual(
+            (45 + 15) + (75 + 15) + (150 + 15),
+            6 * 60,
+        )
 
     def test_job_environment_does_not_use_runner_context(self) -> None:
         workflow = (ROOT / ".github/workflows/knowledge-ocr.yml").read_text(encoding="utf-8")
