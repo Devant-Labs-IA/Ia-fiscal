@@ -1,0 +1,86 @@
+name: One-time Narciso recovery email
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/send-narciso-recovery.yml
+
+permissions:
+  contents: write
+
+jobs:
+  send-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SUPABASE_URL: https://qvgenxcrdrqyiyozxtdt.supabase.co
+      SUPABASE_PUBLISHABLE_KEY: sb_publishable_Frt254fLpExL7A52zWNCnw_ZXLP7k33
+      RECOVERY_EMAIL: luisnarcizo@uol.com.br
+      REDIRECT_TO: https://ia-fiscal-homologacao.vercel.app/?recovery=1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Request exactly one fresh recovery email
+        id: request
+        shell: bash
+        run: |
+          set -uo pipefail
+          encoded_redirect="$(jq -rn --arg value "$REDIRECT_TO" '$value | @uri')"
+          response_file="$(mktemp)"
+          trap 'rm -f "$response_file"' EXIT
+
+          http_code="$(curl --silent --show-error \
+            --request POST \
+            --output "$response_file" \
+            --write-out "%{http_code}" \
+            --header "apikey: ${SUPABASE_PUBLISHABLE_KEY}" \
+            --header "Authorization: Bearer ${SUPABASE_PUBLISHABLE_KEY}" \
+            --header "Content-Type: application/json" \
+            --header "x-ia-fiscal-client: recovery-repair-2026-08-18" \
+            --data "$(jq -n --arg email "$RECOVERY_EMAIL" '{email: $email}')" \
+            "${SUPABASE_URL}/auth/v1/recover?redirect_to=${encoded_redirect}" || true)"
+
+          if [ "$http_code" = "200" ]; then
+            result="success"
+            detail="recovery_email_accepted"
+          else
+            result="failed"
+            error_code="$(jq -r '.error_code // .code // "unknown"' "$response_file" 2>/dev/null || echo unknown)"
+            detail="http_${http_code:-transport_error}_${error_code}"
+          fi
+
+          echo "result=$result" >> "$GITHUB_OUTPUT"
+          echo "detail=$detail" >> "$GITHUB_OUTPUT"
+          echo "Recovery request: $result ($detail)"
+
+      - name: Record sanitized result
+        if: always()
+        shell: bash
+        env:
+          REQUEST_RESULT: ${{ steps.request.outputs.result || 'workflow_interrupted' }}
+          REQUEST_DETAIL: ${{ steps.request.outputs.detail || 'no_step_output' }}
+        run: |
+          set -euo pipefail
+          mkdir -p .automation
+          jq -n \
+            --arg result "$REQUEST_RESULT" \
+            --arg detail "$REQUEST_DETAIL" \
+            --arg redirect_to "$REDIRECT_TO" \
+            --arg run_id "$GITHUB_RUN_ID" \
+            --arg requested_at "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+            '{result: $result, detail: $detail, redirect_to: $redirect_to, run_id: $run_id, requested_at: $requested_at}' \
+            > .automation/narciso-recovery-result.json
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .automation/narciso-recovery-result.json
+          git commit -m "chore(auth): record Narciso recovery request" || exit 0
+          git push origin HEAD:main
+
+      - name: Fail when recovery was rejected
+        if: steps.request.outputs.result != 'success'
+        shell: bash
+        run: exit 1
