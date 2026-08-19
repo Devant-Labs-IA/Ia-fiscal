@@ -1,0 +1,7 @@
+{
+  "result": "success",
+  "detail": "recovery_email_accepted",
+  "redirect_to": "https://ia-fiscal-homologacao.vercel.app/?recovery=1",
+  "run_id": "32200240241",
+  "requested_at": "2026-08-19T00:11:07Z"
+}
