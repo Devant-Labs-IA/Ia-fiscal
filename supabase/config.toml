@@ -7,3 +7,22 @@ verify_jwt = true
 
 [functions.ia-fiscal-search]
 verify_jwt = true
+
+[functions.ia-fiscal-knowledge-ingest]
+# Chamadas do pg_net usam segredo aleatório do Vault, não JWT. O handler valida
+# hash, janela temporal e nonce único em RPC service-only antes de qualquer I/O.
+verify_jwt = false
+
+[functions.ia-fiscal-knowledge-embed]
+# Mesmo gate Vault/nonce do orquestrador; nunca aceita chave versionada no repositório.
+verify_jwt = false
+
+[functions.ia-fiscal-knowledge-search]
+# Preserva o JWT do usuário e exige AAL2/tenant também na RPC híbrida.
+verify_jwt = true
+
+[functions.ia-fiscal-knowledge-ocr]
+# GitHub Actions envia um OIDC JWT do issuer oficial. O gateway Supabase não
+# conhece esse emissor, portanto o handler valida assinatura/JWKS, audience,
+# repository/ref/workflow/environment e anti-replay antes de usar service_role.
+verify_jwt = false

@@ -205,14 +205,16 @@ const STAFF_FLOW: OnboardingStep[] = [
   },
   {
     id: "knowledge",
-    title: "Use conhecimento governado como apoio",
+    title: "Consulte e governe o Segundo Cérebro",
     section: "Segundo Cérebro",
     capability: "guidance",
     routeLabel: "Segundo Cérebro",
     summary:
-      "A biblioteca reúne respostas e fundamentos versionados. Ela apoia a conferência, mas não substitui a análise da autoridade fiscal ou jurídica.",
+      "A biblioteca reúne respostas publicadas com citações verificáveis. As demais abas mostram fontes oficiais, mudanças detectadas, revisões pendentes e a saúde da coleta, sem substituir a análise da autoridade fiscal ou jurídica.",
     actions: [
-      "Pesquise pelo tema e confira versão, publicação e período de validade.",
+      "Na Biblioteca, confira resposta, fonte oficial, dispositivo citado, versão e vigência antes de usar a orientação.",
+      "Em Fontes oficiais e Saúde, verifique se a coleta está atualizada e se existe uma versão vigente publicada.",
+      "Mudança coletada não é conhecimento aprovado: somente o revisor autorizado pode revisar e, em uma ação separada, publicar.",
       "Volte ao procedimento e confronte a orientação com os fatos e documentos do caso.",
     ],
   },

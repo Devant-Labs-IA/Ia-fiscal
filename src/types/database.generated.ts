@@ -3749,6 +3749,7 @@ export type Database = {
         Row: {
           case_portal_base_url: string | null
           created_at: string
+          external_delivery_locked: boolean
           external_email_enabled: boolean
           municipality_id: string
           official_help_url: string | null
@@ -3760,6 +3761,7 @@ export type Database = {
         Insert: {
           case_portal_base_url?: string | null
           created_at?: string
+          external_delivery_locked?: boolean
           external_email_enabled?: boolean
           municipality_id: string
           official_help_url?: string | null
@@ -3771,6 +3773,7 @@ export type Database = {
         Update: {
           case_portal_base_url?: string | null
           created_at?: string
+          external_delivery_locked?: boolean
           external_email_enabled?: boolean
           municipality_id?: string
           official_help_url?: string | null
@@ -4796,36 +4799,6 @@ export type Database = {
           locale?: string
           phone?: string | null
           status?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      user_onboarding_progress: {
-        Row: {
-          completed_at: string | null
-          current_step: number
-          onboarding_key: string
-          onboarding_version: number
-          started_at: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          completed_at?: string | null
-          current_step?: number
-          onboarding_key: string
-          onboarding_version: number
-          started_at?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          completed_at?: string | null
-          current_step?: number
-          onboarding_key?: string
-          onboarding_version?: number
-          started_at?: string
           updated_at?: string
           user_id?: string
         }
@@ -6131,6 +6104,36 @@ export type Database = {
           },
         ]
       }
+      user_onboarding_progress: {
+        Row: {
+          completed_at: string | null
+          current_step: number
+          onboarding_key: string
+          onboarding_version: number
+          started_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          current_step?: number
+          onboarding_key: string
+          onboarding_version: number
+          started_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          current_step?: number
+          onboarding_key?: string
+          onboarding_version?: number
+          started_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       worker_health: {
         Row: {
           dead_letter_jobs: number
@@ -6592,6 +6595,24 @@ export type Database = {
           },
         ]
       }
+      vw_knowledge_catalog_coverage: {
+        Row: {
+          blocker_code: string | null
+          corpus_integral: boolean | null
+          coverage_key: string | null
+          discovered_count: number | null
+          expected_document_count: number | null
+          extraction_queued_count: number | null
+          identity_verified_count: number | null
+          municipality_id: string | null
+          published_count: number | null
+          reviewable_count: number | null
+          title: string | null
+          updated_at: string | null
+          upstream_status: string | null
+        }
+        Relationships: []
+      }
       vw_notification_recipient_candidates: {
         Row: {
           candidate_id: string | null
@@ -6795,6 +6816,7 @@ export type Database = {
           answer_body: string | null
           article_id: string | null
           canonical_question: string | null
+          citations: Json | null
           content_sha256: string | null
           divergence_scope: string | null
           intent_key: string | null
@@ -7593,18 +7615,6 @@ export type Database = {
       }
     }
     Functions: {
-      ia_operational_report: {
-        Args: { p_municipality_id: string }
-        Returns: Json
-      }
-      ia_add_existing_municipality_user: {
-        Args: {
-          p_email: string
-          p_municipality_id: string
-          p_role: string
-        }
-        Returns: string
-      }
       ia_activate_ai_prompt: {
         Args: { p_confirmation: string; p_prompt_version_id: string }
         Returns: undefined
@@ -7620,6 +7630,10 @@ export type Database = {
       ia_activate_rule_version: {
         Args: { p_confirmation: string; p_rule_version_id: string }
         Returns: undefined
+      }
+      ia_add_existing_municipality_user: {
+        Args: { p_email: string; p_municipality_id: string; p_role: string }
+        Returns: string
       }
       ia_approve_case_opening_batch: {
         Args: { p_approval_notes?: string; p_batch_id: string }
@@ -7668,6 +7682,14 @@ export type Database = {
         Args: { p_job_id: number; p_worker_id: string }
         Returns: undefined
       }
+      ia_configure_knowledge_schedule: {
+        Args: {
+          p_confirmation: string
+          p_enabled: boolean
+          p_municipality_id: string
+        }
+        Returns: Json
+      }
       ia_create_case_opening_batch: {
         Args: {
           p_assigned_membership_id?: string
@@ -7694,26 +7716,352 @@ export type Database = {
         }
         Returns: string
       }
+      ia_fiscal_attest_knowledge_ocr_runtime_ready: {
+        Args: {
+          p_confirmation: string
+          p_edge_bundle_sha256: string
+          p_edge_deployment_id: string
+          p_max_pages: number
+          p_max_total_characters: number
+          p_policy_version: string
+          p_project_ref: string
+          p_smoke_evidence_locator: string
+          p_smoke_evidence_sha256: string
+          p_toolchain_lock_sha256: string
+          p_valid_until: string
+          p_workflow_commit_sha: string
+        }
+        Returns: string
+      }
+      ia_fiscal_attest_knowledge_runtime_ready: {
+        Args: {
+          p_confirmation: string
+          p_embed_contract: string
+          p_embed_deployment_id: string
+          p_embed_release_fingerprint: string
+          p_ingest_contract: string
+          p_ingest_deployment_id: string
+          p_ingest_release_fingerprint: string
+          p_project_ref: string
+          p_search_contract: string
+          p_search_deployment_id: string
+          p_search_release_fingerprint: string
+          p_smoke_evidence_locator: string
+          p_smoke_evidence_sha256: string
+          p_valid_until: string
+        }
+        Returns: string
+      }
+      ia_fiscal_capture_knowledge_source: {
+        Args: {
+          p_byte_size: number
+          p_content_sha256: string
+          p_correlation_id: string
+          p_etag: string
+          p_extracted_text: string
+          p_final_url: string
+          p_http_status: number
+          p_last_modified: string
+          p_metadata?: Json
+          p_mime_type: string
+          p_observed_at: string
+          p_requested_url: string
+          p_source_id: string
+          p_storage_bucket: string
+          p_storage_path: string
+        }
+        Returns: Json
+      }
+      ia_fiscal_capture_knowledge_source_v2: {
+        Args: {
+          p_byte_size: number
+          p_content_sha256: string
+          p_correlation_id: string
+          p_etag: string
+          p_extracted_text: string
+          p_final_url: string
+          p_http_status: number
+          p_last_modified: string
+          p_metadata?: Json
+          p_mime_type: string
+          p_observed_at: string
+          p_requested_url: string
+          p_sections: Json
+          p_source_id: string
+          p_storage_bucket: string
+          p_storage_path: string
+        }
+        Returns: Json
+      }
+      ia_fiscal_claim_knowledge_ocr_job: {
+        Args: { p_lease_seconds?: number; p_oidc_context: Json }
+        Returns: Json
+      }
+      ia_fiscal_claim_legal_embedding_jobs: {
+        Args: { p_batch_size?: number }
+        Returns: {
+          attempt: number
+          content_text: string
+          dimensions: number
+          job_id: string
+          legal_chunk_id: string
+          model: string
+          model_revision: string
+          municipality_id: string
+          provider_code: string
+          source_sha256: string
+        }[]
+      }
+      ia_fiscal_complete_legal_embedding_job: {
+        Args: { p_embedding: string; p_job_id: string }
+        Returns: undefined
+      }
+      ia_fiscal_configure_knowledge_scheduler_project_url: {
+        Args: { p_project_url: string }
+        Returns: undefined
+      }
+      ia_fiscal_fail_knowledge_ocr_job: {
+        Args: {
+          p_error_code: string
+          p_error_detail: string
+          p_job_id: string
+          p_lease_token: string
+          p_oidc_context: Json
+          p_retryable?: boolean
+        }
+        Returns: Json
+      }
+      ia_fiscal_fail_legal_embedding_job: {
+        Args: { p_error_code: string; p_job_id: string }
+        Returns: undefined
+      }
+      ia_fiscal_finalize_knowledge_ocr_job: {
+        Args: {
+          p_engine_name: string
+          p_engine_version: string
+          p_expected_content_sha256: string
+          p_job_id: string
+          p_lease_token: string
+          p_manifest_byte_size: number
+          p_manifest_evidence: Json
+          p_manifest_path: string
+          p_manifest_sha256: string
+          p_oidc_context: Json
+          p_pages: Json
+        }
+        Returns: Json
+      }
+      ia_fiscal_get_knowledge_source_endpoints: {
+        Args: never
+        Returns: {
+          activation_blocker: string
+          allowed_hosts: string[]
+          citable_body: boolean
+          content_mode: string
+          endpoint_id: string
+          endpoint_kind: string
+          endpoint_status: string
+          expected_content_types: string[]
+          municipality_id: string
+          municipality_slug: string
+          parser_hint: string
+          requested_url: string
+          source_id: string
+          source_title: string
+          trust_tier: string
+        }[]
+      }
+      ia_fiscal_heartbeat_knowledge_ocr_job: {
+        Args: {
+          p_extend_seconds?: number
+          p_job_id: string
+          p_lease_token: string
+          p_oidc_context: Json
+          p_usage?: string
+        }
+        Returns: Json
+      }
+      ia_fiscal_hybrid_search_legal_knowledge: {
+        Args: {
+          p_limit?: number
+          p_municipality_id: string
+          p_query: string
+          p_query_embedding?: string
+        }
+        Returns: Json
+      }
+      ia_fiscal_record_knowledge_discoveries: {
+        Args: { p_assets: Json; p_endpoint_id: string; p_observed_at: string }
+        Returns: Json
+      }
+      ia_fiscal_record_knowledge_fetch_failure: {
+        Args: {
+          p_correlation_id: string
+          p_error_code: string
+          p_error_detail: string
+          p_http_status: number
+          p_metadata?: Json
+          p_observed_at: string
+          p_requested_url: string
+          p_source_id: string
+        }
+        Returns: string
+      }
+      ia_fiscal_revoke_knowledge_ocr_runtime_gate: {
+        Args: {
+          p_confirmation: string
+          p_reason: string
+          p_runtime_gate_id: string
+        }
+        Returns: undefined
+      }
+      ia_fiscal_revoke_knowledge_runtime_gate: {
+        Args: {
+          p_confirmation: string
+          p_reason: string
+          p_runtime_gate_id: string
+        }
+        Returns: boolean
+      }
+      ia_fiscal_stage_knowledge_chunks: {
+        Args: { p_candidate_version_id: string; p_chunks: Json }
+        Returns: Json
+      }
+      ia_fiscal_stage_knowledge_sections: {
+        Args: { p_change_set_id: string; p_sections: Json }
+        Returns: Json
+      }
+      ia_fiscal_stage_knowledge_sections_legacy_impl: {
+        Args: { p_change_set_id: string; p_sections: Json }
+        Returns: Json
+      }
+      ia_fiscal_validate_knowledge_scheduler_request: {
+        Args: {
+          p_issued_at: string
+          p_nonce: string
+          p_scope: string
+          p_secret_sha256: string
+        }
+        Returns: boolean
+      }
       ia_get_ai_job_context: { Args: { p_job_id: number }; Returns: Json }
+      ia_get_assisted_operation_safety_status: {
+        Args: { p_municipality_id: string }
+        Returns: Json
+      }
+      ia_get_knowledge_article_evidence: {
+        Args: {
+          p_article_id: string
+          p_municipality_id: string
+          p_revision_id: string
+        }
+        Returns: Json
+      }
+      ia_get_knowledge_article_evidence_v1: {
+        Args: {
+          p_article_id: string
+          p_municipality_id: string
+          p_revision_id: string
+        }
+        Returns: Json
+      }
+      ia_get_knowledge_candidate_evidence: {
+        Args: { p_candidate_id: string; p_municipality_id: string }
+        Returns: Json
+      }
+      ia_get_knowledge_operations_snapshot: {
+        Args: { p_municipality_id: string }
+        Returns: Json
+      }
+      ia_get_knowledge_operations_snapshot_phase2_core: {
+        Args: { p_municipality_id: string }
+        Returns: Json
+      }
+      ia_get_knowledge_operations_snapshot_pre_ocr: {
+        Args: { p_municipality_id: string }
+        Returns: Json
+      }
+      ia_get_knowledge_operations_snapshot_v1: {
+        Args: { p_municipality_id: string }
+        Returns: Json
+      }
+      ia_get_legal_source_change_evidence:
+        | {
+            Args: {
+              p_change_set_id: string
+              p_content_limit?: number
+              p_content_offset?: number
+              p_municipality_id: string
+              p_section_limit?: number
+              p_section_offset?: number
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_change_item_limit: number
+              p_change_item_offset: number
+              p_change_set_id: string
+              p_content_limit: number
+              p_content_offset: number
+              p_municipality_id: string
+              p_section_limit: number
+              p_section_offset: number
+            }
+            Returns: Json
+          }
+      ia_get_legal_source_change_evidence_v1: {
+        Args: {
+          p_change_set_id: string
+          p_content_limit?: number
+          p_content_offset?: number
+          p_municipality_id: string
+          p_section_limit?: number
+          p_section_offset?: number
+        }
+        Returns: Json
+      }
       ia_get_notification_job_context: {
         Args: { p_job_id: number }
         Returns: Json
       }
-      ia_list_my_context: { Args: never; Returns: Json }
+      ia_get_notification_job_context_without_master_lock: {
+        Args: { p_job_id: number }
+        Returns: Json
+      }
+      ia_grant_legal_reviewer_capability: {
+        Args: {
+          p_confirmation: string
+          p_municipality_id: string
+          p_reason: string
+          p_target_membership_id: string
+          p_valid_until: string
+        }
+        Returns: string
+      }
+      ia_has_assisted_operation_test_access: {
+        Args: { p_municipality_id: string }
+        Returns: boolean
+      }
+      ia_list_legal_reviewer_capabilities: {
+        Args: { p_municipality_id: string }
+        Returns: Json
+      }
       ia_list_municipality_users: {
         Args: { p_municipality_id: string }
         Returns: {
           email: string
           full_name: string
-          last_seen_at: string | null
+          last_seen_at: string
           membership_id: string
           role: string
           status: string
           user_id: string
           valid_from: string
-          valid_until: string | null
+          valid_until: string
         }[]
       }
+      ia_list_my_context: { Args: never; Returns: Json }
       ia_mark_ai_job_blocked: {
         Args: { p_job_id: number; p_reason: string }
         Returns: undefined
@@ -7725,6 +8073,10 @@ export type Database = {
       ia_mark_notification_job_blocked: {
         Args: { p_job_id: number; p_reason: string }
         Returns: undefined
+      }
+      ia_operational_report: {
+        Args: { p_municipality_id: string }
+        Returns: Json
       }
       ia_preview_initial_notice: {
         Args: { p_case_id: string; p_template_version_id?: string }
@@ -7738,18 +8090,36 @@ export type Database = {
         Args: { p_client_request_id: string; p_draft_id: string }
         Returns: string
       }
-      ia_publish_knowledge_article: {
-        Args: { p_article_id: string; p_confirmation: string }
-        Returns: undefined
-      }
+      ia_publish_knowledge_article:
+        | {
+            Args: { p_article_id: string; p_confirmation: string }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_article_id: string
+              p_confirmation: string
+              p_expected_municipality_id: string
+            }
+            Returns: undefined
+          }
       ia_publish_knowledge_release: {
         Args: { p_confirmation: string; p_release_id: string }
         Returns: undefined
       }
-      ia_publish_legal_source_version: {
-        Args: { p_confirmation: string; p_source_version_id: string }
-        Returns: undefined
-      }
+      ia_publish_legal_source_version:
+        | {
+            Args: {
+              p_confirmation: string
+              p_expected_municipality_id: string
+              p_source_version_id: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: { p_confirmation: string; p_source_version_id: string }
+            Returns: undefined
+          }
       ia_publish_manual_response: {
         Args: {
           p_body: string
@@ -7808,14 +8178,77 @@ export type Database = {
         }
         Returns: string
       }
-      ia_review_knowledge_article: {
-        Args: {
-          p_article_id: string
-          p_decision: string
-          p_notes?: string
-          p_revision_id: string
-        }
-        Returns: string
+      ia_review_knowledge_article:
+        | {
+            Args: {
+              p_article_id: string
+              p_confirmation: string
+              p_decision: string
+              p_notes: string
+              p_revision_id: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_article_id: string
+              p_confirmation: string
+              p_decision: string
+              p_expected_municipality_id: string
+              p_notes: string
+              p_revision_id: string
+            }
+            Returns: string
+          }
+      ia_review_knowledge_candidate:
+        | {
+            Args: {
+              p_candidate_id: string
+              p_confirmation: string
+              p_decision: string
+              p_notes: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_candidate_id: string
+              p_confirmation: string
+              p_decision: string
+              p_expected_municipality_id: string
+              p_notes: string
+            }
+            Returns: string
+          }
+      ia_review_legal_source_change:
+        | {
+            Args: {
+              p_change_set_id: string
+              p_confirmation: string
+              p_decision: string
+              p_publication_date?: string
+              p_review_notes: string
+              p_valid_from?: string
+              p_valid_until?: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_change_set_id: string
+              p_confirmation: string
+              p_decision: string
+              p_expected_municipality_id: string
+              p_publication_date?: string
+              p_review_notes: string
+              p_valid_from?: string
+              p_valid_until?: string
+            }
+            Returns: string
+          }
+      ia_revoke_legal_reviewer_capability: {
+        Args: { p_confirmation: string; p_grant_id: string; p_reason: string }
+        Returns: undefined
       }
       ia_route_case_question_from_knowledge: {
         Args: { p_question_id: string }
@@ -7890,6 +8323,16 @@ export type Database = {
       }
       ia_submit_case_question: {
         Args: { p_body: string; p_case_id: string; p_client_request_id: string }
+        Returns: string
+      }
+      ia_submit_knowledge_candidate: {
+        Args: {
+          p_citation_section_ids: string[]
+          p_confirmation: string
+          p_municipality_id: string
+          p_proposed_answer: string
+          p_question: string
+        }
         Returns: string
       }
       ia_update_municipality_membership: {

@@ -1,0 +1,130 @@
+name: Governed knowledge OCR
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 * * * *"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: ia-fiscal-governed-knowledge-ocr-production
+  cancel-in-progress: false
+
+jobs:
+  ocr:
+    name: OCR official legal artifact
+    runs-on: ubuntu-24.04
+    environment: knowledge-ocr
+    timeout-minutes: 55
+
+    env:
+      OCR_EDGE_URL: https://qvgenxcrdrqyiyozxtdt.supabase.co/functions/v1/ia-fiscal-knowledge-ocr
+      OCR_OIDC_AUDIENCE: ia-fiscal-knowledge-ocr-qvgenxcrdrqyiyozxtdt
+      OCR_ALLOWED_REPOSITORY: AlmoreContabilidade/Ia-fiscal
+      OCR_ALLOWED_REPOSITORY_ID: "1320619695"
+      OCR_ALLOWED_REPOSITORY_OWNER_ID: "296187202"
+      OCR_ALLOWED_REF: refs/heads/main
+      OCR_ALLOWED_WORKFLOW_REF: AlmoreContabilidade/Ia-fiscal/.github/workflows/knowledge-ocr.yml@refs/heads/main
+      OCR_GITHUB_ENVIRONMENT: knowledge-ocr
+      OCR_ALLOWED_DOWNLOAD_HOSTS: qvgenxcrdrqyiyozxtdt.supabase.co
+      OCR_MAX_JOBS: "1"
+      OCR_JOB_DEADLINE_SECONDS: "2400"
+      OCR_DPI: "300"
+      OCR_MIN_PAGE_COVERAGE_BPS: "9000"
+      OCR_MIN_MEAN_CONFIDENCE_MILLI: "550"
+      OCR_SUMMARY_PATH: ${{ runner.temp }}/knowledge-ocr-summary.json
+
+    steps:
+      - name: Reject execution outside the protected branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/main"
+          test "$GITHUB_REPOSITORY" = "AlmoreContabilidade/Ia-fiscal"
+
+      - name: Checkout immutable workflow source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Set up locked Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12.11"
+
+      - name: Install the locked OCR toolchain
+        shell: bash
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            bubblewrap=0.9.0-1ubuntu0.1 \
+            poppler-utils=24.02.0-1ubuntu9.9 \
+            qpdf=11.9.0-1.1ubuntu0.1 \
+            tesseract-ocr=5.3.4-1build5 \
+            tesseract-ocr-por=1:4.1.0-2 \
+            unrtf=0.21.10-clean-1
+          sudo rm -rf /var/lib/apt/lists/*
+
+      - name: Verify toolchain and fail-closed unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          python -m scripts.knowledge_ocr.verify_toolchain
+          python -m unittest discover -s scripts/knowledge_ocr/tests -v
+
+      - name: Drain governed OCR queue
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          timeout --signal=TERM --kill-after=60s 45m \
+            python -m scripts.knowledge_ocr.worker
+
+      - name: Verify non-sensitive run summary
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if test -f "$OCR_SUMMARY_PATH"; then
+            python - "$OCR_SUMMARY_PATH" <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          path = pathlib.Path(sys.argv[1])
+          data = json.loads(path.read_text(encoding="utf-8"))
+          forbidden = {"text", "content", "url", "token", "lease_token", "source"}
+
+          def inspect(value):
+              if isinstance(value, dict):
+                  for key, item in value.items():
+                      if key.lower() in forbidden:
+                          raise SystemExit("sensitive summary field rejected")
+                      inspect(item)
+              elif isinstance(value, list):
+                  for item in value:
+                      inspect(item)
+
+          inspect(data)
+          if path.stat().st_size > 64 * 1024:
+              raise SystemExit("summary size limit exceeded")
+          PY
+          fi
+
+      - name: Upload metadata-only summary
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: knowledge-ocr-summary-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/knowledge-ocr-summary.json
+          if-no-files-found: ignore
+          retention-days: 14
+          compression-level: 9
+          include-hidden-files: false

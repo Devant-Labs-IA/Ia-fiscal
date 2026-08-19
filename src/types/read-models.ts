@@ -1,3 +1,5 @@
+import type { KnowledgeCitationEvidence } from "@/features/knowledge/knowledge-models";
+
 export type StaffRole =
   | "platform_admin"
   | "municipal_admin"
@@ -140,6 +142,7 @@ export interface NotificationRecipientReadModel {
 export interface KnowledgeArticleReadModel {
   municipalityId: string;
   articleId: string;
+  revisionId: string;
   intentKey: string;
   semanticVersion: number;
   canonicalQuestion: string;
@@ -150,6 +153,7 @@ export interface KnowledgeArticleReadModel {
   validUntil: string | null;
   publishedAt: string | null;
   isTest: boolean;
+  citations: KnowledgeCitationEvidence[];
 }
 
 export interface PortalCaseReadModel {

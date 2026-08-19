@@ -16,6 +16,7 @@ dist-ssr
 .nitro
 .vercel/
 *.local
+*.tsbuildinfo
 .env
 .env.*
 !.env.example
@@ -35,6 +36,10 @@ dist-ssr
 *.sqlite
 *.sqlite3
 supabase/.temp/
+
+# Python worker caches
+__pycache__/
+*.py[cod]
 
 # Wrangler / Cloudflare
 .wrangler/

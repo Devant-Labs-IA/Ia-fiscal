@@ -63,6 +63,13 @@ export function Topbar({ onOpenTutorial }: { onOpenTutorial?: (() => void) | und
         : auth.access
           ? ROLE_LABELS[auth.access.role]
           : "Acesso restrito";
+  const searchStatus = searching
+    ? "Busca em andamento."
+    : searched
+      ? results.length === 0
+        ? "Busca concluída. Nenhum resultado autorizado."
+        : `Busca concluída. ${results.length} ${results.length === 1 ? "resultado autorizado" : "resultados autorizados"}.`
+      : "";
 
   useEffect(() => {
     searchRequestRef.current += 1;
@@ -149,10 +156,27 @@ export function Topbar({ onOpenTutorial }: { onOpenTutorial?: (() => void) | und
                 className="h-9 bg-background pl-9"
                 maxLength={500}
                 autoComplete="off"
+                aria-busy={searching}
+                aria-controls="resultados-busca-global"
+                aria-expanded={searched && !searching}
+                aria-describedby="busca-global-status"
               />
+              <span
+                id="busca-global-status"
+                className="sr-only"
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
+              >
+                {searchStatus}
+              </span>
             </div>
             {searched && !searching ? (
-              <div className="absolute left-0 top-11 z-50 w-full max-w-xl rounded-md border border-border bg-popover p-2 text-popover-foreground shadow-lg">
+              <div
+                id="resultados-busca-global"
+                className="absolute left-0 top-11 z-50 w-full max-w-xl rounded-md border border-border bg-popover p-2 text-popover-foreground shadow-lg"
+                aria-label="Resultados da busca global"
+              >
                 {results.length === 0 ? (
                   <p className="px-3 py-4 text-sm text-muted-foreground">
                     Nenhum resultado autorizado.
