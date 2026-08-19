@@ -1,0 +1,77 @@
+{
+  "evidence_contract": "knowledge-runtime-ocr-retry-evidence/v1",
+  "generated_at": "2026-08-19T07:45:55Z",
+  "project_ref": "qvgenxcrdrqyiyozxtdt",
+  "purpose": "Renew the unchanged runtime bundle only long enough to execute one corrected governed OCR smoke; this does not authorize schedule activation or legal publication.",
+  "source_repository": "AlmoreContabilidade/Ia-fiscal",
+  "prior_release_evidence": {
+    "locator": "https://github.com/AlmoreContabilidade/Ia-fiscal/blob/782c0890de80ba4dff26c9718e65e64828455f44/docs/qa/evidence/knowledge-runtime-bootstrap-2026-08-19.json",
+    "sha256": "77c7f6214204f0c84859b0a95d7e1d381804ff2b33251c31bc1e40a287bca38b",
+    "file_hashes_verified": "20/20",
+    "secrets_detected": false
+  },
+  "edge_manifests": {
+    "ingest": {
+      "contract": "knowledge-ingest-v2",
+      "deployment_id": "ed316143-8ebb-4ea4-a293-559ac1c9f8bd",
+      "ezbr_sha256": "521e165b8d3ccddfc536cd96653b7ccb45b1ff4454cb60e706fdee90d9aa9c40",
+      "release_fingerprint_sha256": "0f7ffacc7b5cd7c225d175f1ed2c3252c7a1f44cb514f88319ec1aa4ee4edc91",
+      "verify_jwt": false,
+      "version": 5
+    },
+    "embed": {
+      "contract": "knowledge-embed-v1",
+      "deployment_id": "34bb78c5-97e0-4390-b0c0-ea97f322a7a3",
+      "ezbr_sha256": "65076c05ae0b767c07bd34099317d4b193722f788c3793e40c73d8c17aa3e031",
+      "release_fingerprint_sha256": "630f6e81cb822ab6eb962930db4f4c83f8b21bbf5b573d82a5abc84cd09bee9a",
+      "verify_jwt": false,
+      "version": 1
+    },
+    "search": {
+      "contract": "knowledge-search-v1",
+      "deployment_id": "47ce1797-4eb8-43a9-afcd-92d89667ea56",
+      "ezbr_sha256": "67de8e41b5ca559263ac83ab456c1d0184518024060d961ac113c55c3341db8a",
+      "release_fingerprint_sha256": "be3df4a48011b199abd1164f67c7fa02fa992ef5a6761b49327daef2e1702159",
+      "verify_jwt": true,
+      "version": 1
+    }
+  },
+  "controlled_embedding_observations": {
+    "batch_32_result": "worker_resource_limit_http_546",
+    "batch_1_result": "http_200_claimed_1_completed_1_failed_0",
+    "embedding_dimension": 384,
+    "leases_reaped": 30,
+    "processing_after_recovery": 0,
+    "completed_after_recovery": 4,
+    "failed_retryable_after_recovery": 30,
+    "queued_after_recovery": 5,
+    "automation_setting_restored_disabled": true,
+    "scheduled_cron_jobs": 0
+  },
+  "ocr_retry_dependency": {
+    "workflow_main_commit": "9b5873ab8ce3da7257243f4a52f207db9b4f6817",
+    "workflow_sha256": "03d978e4e25b9f1710c89b344eb0bbe941ed3217f6c7d40b6b1c3723a87f08aa",
+    "workflow_ci_run": 87,
+    "workflow_ci_status": "success",
+    "ocr_job_id": "03c5dd76-beee-4363-9d3f-9335e2357da9",
+    "ocr_job_status": "queued",
+    "ocr_job_attempt": 0,
+    "previous_startup_failure_had_oidc_requests": 0,
+    "previous_temporary_ocr_gate_revoked": true
+  },
+  "fail_closed_snapshot": {
+    "enabled_automation_settings": 0,
+    "scheduled_knowledge_cron_jobs": 0,
+    "published_legal_versions": 0,
+    "active_legal_reviewers": 0,
+    "external_communication_enabled": false
+  },
+  "temporary_gate_constraints": {
+    "planned_valid_until": "2026-08-19T09:15:00Z",
+    "activation_allowed": false,
+    "publication_allowed": false,
+    "allowed_operation": "one corrected governed OCR workflow",
+    "revoke_after_result": true
+  },
+  "activation_decision": "no_go_until_ocr_result_and_new_portuguese_search_release_are_verified"
+}
