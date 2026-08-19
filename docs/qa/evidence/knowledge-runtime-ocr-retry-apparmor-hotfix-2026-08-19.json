@@ -1,0 +1,128 @@
+{
+  "evidence_contract": "knowledge-runtime-ocr-retry-evidence/v3",
+  "generated_at": "2026-08-19T09:54:22Z",
+  "production_snapshot_captured_at": "2026-08-19T09:53:09.347604Z",
+  "project_ref": "qvgenxcrdrqyiyozxtdt",
+  "purpose": "Open the exact fail-closed knowledge runtime only long enough for one governed OCR smoke from the merged AppArmor-hardened workflow. This evidence does not authorize schedule activation, legal publication, reviewer assignment or external communication.",
+  "source_repository": "AlmoreContabilidade/Ia-fiscal",
+  "source_main_commit": "1de86345a8bdc208fcbdfe9001004e50606ecd50",
+  "source_main_tree": "38276a2ef97b99c55bc65eae9ece304e0e1925c0",
+  "release_pull_request": {
+    "number": 8,
+    "merged": true,
+    "head_commit": "20f3678c65106bbff5e0597fc15df2038e085407",
+    "head_tree_equals_main_tree": true,
+    "ci_run_id": 32239395922,
+    "ci_run_number": 91,
+    "ci_status": "success",
+    "repository_tests": "309/309 passed",
+    "vercel_status": "success"
+  },
+  "edge_manifests_revalidated_in_production": {
+    "ingest": {
+      "contract": "knowledge-ingest-v2",
+      "deployment_id": "ed316143-8ebb-4ea4-a293-559ac1c9f8bd",
+      "version": 5,
+      "status": "ACTIVE",
+      "verify_jwt": false,
+      "ezbr_sha256": "521e165b8d3ccddfc536cd96653b7ccb45b1ff4454cb60e706fdee90d9aa9c40",
+      "release_fingerprint_sha256": "0f7ffacc7b5cd7c225d175f1ed2c3252c7a1f44cb514f88319ec1aa4ee4edc91"
+    },
+    "embed": {
+      "contract": "knowledge-embed-v1",
+      "deployment_id": "34bb78c5-97e0-4390-b0c0-ea97f322a7a3",
+      "version": 2,
+      "status": "ACTIVE",
+      "verify_jwt": false,
+      "ezbr_sha256": "924a442d7b1792bad0232efc78b4df769af3aa4da4a1d81cbfc49552b4f5795a",
+      "release_fingerprint_sha256": "f416fb461f45c4d800aaeb7f5a55bd37b0a718b506e87577e83b03baaf69bc23",
+      "runtime_behavior": "retired_noop",
+      "semantic_status": "unsupported_language"
+    },
+    "search": {
+      "contract": "knowledge-search-v1",
+      "deployment_id": "47ce1797-4eb8-43a9-afcd-92d89667ea56",
+      "version": 2,
+      "status": "ACTIVE",
+      "verify_jwt": true,
+      "ezbr_sha256": "c68d9924006e5e398a3bd8d19ed6e5077a48146fca55559f9ae610cce7936235",
+      "release_fingerprint_sha256": "79364d65f1dcf02a35105ca705a8b16dd7ef283cb8da51274ce4edca1bfa4257",
+      "retrieval_mode": "lexical_portuguese",
+      "query_embedding": null
+    }
+  },
+  "merged_workflow_dependency": {
+    "main_commit_sha": "1de86345a8bdc208fcbdfe9001004e50606ecd50",
+    "path": ".github/workflows/knowledge-ocr.yml",
+    "file_blob_sha1": "f43de89b402cc4b03119b3613a9b722839aca1aa",
+    "file_sha256": "dfc4a06da4a18046bbb05a3787973f3af7cd98f0ad474471a3199b556977b899",
+    "file_byte_size": 14442,
+    "app_armor_profile_sha256": "43710aa4047dcf100da71f7d924d28db4f036db4d2ae8b65a6bac2e419d168b2",
+    "worker_extraction_sha256": "d2757cf23f17fdf30199a4d3b88b8acae6cd869a7f044d3c2705e4c7d53588c1",
+    "workflow_contract_test_sha256": "09394b64dc69a9ed9e0e9e9e5d283605dc62476ea99537afa02fcfd4c2ecea18"
+  },
+  "previous_workflow_attempt": {
+    "github_run_id": 32235096502,
+    "github_run_number": 10,
+    "workflow_commit_sha": "d7fbd651fd43f6ebeab42be3c9e442f3afedefaa",
+    "job_id": 96013173669,
+    "job_conclusion": "failure",
+    "toolchain_install_step": "success",
+    "toolchain_validation_step": "failure",
+    "drain_ocr_queue_step": "skipped",
+    "completed_at": "2026-08-19T08:57:55Z",
+    "safe_cause": "Ubuntu AppArmor blocked an unprofiled bwrap user namespace before OCR queue drain. The merged fix loads a pinned narrow profile without disabling the global restriction.",
+    "supabase_oidc_requests_for_run": 0,
+    "database_ocr_mutations_after_queue_creation": 0
+  },
+  "production_fail_closed_snapshot": {
+    "target_ocr_job_id": "03c5dd76-beee-4363-9d3f-9335e2357da9",
+    "target_ocr_job_status": "queued",
+    "target_ocr_job_attempt": 0,
+    "target_ocr_job_has_lease": false,
+    "target_ocr_post_queue_events": 0,
+    "ocr_oidc_requests_total": 0,
+    "ocr_job_pages": 0,
+    "ocr_results": 0,
+    "ocr_storage_objects": 0,
+    "target_change_set_candidate_version_id": null,
+    "published_versions_for_target_source": 0,
+    "published_versions_total": 0,
+    "current_main_runtime_gates": 0,
+    "current_ocr_runtime_gates": 0,
+    "enabled_automation_settings": 0,
+    "scheduled_knowledge_cron_jobs": 0,
+    "active_legal_reviewers": 0,
+    "embedding_jobs": {
+      "completed_historical": 4,
+      "skipped_unsupported_language": 35,
+      "open": 0
+    },
+    "historical_embeddings_preserved": 4
+  },
+  "new_temporary_main_gate_constraints": {
+    "planned_valid_until": "2026-08-19T11:16:00Z",
+    "activation_allowed": false,
+    "publication_allowed": false,
+    "external_communication_allowed": false,
+    "allowed_operation": "one governed OCR smoke using main commit 1de86345a8bdc208fcbdfe9001004e50606ecd50",
+    "must_match_all_three_edge_deployment_ids_and_release_fingerprints": true,
+    "must_outlive_the_selected_ocr_gate": true,
+    "revoke_after_controlled_result": true
+  },
+  "mandatory_preconditions_at_gate_selection": [
+    "Remote main remains exactly 1de86345a8bdc208fcbdfe9001004e50606ecd50 and the workflow bytes still match blob f43de89b402cc4b03119b3613a9b722839aca1aa and SHA-256 dfc4a06da4a18046bbb05a3787973f3af7cd98f0ad474471a3199b556977b899.",
+    "The production ingest, embed and search deployments and release fingerprints exactly match this evidence.",
+    "The target OCR job remains queued at attempt 0 with no lease, OIDC request, post-queue event, page, result, OCR storage object or candidate version.",
+    "Automation settings and knowledge cron remain disabled and no legal source version is published.",
+    "At most one OCR workflow may reach OIDC while these temporary gates are valid; concurrency remains serialized and any later run must fail closed after revocation or expiry."
+  ],
+  "validation": {
+    "local_vitest": "309/309 passed",
+    "local_ocr_python_tests": "40/40 passed",
+    "remote_workflow_blob_matches_local_audited_bytes": true,
+    "lexical_production_audit": "P0=0; P1=0",
+    "secrets_detected": false
+  },
+  "activation_decision": "no_go_except_for_one_short_lived_governed_ocr_smoke"
+}
