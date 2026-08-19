@@ -1,0 +1,71 @@
+{
+  "evidence_contract": "knowledge-ocr-bootstrap-evidence/v1",
+  "generated_at": "2026-08-19T07:01:22.935547Z",
+  "project_ref": "qvgenxcrdrqyiyozxtdt",
+  "purpose": "Authorize exactly one controlled OCR workflow under a short-lived gate; this is not final activation evidence.",
+  "source_repository": "AlmoreContabilidade/Ia-fiscal",
+  "workflow": {
+    "allowed_event_names": ["schedule", "workflow_dispatch"],
+    "file_blob_sha1": "d6036b63d3b18db9697214afc392198e8bb41808",
+    "file_sha256": "0cebe90b7c0ba7cf1fb7ee7a603ffb1a94d64c9bc840c146b233eac9b2a552c1",
+    "main_commit_sha": "782c0890de80ba4dff26c9718e65e64828455f44",
+    "path": ".github/workflows/knowledge-ocr.yml",
+    "required_environment": "knowledge-ocr",
+    "required_ref": "refs/heads/main",
+    "workflow_ref": "AlmoreContabilidade/Ia-fiscal/.github/workflows/knowledge-ocr.yml@refs/heads/main"
+  },
+  "oidc_contract": {
+    "audience": "ia-fiscal-knowledge-ocr-qvgenxcrdrqyiyozxtdt",
+    "repository": "AlmoreContabilidade/Ia-fiscal",
+    "repository_id": "1320619695",
+    "repository_owner_id": "296187202",
+    "subject": "repo:AlmoreContabilidade@296187202/Ia-fiscal@1320619695:environment:knowledge-ocr"
+  },
+  "ocr_edge": {
+    "contract": "knowledge-ocr-v1",
+    "deployment_id": "685ece05-684e-4812-8441-f81b46286169",
+    "ezbr_sha256": "c530312a53cb025466198df3520e73561f01599d11c698d4b8c15ae3194d463d",
+    "max_pages": 120,
+    "max_total_characters": 8000000,
+    "policy_version": "ia-fiscal-knowledge-ocr-policy/v1",
+    "status": "ACTIVE",
+    "toolchain_lock_sha256": "6bb5c3a93dad84e38ea05cedb47e1aeee13c8a22899f0cb9f693e114e5e5cd60",
+    "verify_jwt": false,
+    "version": 1
+  },
+  "main_runtime_gate": {
+    "gate_id": "d25d1e41-318a-45dd-a048-f9b8723164c6",
+    "mode": "temporary_bootstrap",
+    "selected_at": "2026-08-19T07:01:22.935547Z",
+    "valid_until": "2026-08-19T08:31:22.935547Z"
+  },
+  "queued_official_artifact": {
+    "artifact_id": "b96620c5-93b6-482c-a992-8264a38af22f",
+    "byte_size": 1541984,
+    "change_set_id": "aa0df17f-8b6f-4b9f-bc63-844b085cdb83",
+    "content_sha256": "b7642e1ec74b03eba3b3ee626a900e9bcf82e2e89330e97bea31e5188e63eeed",
+    "document": "Araras/SP — Lei 3.362/2001",
+    "extraction_blocker": "source_pdf_text_missing",
+    "mime_type": "application/pdf",
+    "ocr_job_attempt": 0,
+    "ocr_job_id": "03c5dd76-beee-4363-9d3f-9335e2357da9",
+    "ocr_job_status": "queued",
+    "page_count": 81,
+    "published_versions": 0
+  },
+  "pre_workflow_validation": {
+    "database_ocr_regression": "passed_and_rolled_back",
+    "local_python_tests": "36/36 passed",
+    "local_typescript_tests": "292/292 passed on final full rerun",
+    "ocr_edge_contract_tests": "passed",
+    "secrets_detected": false
+  },
+  "mandatory_postconditions": [
+    "Exactly one OCR job transitions from queued to completed or an auditable terminal failure.",
+    "A successful result creates only an under_review candidate and never publishes it.",
+    "The official raw artifact and all OCR page/result objects remain WORM and hash-verifiable.",
+    "The temporary OCR gate is revoked immediately after the controlled workflow.",
+    "Any OIDC, lease, quality, hash or staging mismatch keeps activation disabled and is treated as a failed smoke."
+  ],
+  "activation_decision": "no_go_until_workflow_result_is_retained_and_final_gates_are_attested"
+}
