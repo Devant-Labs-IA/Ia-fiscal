@@ -20,6 +20,7 @@ from .integrity import normalize_text, sha256_bytes, sha256_file
 
 _WORD_NAMESPACE = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 _KEEPALIVE_INTERVAL_SECONDS = 20
+_LOCKED_BWRAP_PATH = Path("/usr/bin/bwrap")
 
 
 @dataclass(frozen=True)
@@ -310,6 +311,29 @@ def _require_tool(name: str) -> str:
     return path
 
 
+def _require_locked_bwrap() -> str:
+    expected = str(_LOCKED_BWRAP_PATH)
+    discovered = shutil.which("bwrap")
+    if discovered != expected:
+        raise WorkerError(
+            "worker_dependency_mismatch",
+            "Bubblewrap did not resolve to the locked system path",
+        )
+    try:
+        resolved = Path(discovered).resolve(strict=True)
+    except (OSError, RuntimeError) as error:
+        raise WorkerError(
+            "worker_dependency_mismatch",
+            "Bubblewrap locked path could not be resolved",
+        ) from error
+    if resolved != _LOCKED_BWRAP_PATH:
+        raise WorkerError(
+            "worker_dependency_mismatch",
+            "Bubblewrap locked path resolved to a different binary",
+        )
+    return expected
+
+
 def _run(
     command: list[str],
     *,
@@ -400,7 +424,7 @@ def _tool_version(command: list[str]) -> str:
 def _toolchain_metadata(
     *, qpdf: str, pdfinfo: str, pdftoppm: str, tesseract: str
 ) -> dict[str, Any]:
-    bubblewrap = _require_tool("bwrap")
+    bubblewrap = _require_locked_bwrap()
     unrtf = _require_tool("unrtf")
     metadata: dict[str, Any] = {
         "bubblewrap": _binary_metadata(bubblewrap, [bubblewrap, "--version"]),
@@ -467,7 +491,7 @@ def _parser_environment() -> dict[str, str]:
 
 
 def _sandbox_command(command: list[str], sandbox_root: Path) -> list[str]:
-    bubblewrap = _require_tool("bwrap")
+    bubblewrap = _require_locked_bwrap()
     root = sandbox_root.resolve(strict=True)
     if not root.is_dir() or root == Path("/"):
         raise WorkerError("worker_sandbox_invalid", "Parser sandbox root is invalid")

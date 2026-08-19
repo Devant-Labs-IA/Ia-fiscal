@@ -1034,19 +1034,24 @@ end
 $non_knowledge_denials$;
 reset role;
 
--- Exercise the lease reaper and complete the same job with a 384-dimensional
--- gte-small fixture.  The source is still under review, so it must not count as
--- an indexed eligible section.
-update private.legal_embedding_jobs
-set status = 'processing', attempts = 1,
-    locked_at = now() - interval '11 minutes', updated_at = now()
-where municipality_id = '00000000-0000-4000-8000-00000000d001'
-  and legal_chunk_id = '00000000-0000-4000-8000-00000000d601';
-update private.legal_embedding_jobs
-set available_at = now() + interval '1 hour'
-where municipality_id = '00000000-0000-4000-8000-00000000d001'
-  and legal_chunk_id <> '00000000-0000-4000-8000-00000000d601'
-  and status in ('queued', 'failed');
+-- gte-small is English-only and truncates at 512 tokens. The canonical PT-BR
+-- release must terminalize every new job instead of claiming or completing a
+-- vector that would overstate semantic coverage.
+do $semantic_retirement_fixture$
+begin
+  if not exists (
+    select 1
+    from private.legal_embedding_jobs job
+    where job.municipality_id = '00000000-0000-4000-8000-00000000d001'
+      and job.legal_chunk_id = '00000000-0000-4000-8000-00000000d601'
+      and job.status = 'skipped'
+      and job.safe_error_code = 'semantic_model_language_unsupported'
+      and job.attempts = 0
+  ) then
+    raise exception 'PT-BR chunk created a claimable gte-small job';
+  end if;
+end
+$semantic_retirement_fixture$;
 
 update private.knowledge_automation_settings
 set enabled = true
@@ -1068,7 +1073,6 @@ select set_config('request.jwt.claims', '{"role":"service_role","aal":"aal2"}', 
 do $embedding_and_scheduler_auth$
 declare
   v_job_id uuid;
-  v_vector text;
   v_secret_sha text := current_setting('qa.phase2_scheduler_sha');
   v_nonce uuid := '00000000-0000-4000-8000-00000000da01';
   v_gate_id uuid;
@@ -1111,12 +1115,9 @@ begin
   );
   select claimed.job_id into v_job_id
   from public.ia_fiscal_claim_legal_embedding_jobs(1) claimed;
-  if v_job_id is null then
-    raise exception 'expired embedding lease was not reclaimed';
+  if v_job_id is not null then
+    raise exception 'retired gte-small worker claimed a PT-BR chunk';
   end if;
-  perform set_config('qa.phase2_embedding_job_id', v_job_id::text, true);
-  v_vector := '[' || array_to_string(array_fill('0'::text, array[384]), ',') || ']';
-  perform public.ia_fiscal_complete_legal_embedding_job(v_job_id, v_vector);
 
   if not public.ia_fiscal_revoke_knowledge_runtime_gate(
     v_gate_id,
@@ -1340,31 +1341,33 @@ begin
 end
 $restored_runtime_assertions$;
 
-do $embedding_audit$
-declare
-  v_job_id uuid := current_setting('qa.phase2_embedding_job_id')::uuid;
+do $semantic_retirement_audit$
 begin
   if (
     select count(*)
     from private.legal_embedding_job_events event
-    where event.job_id = v_job_id
-      and event.event_type = 'retried'
-      and event.safe_error_code = 'embedding_lease_expired'
+    where event.municipality_id = '00000000-0000-4000-8000-00000000d001'
+      and event.job_id = (
+        select job.id
+        from private.legal_embedding_jobs job
+        where job.municipality_id = event.municipality_id
+          and job.legal_chunk_id = '00000000-0000-4000-8000-00000000d601'
+      )
+      and event.event_type = 'skipped'
+      and event.safe_error_code = 'semantic_model_language_unsupported'
   ) <> 1 then
-    raise exception 'expired embedding lease did not emit one retry audit event';
+    raise exception 'retired semantic job did not emit one terminal audit event';
   end if;
-  if not exists (
+  if exists (
     select 1
     from private.legal_embeddings embedding
     where embedding.municipality_id = '00000000-0000-4000-8000-00000000d001'
       and embedding.legal_chunk_id = '00000000-0000-4000-8000-00000000d601'
-      and embedding.model_revision = 'gte-small-384-v1'
-      and extensions.vector_dims(embedding.embedding) = 384
   ) then
-    raise exception 'completed gte-small embedding is missing or dimensionally invalid';
+    raise exception 'retired gte-small path persisted a new PT-BR vector';
   end if;
 end
-$embedding_audit$;
+$semantic_retirement_audit$;
 
 -- A legacy-looking published row with integral section/chunk but no governed
 -- artifact mapping, successful fetch or Storage object must remain unusable
@@ -1539,9 +1542,8 @@ end
 $legacy_uncaptured_publish_denied$;
 reset role;
 
--- Add fresh jobs for both enabled targets plus a larger disabled third-tenant
--- backlog.  Consecutive one-job batches must advance the persisted round-robin
--- cursor across the enabled pair and leave every disabled job untouched.
+-- Add chunks for enabled and disabled tenants. Every one must be terminalized
+-- identically because the retired semantic model is unsupported for PT-BR.
 do $embedding_fairness_fixture$
 declare
   v_content text := 'Conteudo juridico oficial sintetico do segundo municipio para validar justica entre filas de embeddings.';
@@ -1684,49 +1686,37 @@ do $embedding_tenant_fairness$
 declare
   v_first uuid;
   v_second uuid;
-  v_tenants uuid[];
 begin
   select claimed.municipality_id into v_first
   from public.ia_fiscal_claim_legal_embedding_jobs(1) claimed;
   select claimed.municipality_id into v_second
   from public.ia_fiscal_claim_legal_embedding_jobs(1) claimed;
-  v_tenants := array[v_first, v_second];
-  if v_first is null
-     or v_second is null
-     or cardinality(v_tenants) <> 2
-     or v_first = v_second
-     or not ('00000000-0000-4000-8000-00000000d001'::uuid = any(v_tenants))
-     or not ('00000000-0000-4000-8000-00000000d002'::uuid = any(v_tenants)) then
-    raise exception 'embedding cursor did not advance fairly across enabled tenants';
+  if v_first is not null
+     or v_second is not null then
+    raise exception 'retired semantic worker claimed work';
   end if;
-  perform set_config('qa.phase2_last_embedding_tenant', v_second::text, true);
 end
 $embedding_tenant_fairness$;
 reset role;
 
 do $embedding_disabled_scope_audit$
-declare
-  v_second uuid := current_setting('qa.phase2_last_embedding_tenant')::uuid;
 begin
-  if (
-    select cursor.last_municipality_id
-    from private.legal_embedding_claim_cursors cursor
-    where cursor.model_revision = 'gte-small-384-v1'
-  ) is distinct from v_second then
-    raise exception 'embedding fairness cursor did not persist the last served tenant';
-  end if;
   if exists (
     select 1
     from private.legal_embedding_jobs job
     where job.municipality_id = '00000000-0000-4000-8000-00000000d003'
-      and (job.status <> 'queued' or job.attempts <> 0)
+      and (
+        job.status <> 'skipped'
+        or job.attempts <> 0
+        or job.safe_error_code <> 'semantic_model_language_unsupported'
+      )
   ) or exists (
     select 1
     from private.legal_embedding_job_events event
     where event.municipality_id = '00000000-0000-4000-8000-00000000d003'
       and event.event_type = 'claimed'
   ) then
-    raise exception 'disabled third tenant advanced in the embedding queue';
+    raise exception 'retired semantic work became claimable for a disabled tenant';
   end if;
 end
 $embedding_disabled_scope_audit$;
@@ -1769,8 +1759,12 @@ begin
     '00000000-0000-4000-8000-00000000d001'
   );
   if v_snapshot -> 'summary' ->> 'indexed_sections' <> '0'
-     or v_snapshot -> 'summary' ->> 'indexed_chunks' <> '1' then
-    raise exception 'indexed_sections was not intersected with eligible published evidence';
+     or v_snapshot -> 'summary' ->> 'indexed_chunks' <> '0'
+     or v_snapshot -> 'summary' ->> 'pending_embeddings' <> '0'
+     or v_snapshot -> 'search_policy' ->> 'canonical_retrieval' <> 'lexical_portuguese'
+     or v_snapshot -> 'search_policy' ->> 'semantic_status' <> 'unsupported_language'
+     or v_snapshot -> 'search_policy' ->> 'semantic_usable_chunks' <> '0' then
+    raise exception 'snapshot overstated lexical or semantic search coverage';
   end if;
   if v_snapshot -> 'schedule' ->> 'last_run_status' <> 'never_run'
      or not (v_snapshot -> 'schedule' ->> 'runtime_verified')::boolean then

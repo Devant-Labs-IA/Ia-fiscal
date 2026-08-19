@@ -354,7 +354,13 @@ const snapshot = {
     status: "healthy",
     indexedSections: 24,
     eligibleSections: 24,
-    embeddingModel: "gte-small",
+    canonicalRetrieval: "lexical_portuguese",
+    lexicalLanguage: "pt-BR",
+    lexicalFullContent: true,
+    semanticStatus: "unsupported_language",
+    semanticUsableChunks: 0,
+    semanticHistoricalChunks: 0,
+    embeddingModel: null,
     lastIndexedAt: "2026-08-17T11:00:00Z",
     blockers: [],
   },
@@ -449,7 +455,9 @@ beforeEach(() => {
       answered: true,
       answer: "O prazo deve ser conferido no dispositivo municipal vigente.",
       confidence: 0.92,
-      retrievalMode: "hybrid",
+      retrievalMode: "lexical_portuguese",
+      lexicalLanguage: "pt-BR",
+      semanticStatus: "unsupported_language",
       searchedAt: "2026-08-17T12:30:00Z",
       citations: [
         {
@@ -584,7 +592,9 @@ describe("Segundo Cérebro operacional", () => {
           answered: true,
           answer: "Trecho oficial no limiar de segurança.",
           confidence,
-          retrievalMode: "hybrid",
+          retrievalMode: "lexical_portuguese",
+          lexicalLanguage: "pt-BR",
+          semanticStatus: "unsupported_language",
           searchedAt: "2026-08-17T12:30:00Z",
           citations: [citation],
           blockers: [],
@@ -613,7 +623,9 @@ describe("Segundo Cérebro operacional", () => {
         answered: true,
         answer: "Trecho que não pode ser liberado.",
         confidence: 0.3499,
-        retrievalMode: "hybrid",
+        retrievalMode: "lexical_portuguese",
+        lexicalLanguage: "pt-BR",
+        semanticStatus: "unsupported_language",
         searchedAt: "2026-08-17T12:30:00Z",
         citations: [citation],
         blockers: [],
@@ -640,7 +652,9 @@ describe("Segundo Cérebro operacional", () => {
         answered: false,
         answer: null,
         confidence: null,
-        retrievalMode: "lexical",
+        retrievalMode: "lexical_portuguese",
+        lexicalLanguage: "pt-BR",
+        semanticStatus: "unsupported_language",
         searchedAt: "2026-08-17T12:30:00Z",
         citations: [],
         blockers: ["citation_required"],
@@ -796,7 +810,9 @@ describe("Segundo Cérebro operacional", () => {
     expect(screen.getByText("Acima de 120 páginas")).toBeTruthy();
     expect(screen.getByText("Até 120 páginas por documento")).toBeTruthy();
     expect(screen.getByText("Sempre encaminhada para revisão jurídica")).toBeTruthy();
-    expect(screen.getByText("Cobertura da busca inteligente")).toBeTruthy();
+    expect(screen.getByText("Cobertura da busca oficial em português")).toBeTruthy();
+    expect(screen.getByText("Índice lexical PT-BR integral")).toBeTruthy();
+    expect(screen.getByText("Indisponível: modelo instalado incompatível com PT-BR")).toBeTruthy();
     expect(screen.getByText("24 de 24 dispositivo(s) elegível(is) indexado(s).")).toBeTruthy();
     expect(screen.getByText("Ainda não executada")).toBeTruthy();
     expect(screen.getByText("Cobertura inicial governada")).toBeTruthy();

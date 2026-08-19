@@ -80,8 +80,43 @@ jobs:
 
           primary_sources="$RUNNER_TEMP/knowledge-ocr-ubuntu-primary.sources"
           fallback_sources="$RUNNER_TEMP/knowledge-ocr-ubuntu-fallback.sources"
-          primary_lists="$RUNNER_TEMP/knowledge-ocr-apt-primary"
-          fallback_lists="$RUNNER_TEMP/knowledge-ocr-apt-fallback"
+
+          apt_state_root="$(sudo mktemp -d /var/lib/apt/ia-fiscal-ocr.XXXXXXXX)"
+          sudo chmod 0755 "$apt_state_root"
+          primary_lists="$apt_state_root/primary"
+          fallback_lists="$apt_state_root/fallback"
+
+          validate_apt_state_root() {
+            local candidate="$1"
+            case "$candidate" in
+              /var/lib/apt/ia-fiscal-ocr.*) ;;
+              *) return 1 ;;
+            esac
+            test "$(dirname -- "$candidate")" = "/var/lib/apt" || return 1
+            test "$candidate" != "/var/lib/apt/ia-fiscal-ocr." || return 1
+            test ! -L "$candidate" || return 1
+            test "$(readlink -f -- "$candidate")" = "$candidate" || return 1
+            test -d "$candidate" || return 1
+            test "$(sudo stat -c '%U:%G:%a' -- "$candidate")" = \
+              "root:root:755" || return 1
+          }
+
+          cleanup_apt_state() {
+            local status=$?
+            trap - EXIT
+            if ! validate_apt_state_root "$apt_state_root"; then
+              echo "::error::Refusing unsafe APT state cleanup target"
+              exit 70
+            fi
+            if ! sudo rm -rf --one-file-system -- "$apt_state_root"; then
+              echo "::error::Failed to clean the isolated APT state"
+              exit 71
+            fi
+            exit "$status"
+          }
+
+          validate_apt_state_root "$apt_state_root"
+          trap cleanup_apt_state EXIT
 
           printf '%s\n' \
             'Types: deb' \
@@ -130,28 +165,89 @@ jobs:
             -o Acquire::http::Timeout=10
             -o Acquire::https::Timeout=10
             -o Acquire::ForceIPv4=true
+            -o APT::Sandbox::User=_apt
             -o DPkg::Lock::Timeout=30
             -o Dpkg::Use-Pty=0
             -o Dir::Etc::sourceparts="-"
           )
           readonly APT_COMMON
+          apt_sandbox_guard_failed=0
 
           prepare_lists() {
             local lists="$1"
-            sudo install -d -m 0755 "$lists"
-            sudo install -d -o _apt -g root -m 0700 "$lists/partial"
+            local parent
+            if test "$lists" != "$primary_lists" && \
+              test "$lists" != "$fallback_lists"; then
+              return 1
+            fi
+            validate_apt_state_root "$apt_state_root" || return 1
+            sudo install -d -o root -g root -m 0755 "$lists" || return 1
+            sudo install -d -o _apt -g root -m 0700 "$lists/partial" || return 1
+            test "$(sudo stat -c '%U:%G:%a' -- "$lists")" = \
+              "root:root:755" || return 1
+            test "$(sudo stat -c '%U:%G:%a' -- "$lists/partial")" = \
+              "_apt:root:700" || return 1
+            for parent in /var /var/lib /var/lib/apt "$apt_state_root" "$lists"; do
+              sudo -u _apt test -x "$parent" || return 1
+            done
+            sudo -u _apt test -w "$lists/partial" || return 1
+          }
+
+          run_apt_checked() {
+            local log="$1"
+            shift || return 1
+            local -a statuses
+            local warning_status
+            case "$log" in
+              "$apt_state_root"/apt-*.log) ;;
+              *) return 1 ;;
+            esac
+            set +e
+            "$@" 2>&1 | sudo tee "$log"
+            statuses=("${PIPESTATUS[@]}")
+            set -e
+            if test "${statuses[1]}" -ne 0; then
+              apt_sandbox_guard_failed=1
+              echo "::error::APT sandbox log could not be verified"
+              return 1
+            fi
+            if sudo grep -Fq "Download is performed unsandboxed as root" "$log"; then
+              warning_status=0
+            else
+              warning_status=$?
+            fi
+            case "$warning_status" in
+              0)
+                apt_sandbox_guard_failed=1
+                echo "::error::APT sandbox fallback was rejected"
+                return 1
+                ;;
+              1) ;;
+              *)
+                apt_sandbox_guard_failed=1
+                echo "::error::APT sandbox log could not be verified"
+                return 1
+                ;;
+            esac
+            if test "${statuses[0]}" -ne 0; then
+              return 1
+            fi
+            return 0
           }
 
           apt_update() {
             local sources="$1"
             local lists="$2"
             local budget="$3"
-            prepare_lists "$lists"
-            sudo timeout --signal=TERM --kill-after=15s "$budget" \
-              apt-get "${APT_COMMON[@]}" \
-              -o Dir::Etc::sourcelist="$sources" \
-              -o Dir::State::lists="$lists" \
-              update
+            local label
+            prepare_lists "$lists" || return 1
+            label="$(basename -- "$lists")" || return 1
+            run_apt_checked "$apt_state_root/apt-update-$label.log" \
+              sudo timeout --signal=TERM --kill-after=15s "$budget" \
+                apt-get "${APT_COMMON[@]}" \
+                -o Dir::Etc::sourcelist="$sources" \
+                -o Dir::State::lists="$lists" \
+                update || return 1
           }
 
           pinned_candidates_available() {
@@ -161,13 +257,15 @@ jobs:
             for specification in "${OCR_PACKAGES[@]}"; do
               package="${specification%%=*}"
               expected="${specification#*=}"
-              candidate="$(
+              if ! candidate="$(
                 apt-cache "${APT_COMMON[@]}" \
                   -o Dir::Etc::sourcelist="$sources" \
                   -o Dir::State::lists="$lists" \
                   policy "$package" |
                   awk '$1 == "Candidate:" { print $2 }'
-              )"
+              )"; then
+                return 1
+              fi
               if test "$candidate" != "$expected"; then
                 printf 'Pinned candidate unavailable: %s=%s\n' \
                   "$package" "$expected" >&2
@@ -180,6 +278,9 @@ jobs:
           selected_lists="$primary_lists"
           if ! apt_update "$primary_sources" "$primary_lists" 45s || \
             ! pinned_candidates_available "$primary_sources" "$primary_lists"; then
+            if test "$apt_sandbox_guard_failed" -ne 0; then
+              exit 65
+            fi
             echo "::warning::Azure Ubuntu mirror failed; using the signed official Ubuntu fallback"
             selected_sources="$fallback_sources"
             selected_lists="$fallback_lists"
@@ -187,12 +288,46 @@ jobs:
             pinned_candidates_available "$fallback_sources" "$fallback_lists"
           fi
 
-          sudo timeout --signal=TERM --kill-after=15s 150s \
-            apt-get "${APT_COMMON[@]}" \
-            -o Dir::Etc::sourcelist="$selected_sources" \
-            -o Dir::State::lists="$selected_lists" \
-            -y --no-install-recommends --allow-downgrades --no-remove \
-            install "${OCR_PACKAGES[@]}"
+          run_apt_checked "$apt_state_root/apt-install.log" \
+            sudo timeout --signal=TERM --kill-after=15s 150s \
+              apt-get "${APT_COMMON[@]}" \
+              -o Dir::Etc::sourcelist="$selected_sources" \
+              -o Dir::State::lists="$selected_lists" \
+              -y --no-install-recommends --allow-downgrades --no-remove \
+              install "${OCR_PACKAGES[@]}"
+
+      - name: Load the locked bwrap AppArmor profile
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          apparmor_userns_control=/proc/sys/kernel/apparmor_restrict_unprivileged_userns
+          test -r "$apparmor_userns_control"
+          IFS= read -r apparmor_userns_restricted < "$apparmor_userns_control"
+          test "$apparmor_userns_restricted" = "1"
+          test "$(dpkg-query -W -f='${Version}' apparmor)" = \
+            "4.0.1really4.0.1-0ubuntu0.24.04.7"
+          bwrap_path="$(command -v bwrap)"
+          test "$bwrap_path" = "/usr/bin/bwrap"
+          test "$(readlink -f -- "$bwrap_path")" = "/usr/bin/bwrap"
+          test -x /usr/bin/aa-enabled
+          sudo /usr/bin/aa-enabled --quiet
+          test -x /sbin/apparmor_parser
+
+          profile="$GITHUB_WORKSPACE/scripts/knowledge_ocr/bwrap-userns-restrict.apparmor"
+          expected_sha256=43710aa4047dcf100da71f7d924d28db4f036db4d2ae8b65a6bac2e419d168b2
+          test -r "$profile"
+          printf '%s  %s\n' "$expected_sha256" "$profile" | \
+            sha256sum --check --status
+
+          sudo /sbin/apparmor_parser --replace --skip-read-cache --quiet "$profile"
+          sudo grep -Fqx 'bwrap (enforce)' \
+            /sys/kernel/security/apparmor/profiles
+          sudo grep -Fqx 'unpriv_bwrap (enforce)' \
+            /sys/kernel/security/apparmor/profiles
+
+          IFS= read -r apparmor_userns_restricted < "$apparmor_userns_control"
+          test "$apparmor_userns_restricted" = "1"
 
       - name: Verify toolchain and fail-closed unit tests
         shell: bash

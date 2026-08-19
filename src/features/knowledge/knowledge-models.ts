@@ -204,6 +204,12 @@ export interface KnowledgeIndexStatus {
   status: "healthy" | "attention" | "blocked" | "unknown";
   indexedSections: number;
   eligibleSections: number;
+  canonicalRetrieval: "lexical_portuguese";
+  lexicalLanguage: "pt-BR";
+  lexicalFullContent: true;
+  semanticStatus: "unsupported_language";
+  semanticUsableChunks: 0;
+  semanticHistoricalChunks: number;
   embeddingModel: string | null;
   lastIndexedAt: string | null;
   blockers: string[];
@@ -370,7 +376,9 @@ export interface KnowledgeSearchResult {
   answered: boolean;
   answer: string | null;
   confidence: number | null;
-  retrievalMode: string;
+  retrievalMode: "lexical_portuguese";
+  lexicalLanguage: "pt-BR";
+  semanticStatus: "unsupported_language";
   searchedAt: string;
   citations: KnowledgeSearchCitation[];
   blockers: string[];

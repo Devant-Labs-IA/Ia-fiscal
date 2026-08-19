@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 import tempfile
 import time
@@ -33,6 +34,9 @@ class ExtractionTests(unittest.TestCase):
         with patch(
             "scripts.knowledge_ocr.extraction._require_tool",
             side_effect=lambda name: f"/usr/bin/{name}",
+        ), patch(
+            "scripts.knowledge_ocr.extraction._require_locked_bwrap",
+            return_value="/usr/bin/bwrap",
         ), patch(
             "scripts.knowledge_ocr.extraction._binary_metadata", return_value=binary
         ), patch(
@@ -254,7 +258,8 @@ class ExtractionTests(unittest.TestCase):
 
     def test_native_parser_sandbox_has_no_network_parent_proc_or_inherited_env(self) -> None:
         with tempfile.TemporaryDirectory() as temporary, patch(
-            "scripts.knowledge_ocr.extraction._require_tool", return_value="/usr/bin/bwrap"
+            "scripts.knowledge_ocr.extraction._require_locked_bwrap",
+            return_value="/usr/bin/bwrap",
         ):
             source = Path(temporary) / "source.pdf"
             source.write_bytes(b"%PDF")
@@ -265,7 +270,28 @@ class ExtractionTests(unittest.TestCase):
         self.assertIn("--clearenv", command)
         self.assertIn("--proc", command)
         self.assertNotIn("ACTIONS_ID_TOKEN_REQUEST_TOKEN", command)
+        self.assertEqual(command[0], "/usr/bin/bwrap")
         self.assertEqual(command[-3:], ["/usr/bin/qpdf", "--check", "/work/source.pdf"])
+
+    def test_native_parser_sandbox_rejects_path_shadowed_bwrap(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            shadow_bin = root / "shadow-bin"
+            shadow_bin.mkdir()
+            shadow = shadow_bin / "bwrap"
+            shadow.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            shadow.chmod(0o755)
+            work = root / "work"
+            work.mkdir()
+
+            with patch.dict(
+                os.environ,
+                {"PATH": f"{shadow_bin}:/usr/bin:/bin"},
+            ):
+                with self.assertRaises(WorkerError) as captured:
+                    _sandbox_command(["/usr/bin/true"], work)
+
+        self.assertEqual(captured.exception.code, "worker_dependency_mismatch")
 
 
 if __name__ == "__main__":

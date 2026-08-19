@@ -76,7 +76,9 @@ function knowledgeSearchEnvelope(confidence: number | null, answered = true) {
       answered,
       answer: answered ? "Trecho oficial localizado." : null,
       confidence,
-      retrieval_mode: "hybrid",
+      retrieval_mode: "lexical_portuguese",
+      lexical_language: "pt-BR",
+      semantic_status: "unsupported_language",
       searched_at: "2026-08-17T12:30:00Z",
       citations: [
         {
@@ -177,13 +179,22 @@ describe("contrato Supabase do atendimento", () => {
         pending_source_publications: 1,
         pending_article_reviews: 0,
         pending_candidates: 2,
-        pending_embeddings: 3,
+        pending_embeddings: 0,
         eligible_sections: 24,
         indexed_sections: 21,
         indexed_chunks: 29,
         last_indexed_at: "2026-08-17T11:30:00Z",
         open_changes: 1,
         failed_fetches_24h: 0,
+      },
+      search_policy: {
+        canonical_retrieval: "lexical_portuguese",
+        lexical_language: "pt-BR",
+        lexical_full_content: true,
+        semantic_status: "unsupported_language",
+        semantic_model: null,
+        semantic_usable_chunks: 0,
+        semantic_historical_chunks: 4,
       },
       sources: [],
       changes: [
@@ -328,7 +339,7 @@ describe("contrato Supabase do atendimento", () => {
         pendingSourceExtractions: 1,
         pendingSourcePublications: 1,
         pendingCandidates: 2,
-        pendingEmbeddings: 3,
+        pendingEmbeddings: 0,
         eligibleSections: 24,
         indexedSections: 21,
       },
@@ -339,7 +350,15 @@ describe("contrato Supabase do atendimento", () => {
         lastRunStatus: "never_run",
         runtimeVerified: true,
       },
-      index: { status: "attention", indexedSections: 21, eligibleSections: 24 },
+      index: {
+        status: "attention",
+        indexedSections: 21,
+        eligibleSections: 24,
+        canonicalRetrieval: "lexical_portuguese",
+        semanticStatus: "unsupported_language",
+        semanticHistoricalChunks: 4,
+        embeddingModel: null,
+      },
       ocr: {
         runtimeVerified: true,
         hasAttention: false,
@@ -476,7 +495,9 @@ describe("contrato Supabase do atendimento", () => {
           answered: true,
           answer: "O prazo deve ser conferido no artigo vigente.",
           confidence: 0.91,
-          retrieval_mode: "hybrid",
+          retrieval_mode: "lexical_portuguese",
+          lexical_language: "pt-BR",
+          semantic_status: "unsupported_language",
           searched_at: "2026-08-17T12:30:00Z",
           citations: [
             {
@@ -538,7 +559,9 @@ describe("contrato Supabase do atendimento", () => {
           answered: true,
           answer: "Resposta sem origem segura.",
           confidence: 0.9,
-          retrieval_mode: "hybrid",
+          retrieval_mode: "lexical_portuguese",
+          lexical_language: "pt-BR",
+          semantic_status: "unsupported_language",
           searched_at: "2026-08-17T12:30:00Z",
           citations: [
             {

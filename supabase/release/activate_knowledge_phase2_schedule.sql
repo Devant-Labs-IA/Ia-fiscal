@@ -114,68 +114,23 @@ begin
 end;
 $$;
 
--- Idempotent backfill.  An event is emitted only for a job inserted by this
--- statement, so reapplying the logical backfill cannot duplicate work or
--- audit events.
-with target as (
-  select municipality.id
-  from (values
-    ('cordeiropolis-sp'::text, 'active'::text),
-    ('araras-sp'::text, 'homologation'::text)
-  ) expected(slug, status)
-  join public.municipalities municipality
-    on municipality.slug = expected.slug
-   and municipality.status = expected.status
-), inserted_jobs as (
-  insert into private.legal_embedding_jobs (
-    municipality_id,
-    legal_chunk_id,
-    source_sha256,
-    status,
-    safe_error_code
-  )
-  select
-    chunk.municipality_id,
-    chunk.id,
-    chunk.content_sha256,
-    case when char_length(chunk.content_text) between 80 and 8000
-      then 'queued' else 'skipped' end,
-    case when char_length(chunk.content_text) between 80 and 8000
-      then null else 'chunk_length_out_of_bounds' end
-  from private.legal_chunks chunk
-  join target on target.id = chunk.municipality_id
-  where not exists (
+-- Semantic generation is retired for the installed English-only model.
+-- Activation deliberately creates no embedding job (queued or otherwise);
+-- the canonical scheduler dispatches governed ingestion only.
+do $$
+begin
+  if exists (
     select 1
-    from private.legal_embeddings embedding
-    where embedding.municipality_id = chunk.municipality_id
-      and embedding.legal_chunk_id = chunk.id
-      and embedding.source_sha256 = chunk.content_sha256
-      and embedding.model_revision = 'gte-small-384-v1'
-  )
-  on conflict (
-    municipality_id,
-    legal_chunk_id,
-    model_revision,
-    source_sha256
-  ) do nothing
-  returning municipality_id, id, status, attempts, safe_error_code
-)
-insert into private.legal_embedding_job_events (
-  municipality_id,
-  job_id,
-  event_type,
-  attempt,
-  safe_error_code,
-  metadata
-)
-select
-  job.municipality_id,
-  job.id,
-  case when job.status = 'queued' then 'queued' else 'skipped' end,
-  job.attempts,
-  job.safe_error_code,
-  jsonb_build_object('trigger', 'phase2_activation_backfill')
-from inserted_jobs job;
+    from private.legal_embedding_jobs job
+    where job.model_revision = 'gte-small-384-v1'
+      and job.status in ('queued', 'processing', 'failed', 'dead_letter')
+  ) then
+    raise exception using
+      errcode = '55000',
+      message = 'retired semantic jobs remain claimable before activation';
+  end if;
+end;
+$$;
 
 -- Release-scoped activation is explicit and auditable.  A blocked upstream
 -- remains scheduled: fetch health/circuit-breaker state is surfaced in the

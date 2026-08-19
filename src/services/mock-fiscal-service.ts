@@ -335,7 +335,13 @@ const knowledgeOperationsSnapshot: KnowledgeOperationsSnapshot = {
     status: "attention",
     indexedSections: 1,
     eligibleSections: 1,
-    embeddingModel: "Modelo semântico oficial",
+    canonicalRetrieval: "lexical_portuguese",
+    lexicalLanguage: "pt-BR",
+    lexicalFullContent: true,
+    semanticStatus: "unsupported_language",
+    semanticUsableChunks: 0,
+    semanticHistoricalChunks: 0,
+    embeddingModel: null,
     lastIndexedAt: dashboardSummary.referenceDate,
     blockers: [],
   },
@@ -582,7 +588,9 @@ export const mockFiscalService: FiscalService = {
       answer:
         "O recolhimento deve observar o prazo definido na legislação municipal vigente. Confira o dispositivo oficial antes de aplicar a orientação ao caso concreto.",
       confidence: 0.91,
-      retrievalMode: "hybrid",
+      retrievalMode: "lexical_portuguese",
+      lexicalLanguage: "pt-BR",
+      semanticStatus: "unsupported_language",
       searchedAt: dashboardSummary.referenceDate,
       citations: [
         {

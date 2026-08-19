@@ -1,7 +1,5 @@
 export const EMBED_CONTRACT_VERSION = "knowledge-embed-v1";
-export const EMBEDDING_MODEL = "gte-small";
-export const EMBEDDING_MODEL_REVISION = "gte-small-384-v1";
-export const EMBEDDING_DIMENSIONS = 384;
+export const RETIRED_MODEL_REVISION = "gte-small-384-v1";
 export const MAX_EMBED_REQUEST_BYTES = 1_024;
 
 export class EmbedPolicyError extends Error {
@@ -43,20 +41,4 @@ export async function parseEmbedRequest(request: Request): Promise<{ batchSize: 
     throw new EmbedPolicyError("invalid_batch_size", 400);
   }
   return { batchSize: Number(batchSize) };
-}
-
-export function normalizeEmbedding(value: unknown): number[] {
-  const vector = ArrayBuffer.isView(value)
-    ? Array.from(value as unknown as ArrayLike<number>)
-    : Array.isArray(value)
-    ? value
-    : null;
-  if (
-    !vector ||
-    vector.length !== EMBEDDING_DIMENSIONS ||
-    !vector.every((entry) => typeof entry === "number" && Number.isFinite(entry))
-  ) {
-    throw new EmbedPolicyError("embedding_contract_invalid", 502);
-  }
-  return vector as number[];
 }

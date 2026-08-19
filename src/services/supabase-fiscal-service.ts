@@ -849,6 +849,7 @@ function mapKnowledgeSnapshot(data: unknown, municipalityId: string): KnowledgeO
   }
   const capabilities = strictObject(root["capabilities"], "knowledge_snapshot_invalid");
   const summary = strictObject(root["summary"], "knowledge_snapshot_invalid");
+  const searchPolicy = strictObject(root["search_policy"], "knowledge_snapshot_invalid");
   const health = strictObject(root["health"], "knowledge_snapshot_invalid");
   const schedule = strictObject(root["schedule"], "knowledge_snapshot_invalid");
   const ocr = strictObject(root["ocr"], "knowledge_ocr_status_invalid");
@@ -884,6 +885,45 @@ function mapKnowledgeSnapshot(data: unknown, municipalityId: string): KnowledgeO
     summary["last_indexed_at"],
     "knowledge_snapshot_invalid",
   );
+  const canonicalRetrieval = strictString(
+    searchPolicy["canonical_retrieval"],
+    "knowledge_snapshot_invalid",
+  );
+  const lexicalLanguage = strictString(
+    searchPolicy["lexical_language"],
+    "knowledge_snapshot_invalid",
+  );
+  const lexicalFullContent = strictBoolean(
+    searchPolicy["lexical_full_content"],
+    "knowledge_snapshot_invalid",
+  );
+  const semanticStatus = strictString(
+    searchPolicy["semantic_status"],
+    "knowledge_snapshot_invalid",
+  );
+  const semanticModel = strictNullableString(
+    searchPolicy["semantic_model"],
+    "knowledge_snapshot_invalid",
+  );
+  const semanticUsableChunks = strictInteger(
+    searchPolicy["semantic_usable_chunks"],
+    "knowledge_snapshot_invalid",
+  );
+  const semanticHistoricalChunks = strictInteger(
+    searchPolicy["semantic_historical_chunks"],
+    "knowledge_snapshot_invalid",
+  );
+  if (
+    canonicalRetrieval !== "lexical_portuguese" ||
+    lexicalLanguage !== "pt-BR" ||
+    lexicalFullContent !== true ||
+    semanticStatus !== "unsupported_language" ||
+    semanticModel !== null ||
+    semanticUsableChunks !== 0 ||
+    pendingEmbeddings !== 0
+  ) {
+    throw new FiscalDataError("knowledge_search_policy_invalid");
+  }
   const scheduleEnabled = strictBoolean(schedule["enabled"], "knowledge_snapshot_invalid");
   const runtimeVerified = strictBoolean(schedule["runtime_verified"], "knowledge_snapshot_invalid");
   const timeZone = validatedIanaTimeZone(schedule["timezone"]);
@@ -1085,7 +1125,13 @@ function mapKnowledgeSnapshot(data: unknown, municipalityId: string): KnowledgeO
             : "healthy",
       indexedSections,
       eligibleSections,
-      embeddingModel: indexedChunks > 0 ? "gte-small" : null,
+      canonicalRetrieval: "lexical_portuguese",
+      lexicalLanguage: "pt-BR",
+      lexicalFullContent: true,
+      semanticStatus: "unsupported_language",
+      semanticUsableChunks: 0,
+      semanticHistoricalChunks,
+      embeddingModel: null,
       lastIndexedAt,
       blockers: indexBlockers,
     },
@@ -1184,6 +1230,16 @@ function mapKnowledgeSearchResult(
   if (returnedMunicipalityId !== municipalityId || returnedQuery !== query) {
     throw new FiscalDataError("knowledge_search_scope_mismatch");
   }
+  const retrievalMode = strictString(row["retrieval_mode"], code);
+  const lexicalLanguage = strictString(row["lexical_language"], code);
+  const semanticStatus = strictString(row["semantic_status"], code);
+  if (
+    retrievalMode !== "lexical_portuguese" ||
+    lexicalLanguage !== "pt-BR" ||
+    semanticStatus !== "unsupported_language"
+  ) {
+    throw new FiscalDataError("knowledge_search_policy_invalid");
+  }
 
   const answered = strictBoolean(row["answered"], code);
   const answer = strictNullableString(row["answer"], code);
@@ -1223,7 +1279,9 @@ function mapKnowledgeSearchResult(
     answered,
     answer,
     confidence,
-    retrievalMode: strictString(row["retrieval_mode"], code),
+    retrievalMode: "lexical_portuguese",
+    lexicalLanguage: "pt-BR",
+    semanticStatus: "unsupported_language",
     searchedAt: strictString(row["searched_at"], code),
     citations,
     blockers,
