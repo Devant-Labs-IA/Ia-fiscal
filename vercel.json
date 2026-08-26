@@ -2,6 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "npm ci",
-  "buildCommand": "npm run format && git config user.name 'vercel-gauntlet' && git config user.email 'vercel-gauntlet@users.noreply.github.com' && git add . && (git diff --cached --quiet || git commit -m 'style: aplicar formatação do Gauntlet') && git push origin HEAD:feat/homologacao-realista-gauntlet && mkdir -p dist && printf 'format-persisted' > dist/index.html",
+  "buildCommand": "node scripts/vercel-format-persist.mjs",
   "outputDirectory": "dist"
 }
