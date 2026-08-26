@@ -12,15 +12,9 @@ import {
 } from "@/components/common/SectionCard";
 import { HomologationBanner } from "@/components/layout/HomologationBanner";
 import { ExternalDeliveryReadinessPanel } from "@/components/notifications/ExternalDeliveryReadinessPanel";
+import { NotificationDossierDialog } from "@/components/notifications/NotificationDossierDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   blockReasonSummary,
   fiscalStatusLabel,
@@ -38,13 +32,13 @@ export const Route = createFileRoute("/notificacoes")({
       {
         name: "description",
         content:
-          "Consulta de destinatários, validações e bloqueios de comunicação na operação assistida.",
+          "Dossiê de homologação das notificações, com contexto fiscal, histórico e destinatários internos.",
       },
       { property: "og:title", content: "Notificações — IA Fiscal" },
       {
         property: "og:description",
         content:
-          "Consulta de destinatários, validações e bloqueios de comunicação na operação assistida.",
+          "Dossiê de homologação das notificações, com contexto fiscal, histórico e destinatários internos.",
       },
     ],
   }),
@@ -114,7 +108,7 @@ function RecipientCard({
       </div>
 
       <Button type="button" variant="outline" size="sm" className="mt-4" onClick={onSimulate}>
-        Visualizar simulação
+        Abrir dossiê e simular
       </Button>
     </li>
   );
@@ -147,8 +141,8 @@ function NotificationsPage() {
           </Badge>
         </div>
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-          Consulta dos candidatos a destinatário e das validações internas. Esta área não envia,
-          agenda ou autoriza comunicações.
+          Valide o contexto, consulte o histórico e registre testes exclusivamente para usuários
+          internos. A entrega a contribuintes reais continua bloqueada.
         </p>
       </header>
 
@@ -180,7 +174,7 @@ function NotificationsPage() {
 
       <SectionCard
         title="Fila de destinatários"
-        description="Endereços permanecem mascarados; detalhes fiscais não são expostos em e-mail."
+        description="O contato original permanece mascarado. O dossiê permite escolher apenas um usuário interno ativo."
       >
         {recipients.isError ? (
           <ErrorState
@@ -206,35 +200,13 @@ function NotificationsPage() {
         )}
       </SectionCard>
 
-      <Dialog open={Boolean(simulation)} onOpenChange={(open) => !open && setSimulation(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Simulação da notificação</DialogTitle>
-            <DialogDescription>
-              Prévia local para conferência interna. Nenhuma mensagem será enviada ou agendada.
-            </DialogDescription>
-          </DialogHeader>
-          {simulation && (
-            <div className="space-y-4">
-              <div className="rounded-md border border-border bg-muted/50 p-4 text-sm">
-                <p>Olá,</p>
-                <p className="mt-3">
-                  Existe uma informação disponível para conferência no portal autenticado:{" "}
-                  {notificationPurposeLabel(simulation.proposedFor).toLocaleLowerCase("pt-BR")}.
-                </p>
-                <p className="mt-3">
-                  Acesse o ambiente oficial para consultar os detalhes. Esta prévia não inicia
-                  prazo, cobrança ou procedimento fiscal.
-                </p>
-              </div>
-              <div className="rounded-md border border-warning/40 bg-warning-soft p-3 text-sm text-warning-foreground">
-                Simulação somente leitura. O envio externo permanece bloqueado na operação
-                assistida.
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <NotificationDossierDialog
+        item={simulation}
+        open={Boolean(simulation)}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setSimulation(null);
+        }}
+      />
     </div>
   );
 }
