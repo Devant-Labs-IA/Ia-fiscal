@@ -60,6 +60,11 @@ function throwIfError(error: DataError, fallback: string): void {
   throw new Error(error.code?.slice(0, 80) || fallback);
 }
 
+function timestampValue(value: string): number {
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
 const DEMO_REGIMES: TaxpayerRegimeReadModel[] = [
   ["tp-1", "prestador", "Prestador de serviços"],
   ["tp-2", "informador", "Informador ou tomador"],
@@ -134,17 +139,30 @@ async function listTaxpayerTimeline(
     ];
   }
 
-  const { data, error } = await client()
-    .from("vw_taxpayer_360_timeline")
-    .select("*")
-    .eq("municipality_id", municipalityId)
-    .eq("taxpayer_id", taxpayerId)
-    .order("event_at", { ascending: false })
-    .limit(200)
-    .abortSignal(AbortSignal.timeout(12_000));
-  throwIfError(error, "taxpayer_timeline_query_failed");
+  const [timelineResponse, outboxResponse] = await Promise.all([
+    client()
+      .from("vw_taxpayer_360_timeline")
+      .select("*")
+      .eq("municipality_id", municipalityId)
+      .eq("taxpayer_id", taxpayerId)
+      .order("event_at", { ascending: false })
+      .limit(200)
+      .abortSignal(AbortSignal.timeout(12_000)),
+    client()
+      .from("homologation_notification_outbox")
+      .select("id, municipality_id, taxpayer_id, case_id, subject, status, queued_at")
+      .eq("municipality_id", municipalityId)
+      .eq("taxpayer_id", taxpayerId)
+      .order("queued_at", { ascending: false })
+      .limit(100)
+      .abortSignal(AbortSignal.timeout(12_000)),
+  ]);
+  throwIfError(timelineResponse.error, "taxpayer_timeline_query_failed");
 
-  return (Array.isArray(data) ? (data as Row[]) : []).map((row) => ({
+  const timeline = (Array.isArray(timelineResponse.data)
+    ? (timelineResponse.data as Row[])
+    : []
+  ).map<TaxpayerTimelineItem>((row) => ({
     municipalityId: stringValue(row["municipality_id"]),
     taxpayerId: stringValue(row["taxpayer_id"]),
     caseId: nullableString(row["case_id"]),
@@ -154,6 +172,28 @@ async function listTaxpayerTimeline(
     summary: stringValue(row["summary"]),
     visibility: stringValue(row["visibility"], "staff"),
   }));
+
+  const outbox = outboxResponse.error
+    ? []
+    : (Array.isArray(outboxResponse.data) ? (outboxResponse.data as Row[]) : []).map<TaxpayerTimelineItem>(
+        (row) => ({
+          municipalityId: stringValue(row["municipality_id"]),
+          taxpayerId: stringValue(row["taxpayer_id"]),
+          caseId: nullableString(row["case_id"]),
+          eventAt: stringValue(row["queued_at"]),
+          itemType: "homologation_notification_queued",
+          title: "Teste de notificação registrado na fila interna",
+          summary: `${stringValue(row["subject"], "Mensagem informativa")} · situação ${stringValue(
+            row["status"],
+            "provider_pending",
+          )}`,
+          visibility: "staff",
+        }),
+      );
+
+  return [...timeline, ...outbox].sort(
+    (left, right) => timestampValue(right.eventAt) - timestampValue(left.eventAt),
+  );
 }
 
 async function listTaxpayerCommunications(
@@ -197,17 +237,32 @@ async function listTaxpayerCommunications(
     ];
   }
 
-  const { data, error } = await client()
-    .from("vw_taxpayer_360_communications")
-    .select("*")
-    .eq("municipality_id", municipalityId)
-    .eq("taxpayer_id", taxpayerId)
-    .order("occurred_at", { ascending: true })
-    .limit(200)
-    .abortSignal(AbortSignal.timeout(12_000));
-  throwIfError(error, "taxpayer_communications_query_failed");
+  const [communicationResponse, outboxResponse] = await Promise.all([
+    client()
+      .from("vw_taxpayer_360_communications")
+      .select("*")
+      .eq("municipality_id", municipalityId)
+      .eq("taxpayer_id", taxpayerId)
+      .order("occurred_at", { ascending: true })
+      .limit(200)
+      .abortSignal(AbortSignal.timeout(12_000)),
+    client()
+      .from("homologation_notification_outbox")
+      .select(
+        "id, municipality_id, taxpayer_id, case_id, subject, body_text, status, queued_at",
+      )
+      .eq("municipality_id", municipalityId)
+      .eq("taxpayer_id", taxpayerId)
+      .order("queued_at", { ascending: true })
+      .limit(100)
+      .abortSignal(AbortSignal.timeout(12_000)),
+  ]);
+  throwIfError(communicationResponse.error, "taxpayer_communications_query_failed");
 
-  return (Array.isArray(data) ? (data as Row[]) : []).map((row) => ({
+  const communications = (Array.isArray(communicationResponse.data)
+    ? (communicationResponse.data as Row[])
+    : []
+  ).map<TaxpayerCommunicationItem>((row) => ({
     municipalityId: stringValue(row["municipality_id"]),
     taxpayerId: stringValue(row["taxpayer_id"]),
     caseId: nullableString(row["case_id"]),
@@ -223,6 +278,31 @@ async function listTaxpayerCommunications(
     externalDeliveryAttempted: booleanValue(row["external_delivery_attempted"]),
     occurredAt: stringValue(row["occurred_at"]),
   }));
+
+  const outbox = outboxResponse.error
+    ? []
+    : (Array.isArray(outboxResponse.data) ? (outboxResponse.data as Row[]) : []).map<TaxpayerCommunicationItem>(
+        (row) => ({
+          municipalityId: stringValue(row["municipality_id"]),
+          taxpayerId: stringValue(row["taxpayer_id"]),
+          caseId: nullableString(row["case_id"]),
+          communicationId: stringValue(row["id"]),
+          communicationType: "homologation_notification",
+          direction: "outbound",
+          channelOrSource: "internal_email_outbox",
+          title: stringValue(row["subject"], "Aviso informativo"),
+          summary: stringValue(row["body_text"]),
+          status: stringValue(row["status"], "provider_pending"),
+          visibility: "staff",
+          deliveryMode: "homologation",
+          externalDeliveryAttempted: false,
+          occurredAt: stringValue(row["queued_at"]),
+        }),
+      );
+
+  return [...communications, ...outbox].sort(
+    (left, right) => timestampValue(left.occurredAt) - timestampValue(right.occurredAt),
+  );
 }
 
 async function listInternalTestRecipients(
