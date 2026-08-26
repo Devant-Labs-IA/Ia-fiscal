@@ -44,7 +44,7 @@ const groupName = process.env.GAUNTLET_LINT_GROUP ?? "core";
 const files = groups[groupName];
 if (!files) throw new Error(`unknown_lint_group:${groupName}`);
 
-run("npm", ["run", "format"]);
+run("npm", ["exec", "--", "prettier", "--write", ...files]);
 run("npm", ["exec", "--", "eslint", ...files]);
 
 mkdirSync("dist", { recursive: true });
