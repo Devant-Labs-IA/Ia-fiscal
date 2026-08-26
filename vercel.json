@@ -2,6 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "npm ci",
-  "buildCommand": "node scripts/vercel-diagnose.mjs",
+  "buildCommand": "npm run format:check && mkdir -p dist && printf 'format-pass' > dist/index.html",
   "outputDirectory": "dist"
 }
