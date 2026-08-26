@@ -2,6 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "npm ci",
-  "buildCommand": "node scripts/vercel-format-persist.mjs",
+  "buildCommand": "GAUNTLET_LINT_GROUP=core node scripts/vercel-lint-group.mjs",
   "outputDirectory": "dist"
 }
