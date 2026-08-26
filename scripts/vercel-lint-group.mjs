@@ -13,6 +13,9 @@ const groups = {
     "src/lib/homologation-policy.ts",
     "src/lib/homologation-policy.test.ts",
   ],
+  types: ["src/types/homologation.ts"],
+  policy: ["src/lib/homologation-policy.ts"],
+  "policy-test": ["src/lib/homologation-policy.test.ts"],
   "core-service": ["src/services/homologation-service.ts"],
   ui: [
     "src/components/copilot/FiscalCopilot.tsx",
