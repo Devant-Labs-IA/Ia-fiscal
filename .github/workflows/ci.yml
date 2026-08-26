@@ -6,10 +6,9 @@ on:
     branches:
       - main
       - agent/atendimento-supervisionado
-      - feat/homologacao-realista-gauntlet
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -24,19 +23,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
-          fetch-depth: 0
-
-      - name: Apply Gauntlet mission once
-        if: github.ref_name == 'feat/homologacao-realista-gauntlet' || github.head_ref == 'feat/homologacao-realista-gauntlet'
-        shell: bash
-        run: |
-          if [[ ! -f docs/adr/0005-homologation-realistic-copilot.md ]]; then
-            python scripts/gauntlet_homologacao.py
-          else
-            echo "Gauntlet mission already materialized."
-          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -46,19 +32,6 @@ jobs:
 
       - name: Install locked dependencies
         run: npm ci
-
-      - name: Format Gauntlet changes
-        if: github.ref_name == 'feat/homologacao-realista-gauntlet' || github.head_ref == 'feat/homologacao-realista-gauntlet'
-        shell: bash
-        run: |
-          mapfile -t files < <(
-            git diff --name-only --diff-filter=ACM |
-              grep -E '\.(ts|tsx|md|json|ya?ml)$' || true
-          )
-          if ((${#files[@]})); then
-            npx prettier --write "${files[@]}"
-          fi
-          git diff --check
 
       - name: Reject administrative secrets in web sources
         shell: bash
@@ -107,19 +80,3 @@ jobs:
           VITE_MUNICIPALITY_IBGE: "3512407"
           VITE_APP_TIMEZONE: America/Sao_Paulo
         run: npm run build
-
-      - name: Commit verified Gauntlet output
-        if: success() && github.event_name == 'push' && github.ref_name == 'feat/homologacao-realista-gauntlet'
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add README.md docs src supabase
-          if git diff --cached --quiet; then
-            echo "No generated changes to commit."
-            exit 0
-          fi
-          git commit -m "feat(homologacao): liberar testes realistas e copiloto read-only"
-          git pull --rebase origin feat/homologacao-realista-gauntlet
-          git push origin HEAD:feat/homologacao-realista-gauntlet
