@@ -8,6 +8,12 @@ const groups = {
     "src/lib/homologation-policy.test.ts",
     "src/services/homologation-service.ts",
   ],
+  "core-policy": [
+    "src/types/homologation.ts",
+    "src/lib/homologation-policy.ts",
+    "src/lib/homologation-policy.test.ts",
+  ],
+  "core-service": ["src/services/homologation-service.ts"],
   ui: [
     "src/components/copilot/FiscalCopilot.tsx",
     "src/components/notifications/NotificationDossierDialog.tsx",
