@@ -1,7 +1,13 @@
-# trigger: 2026-08-26T14:45:00-03:00
+# trigger: pull-request gauntlet
 name: Gauntlet — homologação realista
 
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - scripts/gauntlet_homologacao.py
+      - .github/workflows/gauntlet-homologacao.yml
   push:
     branches:
       - feat/homologacao-realista-gauntlet
@@ -25,6 +31,7 @@ jobs:
       - name: Checkout da branch
         uses: actions/checkout@v4
         with:
+          ref: feat/homologacao-realista-gauntlet
           fetch-depth: 0
 
       - name: Aplicar missão do executor
