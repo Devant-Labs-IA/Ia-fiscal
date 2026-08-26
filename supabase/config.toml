@@ -6,6 +6,8 @@ project_id = "ia-fiscal"
 verify_jwt = true
 
 [functions.ia-fiscal-search]
+# Preserva o JWT. AAL1 é aceito somente no domínio reconhecido de homologação;
+# produção continua sujeita ao gate AAL2.
 verify_jwt = true
 
 [functions.ia-fiscal-knowledge-ingest]
@@ -18,7 +20,8 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.ia-fiscal-knowledge-search]
-# Preserva o JWT do usuário e exige AAL2/tenant também na RPC híbrida.
+# Preserva o JWT do usuário. AAL1 é aceito somente no domínio de homologação;
+# tenant e papel continuam validados pela RPC híbrida.
 verify_jwt = true
 
 [functions.ia-fiscal-knowledge-ocr]
@@ -26,3 +29,8 @@ verify_jwt = true
 # conhece esse emissor, portanto o handler valida assinatura/JWKS, audience,
 # repository/ref/workflow/environment e anti-replay antes de usar service_role.
 verify_jwt = false
+
+[functions.ia-fiscal-copilot]
+# O Copiloto preserva o JWT e opera somente por RPC autorizadora read-only.
+# Chaves de modelo ficam exclusivamente nos secrets da Edge Function.
+verify_jwt = true
