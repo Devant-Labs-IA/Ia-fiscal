@@ -2,6 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "npm ci",
-  "buildCommand": "GAUNTLET_TYPE_PROBE='FiscalCopilot|NotificationDossierDialog|AppShell|notificacoes\\.tsx|portal\\.tsx|contribuintes_|debitos\\.tsx|homologation-policy|homologation-service|types/homologation' node scripts/vercel-typecheck-probe.mjs",
+  "buildCommand": "npm run typecheck && mkdir -p dist && printf 'typecheck-pass' > dist/index.html",
   "outputDirectory": "dist"
 }
