@@ -8,26 +8,32 @@ decisões com efeito fiscal continuam sob responsabilidade humana.
 > [!WARNING]
 > [!IMPORTANT]
 > Cordeirópolis está **ativa para trabalho interno assistido**. Comunicação externa, ciência fiscal,
-> geração de prazo legal e lançamento automatizado continuam bloqueados até a aprovação dos gates
-> descritos em [`docs/harness-release-gates.md`](docs/harness-release-gates.md).
+geração de prazo legal e lançamento automatizado continuam bloqueados até a aprovação dos gates
+descritos em [`docs/harness-release-gates.md`](docs/harness-release-gates.md).
 
 ## Estado atual
 
-Estado verificado em 13 de agosto de 2026:
+Estado verificado em 26 de agosto de 2026:
 
 - Cordeirópolis está ativa para consultas e testes internos; Araras continua isolada;
-- autenticação por senha e TOTP, acesso por município e segregação de papéis permanecem obrigatórios;
+- a homologação usa autenticação por senha, acesso por município e segregação de papéis; a produção
+  deverá restaurar o gate explícito de MFA/AAL2;
+- a Preview Vercel está conectada ao repositório canônico `Devant-Labs-IA/Ia-fiscal`;
 - o primeiro acesso possui treinamento versionado e específico por perfil;
-- códigos técnicos são convertidos em nomes e explicações em português na camada de apresentação;
-- a trava mestra de comunicação externa está ativa e a fila externa está vazia;
-- ainda não existem provedor de e-mail, canal ativo, modelo aprovado nem contatos verificados para
-  envio real;
+- o Contribuinte 360 consolida resumo, histórico, comunicações, débitos, divergências e
+  procedimentos;
+- o dossiê de notificação permite registrar testes somente para usuários internos ativos;
+- a mensagem de teste bloqueia links, anexos e valores por regra determinística;
+- o Copiloto IA Fiscal opera somente em leitura e nunca recebe acesso livre a SQL ou tabelas;
+- a trava mestra de comunicação externa continua ativa e a fila externa permanece separada;
+- ainda não existe provedor de e-mail habilitado para despachar a fila interna de teste;
+- a API transacional do CIGIS ainda não está conectada, portanto pagamentos e conta corrente não
+  podem ser confirmados pelo Copiloto;
 - os dados fiscais atualmente carregados mantêm origem de teste e não devem ser descritos como
   lançamentos ou fatos fiscais definitivamente validados.
 
-O painel “Preparar envios externos” é informativo e fail-closed: apresenta o checklist real, mas
-não cria jobs nem altera travas. A ativação futura exige infraestrutura de entrega, aprovações,
-auditoria e testes ponta a ponta.
+O painel “Preparar envios externos” continua informativo e fail-closed. A homologação realista usa
+uma outbox separada, derivada de uma allowlist interna, e não altera a trava de comunicação externa.
 
 ## Escopo do MVP
 
@@ -36,21 +42,27 @@ auditoria e testes ponta a ponta.
 - cálculo determinístico de anexo, base, RBT12, alíquota efetiva e Fator R;
 - visão 360 do contribuinte;
 - gestão de casos, destinatários candidatos e bloqueios de comunicação;
-- pesquisa na base de conhecimento e rascunhos assistidos por IA, sempre sujeitos às regras de supervisão.
+- dossiê de notificação e histórico de conversa;
+- pesquisa na base de conhecimento e rascunhos assistidos por IA, sempre sujeitos às regras de
+  supervisão;
+- Copiloto global somente leitura, com contexto limitado pela sessão e pelo contribuinte autorizado.
 
-Ficam fora do MVP: notificação formal por DTE/SIGISS, WhatsApp/SMS, chat externo, captura de XML, pagamentos, aplicativo móvel e módulos comerciais não fiscais.
+Ficam fora do MVP atual: notificação formal por DTE/SIGISS, WhatsApp/SMS, captura de XML,
+pagamentos, aplicativo móvel, decisão fiscal autônoma e módulos comerciais não fiscais.
 
 ## Arquitetura
 
-| Camada     | Tecnologia                                     | Responsabilidade                                                        |
-| ---------- | ---------------------------------------------- | ----------------------------------------------------------------------- |
-| Web        | React 19, TanStack Start, TypeScript, Tailwind | interface autenticada e leitura dos contratos fiscais                   |
-| Identidade | Supabase Auth                                  | sessão; o acesso efetivo depende de membership ou vínculo válido        |
-| Dados      | Supabase/PostgreSQL                            | RLS, views 360, funções determinísticas e trilha de auditoria           |
-| Edge       | `ia-fiscal-search`, `ia-fiscal-worker`         | pesquisa fiscal e processamento assíncrono em sandbox                   |
-| IA         | execução supervisionada                        | interpretação e rascunhos; nunca lançamento, autuação ou envio autônomo |
+| Camada     | Tecnologia                                     | Responsabilidade                                                                  |
+| ---------- | ---------------------------------------------- | --------------------------------------------------------------------------------- |
+| Web        | React 19, TanStack Start, TypeScript, Tailwind | interface autenticada e leitura dos contratos fiscais                             |
+| Identidade | Supabase Auth                                  | sessão; o acesso efetivo depende de membership ou vínculo válido                  |
+| Dados      | Supabase/PostgreSQL                            | RLS, views 360, funções determinísticas, allowlist e trilha de auditoria           |
+| Edge       | Search, knowledge, worker e Copiloto           | pesquisa autenticada, processamento e síntese read-only                            |
+| IA         | execução supervisionada                        | interpretação e rascunhos; nunca lançamento, autuação, envio ou decisão autônoma   |
+| CIGIS      | API pendente                                   | fonte futura de verdade para conta corrente, pagamentos, regime e dados fiscais    |
 
-Detalhes: [`docs/architecture.md`](docs/architecture.md).
+Detalhes: [`docs/architecture.md`](docs/architecture.md) e
+[`docs/adr/0005-homologation-realistic-copilot.md`](docs/adr/0005-homologation-realistic-copilot.md).
 
 ## Desenvolvimento local
 
@@ -63,7 +75,7 @@ Detalhes: [`docs/architecture.md`](docs/architecture.md).
 ### Instalação
 
 ```bash
-git clone https://github.com/AlmoreContabilidade/Ia-fiscal.git
+git clone https://github.com/Devant-Labs-IA/Ia-fiscal.git
 cd Ia-fiscal
 cp .env.example .env.local
 npm ci
@@ -86,24 +98,27 @@ demonstração usa apenas dados fictícios e não habilita escrita ou comunicaç
 | `VITE_MUNICIPALITY_IBGE`        | código IBGE                  | `3512407`                  |
 | `VITE_APP_TIMEZONE`             | timezone civil               | `America/Sao_Paulo`        |
 
-Nunca exponha `service_role`, chaves `sb_secret_`, senha de banco ou tokens de provedores em variáveis `VITE_*`.
+Nunca exponha `service_role`, chaves `sb_secret_`, senha de banco ou tokens de provedores em
+variáveis `VITE_*`. `OPENAI_API_KEY` e `OPENAI_MODEL` pertencem exclusivamente aos secrets da Edge
+Function do Copiloto.
 
 ## Verificações locais
 
 ```bash
 npm run lint
+npm run format:check
 npm run typecheck
 npm test
 npm run build
 ```
 
-O mesmo conjunto é executado no CI. Um build verde comprova integridade estática e de empacotamento; não substitui testes de RLS, autorização, papéis ou fluxos E2E.
+Um build verde comprova integridade estática e de empacotamento; não substitui testes de RLS,
+autorização, papéis, Edge Functions ou fluxos E2E.
 
 ## Banco e Edge Functions
 
-[`supabase/migrations`](supabase/migrations) é a única fonte canônica de replay. Os 36 arquivos
-representam as versões e os corpos SQL registrados remotamente. As diferenças históricas de `LF`
-terminal são documentadas no manifesto de checksums.
+[`supabase/migrations`](supabase/migrations) é a única fonte canônica de replay. As diferenças
+históricas de `LF` terminal são documentadas no manifesto de checksums.
 
 Os arquivos em [`supabase/sql/applied`](supabase/sql/applied) são apenas um **arquivo histórico
 parcial** e nunca devem ser executados como cadeia. Antes de qualquer reconstrução, siga o
@@ -113,6 +128,7 @@ parcial** e nunca devem ser executados como cadeia. Antes de qualquer reconstru�
 ## Documentação operacional
 
 - [Arquitetura e contratos](docs/architecture.md)
+- [ADR da homologação realista e Copiloto](docs/adr/0005-homologation-realistic-copilot.md)
 - [Reconciliação atual do banco](docs/database/reconciliation-2026-08-03.md)
 - [Runbook de reconstrução e recuperação](docs/database/recovery-runbook.md)
 - [Segurança, LGPD e limites jurídicos](docs/security-lgpd-legal.md)
@@ -124,6 +140,8 @@ parcial** e nunca devem ser executados como cadeia. Antes de qualquer reconstru�
 
 ## Contribuição e publicação
 
-Trabalhe em branch, mantenha os gates verdes e preserve o histórico já publicado. O repositório é conectado ao Lovable; não faça force push, rebase destrutivo, amend ou squash de commits já enviados. Nenhuma mudança deve ser promovida a produção enquanto o gate de produção permanecer fechado.
+Trabalhe em branch, mantenha os gates verdes e preserve o histórico já publicado. O repositório é
+conectado ao Lovable; não faça force push, rebase destrutivo, amend ou squash de commits já enviados.
+Nenhuma mudança deve ser promovida a produção enquanto o gate de produção permanecer fechado.
 
-O projeto é privado. Nenhuma licença pública foi concedida.
+Nenhuma licença pública foi concedida.
