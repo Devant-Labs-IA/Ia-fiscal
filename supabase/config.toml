@@ -1,4 +1,4 @@
-# Configuração versionada apenas para desenvolvimento e homologação.
+# Configuração versionada de desenvolvimento e testes internos.
 # O project_id remoto não é usado aqui para promover mudanças automaticamente.
 project_id = "ia-fiscal"
 
@@ -6,8 +6,8 @@ project_id = "ia-fiscal"
 verify_jwt = true
 
 [functions.ia-fiscal-search]
-# Preserva o JWT. AAL1 é aceito somente no domínio reconhecido de homologação;
-# produção continua sujeita ao gate AAL2.
+# Preserva o JWT. AAL1 é aceito somente nos domínios internos reconhecidos;
+# a produção continua sujeita ao gate AAL2.
 verify_jwt = true
 
 [functions.ia-fiscal-knowledge-ingest]
@@ -20,8 +20,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.ia-fiscal-knowledge-search]
-# Preserva o JWT do usuário. AAL1 é aceito somente no domínio de homologação;
-# tenant e papel continuam validados pela RPC híbrida.
+# Preserva o JWT do usuário; tenant e papel continuam validados pela RPC híbrida.
 verify_jwt = true
 
 [functions.ia-fiscal-knowledge-ocr]
@@ -33,4 +32,16 @@ verify_jwt = false
 [functions.ia-fiscal-copilot]
 # O Copiloto preserva o JWT e opera somente por RPC autorizadora read-only.
 # Chaves de modelo ficam exclusivamente nos secrets da Edge Function.
+verify_jwt = true
+
+[functions.ia-fiscal-email-dispatch]
+# Envio manual restrito a usuário autenticado e destinatário da allowlist interna.
+verify_jwt = true
+
+[functions.ia-fiscal-email-webhook]
+# Webhook público do provedor; o handler exige assinatura Svix válida antes de processar.
+verify_jwt = false
+
+[functions.ia-fiscal-cigis-gateway]
+# O gateway preserva o JWT e resolve o escopo autorizado antes de consultar o CIGIS.
 verify_jwt = true

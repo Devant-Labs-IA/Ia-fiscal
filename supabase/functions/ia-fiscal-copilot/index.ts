@@ -11,12 +11,12 @@ type CopilotRequest = {
 
 type Row = Record<string, unknown>;
 
-const CANONICAL_HOMOLOGATION_ORIGIN = "https://ia-fiscal-homologacao.vercel.app";
+const CANONICAL_APP_ORIGIN = "https://ia-fiscal-homologacao.vercel.app";
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const SYSTEM_PROMPT = `
-Você é o Copiloto do IA Fiscal em ambiente de homologação.
+Você é o Copiloto do IA Fiscal.
 
 Objetivo:
 - explicar dados fiscais e operacionais já autorizados para a sessão;
@@ -31,8 +31,9 @@ Regras obrigatórias:
 5. Não dê veredito de regularidade, não prometa resultado e não produza efeito jurídico.
 6. Não sugira SQL, credenciais, bypass de permissão ou acesso a outro CNPJ.
 7. Não envie, altere, aprove, publique ou encerre qualquer registro.
-8. Quando a API do CIGIS ainda não estiver conectada, declare essa limitação.
+8. Quando o CIGIS não devolver o dado solicitado, declare essa limitação sem preencher a lacuna.
 9. Responda em português claro, de forma objetiva, e indique quando a validação humana é necessária.
+10. Diferencie expressamente dados do CIGIS, registros do IA Fiscal e fundamentação legal.
 `.trim();
 
 function requiredEnv(name: string): string {
@@ -41,21 +42,17 @@ function requiredEnv(name: string): string {
   return value;
 }
 
-function isAllowedHomologationOrigin(request: Request): boolean {
-  if ((Deno.env.get("IA_ALLOW_AAL1_HOMOLOGATION") ?? "true").toLowerCase() === "false") {
+function isAllowedTestOrigin(request: Request): boolean {
+  if ((Deno.env.get("IA_ALLOW_AAL1_INTERNAL_TESTS") ?? "true").toLowerCase() === "false") {
     return false;
   }
   const origin = request.headers.get("origin")?.trim() ?? "";
-  if (origin === CANONICAL_HOMOLOGATION_ORIGIN) return true;
-  try {
-    const hostname = new URL(origin).hostname;
-    return (
-      hostname === "ia-fiscal-homologacao.vercel.app" ||
-      (hostname.startsWith("ia-fiscal-homologacao-") && hostname.endsWith(".vercel.app"))
-    );
-  } catch {
-    return false;
-  }
+  if (origin === CANONICAL_APP_ORIGIN) return true;
+  const configured = (Deno.env.get("IA_ALLOWED_ORIGINS") ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  return configured.includes(origin);
 }
 
 function corsHeaders(request: Request): Record<string, string> {
@@ -64,26 +61,13 @@ function corsHeaders(request: Request): Record<string, string> {
     .split(",")
     .map((value) => value.trim())
     .filter(Boolean);
-  const allowed = new Set([CANONICAL_HOMOLOGATION_ORIGIN, ...configured]);
+  const allowed = new Set([CANONICAL_APP_ORIGIN, ...configured]);
   const headers: Record<string, string> = {
     "access-control-allow-headers": "authorization, apikey, content-type, x-client-info",
     "access-control-allow-methods": "POST, OPTIONS",
     vary: "Origin",
   };
-  if (
-    allowed.has(origin) ||
-    (origin &&
-      (() => {
-        try {
-          const hostname = new URL(origin).hostname;
-          return hostname.startsWith("ia-fiscal-homologacao-") && hostname.endsWith(".vercel.app");
-        } catch {
-          return false;
-        }
-      })())
-  ) {
-    headers["access-control-allow-origin"] = origin;
-  }
+  if (allowed.has(origin)) headers["access-control-allow-origin"] = origin;
   return headers;
 }
 
@@ -120,11 +104,28 @@ function safeCount(value: unknown): number {
   return Array.isArray(value) ? value.length : 0;
 }
 
+function extractCompetence(question: string): string | null {
+  const iso = /\b(20\d{2})-(0[1-9]|1[0-2])\b/.exec(question);
+  if (iso) return `${iso[1]}-${iso[2]}`;
+  const br = /\b(0?[1-9]|1[0-2])\/(20\d{2})\b/.exec(question);
+  if (br) return `${br[2]}-${String(br[1]).padStart(2, "0")}`;
+  return null;
+}
+
 function sourcesFromContext(context: Row): Row[] {
   const sources = asArray(context["sources"])
     .map(asObject)
     .filter((value) => Object.keys(value).length > 0)
     .slice(0, 12);
+  const cigis = asObject(context["cigis"]);
+  if (cigis["configured"] === true) {
+    sources.push({
+      kind: "cigis_api",
+      title: "CIGIS - consulta autorizada",
+      reference: stringValue(cigis["action"], "overview"),
+      occurred_at: stringValue(cigis["fetched_at"]) || null,
+    });
+  }
   if (sources.length > 0) return sources;
   return [
     {
@@ -152,34 +153,39 @@ function deterministicAnswer(
   const knowledge = asObject(context["knowledge"]);
   const knowledgePayload = asObject(knowledge["data"] ?? knowledge);
   const knowledgeCitations = asArray(knowledgePayload["citations"]);
+  const cigis = asObject(context["cigis"]);
+  const cigisConfigured = cigis["configured"] === true;
 
   const dataPoints = [
     taxpayerName
       ? `Contribuinte identificado: ${taxpayerName}.`
       : "Nenhum contribuinte específico foi selecionado.",
-    `${debts.length} competência(s) de débito retornada(s).`,
-    `${divergences.length} divergência(s) retornada(s).`,
-    `${cases.length} procedimento(s) retornado(s).`,
+    `${debts.length} competência(s) de débito retornada(s) pelo IA Fiscal.`,
+    `${divergences.length} divergência(s) retornada(s) pelo IA Fiscal.`,
+    `${cases.length} procedimento(s) retornado(s) pelo IA Fiscal.`,
     `${timeline.length} evento(s) de histórico retornado(s).`,
     `${communications.length} comunicação(ões) retornada(s).`,
     ...(searchRows.length > 0 ? [`${searchRows.length} resultado(s) localizado(s) na busca fiscal.`] : []),
     ...(knowledgeCitations.length > 0
       ? [`${knowledgeCitations.length} citação(ões) localizada(s) no Segundo Cérebro.`]
       : []),
+    cigisConfigured
+      ? "O CIGIS foi consultado para complementar o contexto transacional."
+      : "O CIGIS não devolveu contexto transacional nesta consulta.",
   ];
 
   const answer = taxpayerName
-    ? `A consulta sobre "${question}" foi executada no contexto autorizado de ${taxpayerName}. Foram localizados ${debts.length} período(s) de débito, ${divergences.length} divergência(s), ${cases.length} procedimento(s) e ${communications.length} comunicação(ões). Consulte os dados detalhados e as fontes disponíveis antes de qualquer decisão.`
+    ? `A consulta sobre "${question}" foi executada no contexto autorizado de ${taxpayerName}. Foram localizados ${debts.length} período(s) de débito, ${divergences.length} divergência(s), ${cases.length} procedimento(s) e ${communications.length} comunicação(ões) no IA Fiscal${cigisConfigured ? ", com consulta complementar ao CIGIS" : ""}. Consulte os dados detalhados e as fontes antes de qualquer decisão.`
     : `A consulta sobre "${question}" foi executada no escopo autorizado da sessão. Foram localizados ${searchRows.length} resultado(s) na busca fiscal. Selecione um contribuinte para obter um dossiê mais detalhado.`;
 
-  return {
-    answer,
-    dataPoints,
-    limitations: [
-      "A API transacional do CIGIS ainda não está conectada; pagamentos e conta corrente não podem ser confirmados por esta resposta.",
-      "A resposta é informativa e não constitui decisão fiscal.",
-    ],
-  };
+  const limitations = ["A resposta é informativa e não constitui decisão fiscal."];
+  if (!cigisConfigured) {
+    limitations.unshift(
+      "Pagamentos e conta corrente não foram confirmados porque o CIGIS não respondeu com dados transacionais.",
+    );
+  }
+
+  return { answer, dataPoints, limitations };
 }
 
 function outputText(payload: Row): string | null {
@@ -199,35 +205,44 @@ function outputText(payload: Row): string | null {
 
 async function synthesizeWithOpenAI(question: string, context: Row): Promise<string | null> {
   const apiKey = Deno.env.get("OPENAI_API_KEY")?.trim();
-  const model = Deno.env.get("OPENAI_MODEL")?.trim();
-  if (!apiKey || !model) return null;
+  if (!apiKey) return null;
+  const model = Deno.env.get("OPENAI_MODEL")?.trim() || "gpt-5.4-mini";
+  const projectId = Deno.env.get("OPENAI_PROJECT_ID")?.trim();
 
   const serialized = JSON.stringify({ question, authorized_context: context }).slice(0, 80_000);
-  const response = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${apiKey}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model,
-      store: false,
-      max_output_tokens: 1_200,
-      input: [
-        {
-          role: "system",
-          content: [{ type: "input_text", text: SYSTEM_PROMPT }],
-        },
-        {
-          role: "user",
-          content: [{ type: "input_text", text: serialized }],
-        },
-      ],
-    }),
-  });
-  if (!response.ok) return null;
-  const payload = asObject(await response.json());
-  return outputText(payload);
+  const headers: Record<string, string> = {
+    authorization: `Bearer ${apiKey}`,
+    "content-type": "application/json",
+  };
+  if (projectId) headers["openai-project"] = projectId;
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model,
+        store: false,
+        max_output_tokens: 1_200,
+        input: [
+          {
+            role: "system",
+            content: [{ type: "input_text", text: SYSTEM_PROMPT }],
+          },
+          {
+            role: "user",
+            content: [{ type: "input_text", text: serialized }],
+          },
+        ],
+      }),
+      signal: AbortSignal.timeout(25_000),
+    });
+    if (!response.ok) return null;
+    const payload = asObject(await response.json());
+    return outputText(payload);
+  } catch {
+    return null;
+  }
 }
 
 Deno.serve(async (request: Request) => {
@@ -277,14 +292,14 @@ Deno.serve(async (request: Request) => {
     });
   }
 
-  const origin = request.headers.get("origin")?.trim() || CANONICAL_HOMOLOGATION_ORIGIN;
+  const origin = request.headers.get("origin")?.trim() || CANONICAL_APP_ORIGIN;
   const client = createClient(supabaseUrl, publishableKey, {
     auth: { persistSession: false, autoRefreshToken: false },
     global: {
       headers: {
         Authorization: authorization,
         Origin: origin,
-        "x-ia-copilot": "ia-fiscal-copilot-v1",
+        "x-ia-copilot": "ia-fiscal-copilot-v2",
       },
     },
   });
@@ -294,7 +309,7 @@ Deno.serve(async (request: Request) => {
   if (claimsError || !claimsData?.claims?.sub) {
     return json(request, 401, { error: "invalid_authorization", correlation_id: correlationId });
   }
-  if (claimsData.claims.aal !== "aal2" && !isAllowedHomologationOrigin(request)) {
+  if (claimsData.claims.aal !== "aal2" && !isAllowedTestOrigin(request)) {
     return json(request, 403, { error: "aal2_required", correlation_id: correlationId });
   }
 
@@ -335,6 +350,24 @@ Deno.serve(async (request: Request) => {
   });
   context["knowledge"] = asObject(knowledgeData);
 
+  if (taxpayerId) {
+    const competence = extractCompetence(question);
+    const { data: cigisData, error: cigisError } = await client.functions.invoke(
+      "ia-fiscal-cigis-gateway",
+      {
+        body: {
+          municipality_id: municipalityId,
+          taxpayer_id: taxpayerId,
+          action: "overview",
+          competence,
+        },
+      },
+    );
+    context["cigis"] = cigisError
+      ? { configured: false, error: "cigis_unavailable" }
+      : asObject(cigisData);
+  }
+
   const deterministic = deterministicAnswer(question, context);
   const aiAnswer = await synthesizeWithOpenAI(question, context);
   const mode = aiAnswer ? "ai" : "deterministic";
@@ -346,6 +379,7 @@ Deno.serve(async (request: Request) => {
       municipality_id: municipalityId,
       taxpayer_context: taxpayerId !== null,
       case_context: caseId !== null,
+      cigis_configured: asObject(context["cigis"])["configured"] === true,
       mode,
       debt_count: safeCount(context["debts"]),
       divergence_count: safeCount(context["divergences"]),
@@ -360,6 +394,6 @@ Deno.serve(async (request: Request) => {
     limitations: deterministic.limitations,
     correlation_id: correlationId,
     mode,
-    contract_version: "ia-fiscal-copilot-v1",
+    contract_version: "ia-fiscal-copilot-v2",
   });
 });

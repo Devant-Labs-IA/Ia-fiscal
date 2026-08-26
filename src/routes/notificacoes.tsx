@@ -32,13 +32,13 @@ export const Route = createFileRoute("/notificacoes")({
       {
         name: "description",
         content:
-          "Dossiê de homologação das notificações, com contexto fiscal, histórico e destinatários internos.",
+          "Dossiê das notificações, com contexto fiscal, histórico, conversa e envio restrito à equipe interna.",
       },
       { property: "og:title", content: "Notificações — IA Fiscal" },
       {
         property: "og:description",
         content:
-          "Dossiê de homologação das notificações, com contexto fiscal, histórico e destinatários internos.",
+          "Dossiê das notificações, com contexto fiscal, histórico, conversa e envio restrito à equipe interna.",
       },
     ],
   }),
@@ -108,7 +108,7 @@ function RecipientCard({
       </div>
 
       <Button type="button" variant="outline" size="sm" className="mt-4" onClick={onSimulate}>
-        Abrir dossiê e simular
+        Abrir dossiê
       </Button>
     </li>
   );
@@ -137,12 +137,12 @@ function NotificationsPage() {
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Notificações</h1>
           <Badge variant="outline" className="border-critical/40 bg-critical-soft text-critical">
             <Ban className="mr-1 size-3.5" aria-hidden />
-            Envio externo desativado
+            Contatos externos bloqueados
           </Badge>
         </div>
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-          Valide o contexto, consulte o histórico e registre testes exclusivamente para usuários
-          internos. A entrega a contribuintes reais continua bloqueada.
+          Valide o contexto, consulte o histórico e envie exclusivamente para usuários internos.
+          O endereço original do contribuinte nunca é utilizado durante os testes.
         </p>
       </header>
 
@@ -168,7 +168,7 @@ function NotificationsPage() {
           <p className="mt-3 text-2xl font-semibold tabular-nums">
             {recipients.isLoading ? "—" : readyCount}
           </p>
-          <p className="text-xs text-muted-foreground">aptos somente na etapa interna</p>
+          <p className="text-xs text-muted-foreground">aptos para teste interno</p>
         </div>
       </div>
 

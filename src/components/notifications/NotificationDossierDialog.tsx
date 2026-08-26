@@ -38,11 +38,12 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  buildDefaultHomologationEmailBody,
-  DEFAULT_HOMOLOGATION_EMAIL_SUBJECT,
-  homologationEmailBlockers,
+  buildDefaultInternalEmailBody,
+  DEFAULT_INTERNAL_EMAIL_SUBJECT,
+  internalEmailBlockers,
 } from "@/lib/homologation-policy";
 import { formatCurrency, formatDateTime } from "@/lib/format";
+import { dispatchInternalEmail } from "@/services/internal-email-service";
 import { fiscalService } from "@/services/fiscal-service";
 import { homologationService } from "@/services/homologation-service";
 import type { NotificationRecipientReadModel } from "@/types/read-models";
@@ -53,6 +54,12 @@ interface NotificationDossierDialogProps {
   onOpenChange(open: boolean): void;
 }
 
+interface SendResult {
+  status: string;
+  recipientMasked: string;
+  providerMessageId: string | null;
+}
+
 function safeDateTime(value: string): string {
   if (!value || Number.isNaN(Date.parse(value))) return "Data não informada";
   return formatDateTime(value);
@@ -61,7 +68,17 @@ function safeDateTime(value: string): string {
 function communicationLabel(value: string): string {
   if (value === "notification") return "Notificação";
   if (value === "chat_message") return "Mensagem";
+  if (value === "homologation_notification") return "E-mail interno";
   return "Comunicação";
+}
+
+function statusLabel(value: string): string {
+  if (value === "sent") return "enviado";
+  if (value === "delivered") return "entregue";
+  if (value === "processing") return "processando";
+  if (value === "failed") return "falhou";
+  if (value === "bounced") return "devolvido";
+  return "aguardando configuração do provedor";
 }
 
 export function NotificationDossierDialog({
@@ -72,52 +89,52 @@ export function NotificationDossierDialog({
   const auth = useAuth();
   const municipalityId = auth.access?.municipalityId ?? "";
   const [recipientUserId, setRecipientUserId] = useState("");
-  const [queuedStatus, setQueuedStatus] = useState<string | null>(null);
-  const subject = DEFAULT_HOMOLOGATION_EMAIL_SUBJECT;
-  const body = buildDefaultHomologationEmailBody();
-  const blockers = useMemo(() => homologationEmailBlockers(subject, body), [body, subject]);
+  const [sendResult, setSendResult] = useState<SendResult | null>(null);
+  const subject = DEFAULT_INTERNAL_EMAIL_SUBJECT;
+  const body = buildDefaultInternalEmailBody();
+  const blockers = useMemo(() => internalEmailBlockers(subject, body), [body, subject]);
   const taxpayerId = item?.taxpayerId ?? "";
 
   const summaries = useQuery({
-    queryKey: ["homologation-dossier", municipalityId, taxpayerId, "summary"],
+    queryKey: ["notification-dossier", municipalityId, taxpayerId, "summary"],
     queryFn: () => fiscalService.listTaxpayerSummaries(municipalityId),
     enabled: open && Boolean(municipalityId && taxpayerId),
   });
   const debts = useQuery({
-    queryKey: ["homologation-dossier", municipalityId, taxpayerId, "debts"],
+    queryKey: ["notification-dossier", municipalityId, taxpayerId, "debts"],
     queryFn: () => fiscalService.listDebtPeriods(municipalityId, taxpayerId),
     enabled: open && Boolean(municipalityId && taxpayerId),
   });
   const divergences = useQuery({
-    queryKey: ["homologation-dossier", municipalityId, taxpayerId, "divergences"],
+    queryKey: ["notification-dossier", municipalityId, taxpayerId, "divergences"],
     queryFn: () => fiscalService.listDivergences(municipalityId, taxpayerId),
     enabled: open && Boolean(municipalityId && taxpayerId),
   });
   const cases = useQuery({
-    queryKey: ["homologation-dossier", municipalityId, taxpayerId, "cases"],
+    queryKey: ["notification-dossier", municipalityId, taxpayerId, "cases"],
     queryFn: () => fiscalService.listFiscalCaseRows(municipalityId, taxpayerId),
     enabled: open && Boolean(municipalityId && taxpayerId),
   });
   const regimes = useQuery({
-    queryKey: ["homologation-dossier", municipalityId, taxpayerId, "regime"],
+    queryKey: ["notification-dossier", municipalityId, taxpayerId, "regime"],
     queryFn: () => homologationService.listTaxpayerRegimes(municipalityId, taxpayerId),
     enabled: open && Boolean(municipalityId && taxpayerId),
     retry: false,
   });
   const timeline = useQuery({
-    queryKey: ["homologation-dossier", municipalityId, taxpayerId, "timeline"],
+    queryKey: ["notification-dossier", municipalityId, taxpayerId, "timeline"],
     queryFn: () => homologationService.listTaxpayerTimeline(municipalityId, taxpayerId),
     enabled: open && Boolean(municipalityId && taxpayerId),
     retry: false,
   });
   const communications = useQuery({
-    queryKey: ["homologation-dossier", municipalityId, taxpayerId, "communications"],
+    queryKey: ["notification-dossier", municipalityId, taxpayerId, "communications"],
     queryFn: () => homologationService.listTaxpayerCommunications(municipalityId, taxpayerId),
     enabled: open && Boolean(municipalityId && taxpayerId),
     retry: false,
   });
   const recipients = useQuery({
-    queryKey: ["homologation-dossier", municipalityId, "internal-recipients"],
+    queryKey: ["notification-dossier", municipalityId, "internal-recipients"],
     queryFn: () => homologationService.listInternalTestRecipients(municipalityId),
     enabled: open && Boolean(municipalityId),
     retry: false,
@@ -128,11 +145,15 @@ export function NotificationDossierDialog({
   const selectedRecipient = recipients.data?.find(
     (candidate) => candidate.userId === recipientUserId,
   );
+  const hasFiscalContext = (debts.data?.length ?? 0) > 0 || (divergences.data?.length ?? 0) > 0;
+  const qualityGatePassed = Boolean(
+    taxpayer?.taxId && regime?.verified && hasFiscalContext && selectedRecipient,
+  );
 
-  const queue = useMutation({
-    mutationFn: () => {
-      if (!item || !selectedRecipient) throw new Error("homologation_recipient_missing");
-      return homologationService.queueTestNotification({
+  const send = useMutation({
+    mutationFn: async (): Promise<SendResult> => {
+      if (!item || !selectedRecipient) throw new Error("internal_recipient_missing");
+      const queued = await homologationService.queueTestNotification({
         municipalityId,
         candidateId: item.candidateId,
         taxpayerId: item.taxpayerId,
@@ -141,25 +162,50 @@ export function NotificationDossierDialog({
         body,
         clientRequestId: crypto.randomUUID(),
       });
+
+      try {
+        const dispatched = await dispatchInternalEmail(queued.outboxId);
+        return {
+          status: dispatched.status,
+          recipientMasked: queued.recipientMasked,
+          providerMessageId: dispatched.providerMessageId,
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "";
+        if (/provider_not_configured|configuration_missing/.test(message)) {
+          return {
+            status: "provider_pending",
+            recipientMasked: queued.recipientMasked,
+            providerMessageId: null,
+          };
+        }
+        throw error;
+      }
     },
     onSuccess: (result) => {
-      setQueuedStatus(result.status);
-      toast.success("Teste registrado na fila interna", {
-        description: `Destinatário ${result.recipientMasked}. Nenhum contato externo foi utilizado.`,
-      });
+      setSendResult(result);
+      if (["sent", "delivered"].includes(result.status)) {
+        toast.success("E-mail interno enviado", {
+          description: `Destinatário ${result.recipientMasked}. O contato original não foi utilizado.`,
+        });
+      } else {
+        toast.success("E-mail interno registrado", {
+          description: "O envio será concluído assim que o provedor estiver configurado.",
+        });
+      }
     },
     onError: () =>
-      toast.error("O teste permaneceu bloqueado", {
+      toast.error("O envio permaneceu bloqueado", {
         description:
-          "Confira a lista interna, as validações do contribuinte e a configuração de homologação.",
+          "Confira a qualidade dos dados, o destinatário interno e a configuração do provedor.",
       }),
   });
 
   function setOpen(nextOpen: boolean) {
     if (!nextOpen) {
       setRecipientUserId("");
-      setQueuedStatus(null);
-      queue.reset();
+      setSendResult(null);
+      send.reset();
     }
     onOpenChange(nextOpen);
   }
@@ -168,10 +214,10 @@ export function NotificationDossierDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-5xl">
         <DialogHeader>
-          <DialogTitle>Dossiê de homologação da notificação</DialogTitle>
+          <DialogTitle>Dossiê da notificação</DialogTitle>
           <DialogDescription>
-            Conferência ponta a ponta com histórico, conversa e destinatário interno. Contatos
-            externos permanecem bloqueados.
+            Confira o contexto fiscal, o histórico e a conversa antes de enviar para um usuário
+            interno. O contato original permanece bloqueado.
           </DialogDescription>
         </DialogHeader>
 
@@ -181,7 +227,7 @@ export function NotificationDossierDialog({
               <TabsTrigger value="contexto">Contexto</TabsTrigger>
               <TabsTrigger value="historico">Histórico</TabsTrigger>
               <TabsTrigger value="conversa">Conversa</TabsTrigger>
-              <TabsTrigger value="email">E-mail de teste</TabsTrigger>
+              <TabsTrigger value="email">Enviar e-mail</TabsTrigger>
             </TabsList>
 
             <TabsContent value="contexto" className="space-y-4">
@@ -215,8 +261,8 @@ export function NotificationDossierDialog({
                   </div>
 
                   <SectionCard
-                    title="Gate de qualidade"
-                    description="O teste só pode avançar com contribuinte reconhecido e destinatário interno."
+                    title="Validação de qualidade"
+                    description="O envio só avança com dados fiscais mínimos e destinatário interno."
                   >
                     <ul className="space-y-2 text-sm">
                       <QualityRow
@@ -241,7 +287,7 @@ export function NotificationDossierDialog({
                       />
                       <QualityRow
                         ok={(recipients.data?.length ?? 0) > 0}
-                        label="Lista interna de homologação disponível"
+                        label="Lista de usuários internos disponível"
                       />
                     </ul>
                   </SectionCard>
@@ -252,12 +298,12 @@ export function NotificationDossierDialog({
             <TabsContent value="historico">
               <SectionCard
                 title="Histórico do contribuinte"
-                description="Eventos registrados no mesmo dossiê fiscal, do mais recente para o mais antigo."
+                description="Eventos registrados no dossiê fiscal, do mais recente para o mais antigo."
               >
                 {timeline.isLoading ? (
                   <SectionSkeleton rows={5} />
                 ) : timeline.isError ? (
-                  <ErrorState message="O histórico ainda não está disponível neste ambiente." />
+                  <ErrorState message="O histórico ainda não está disponível." />
                 ) : !timeline.data?.length ? (
                   <EmptyState message="Nenhum evento foi localizado para este contribuinte." />
                 ) : (
@@ -289,12 +335,12 @@ export function NotificationDossierDialog({
             <TabsContent value="conversa">
               <SectionCard
                 title="Notificação e conversa"
-                description="A notificação inicial e as mensagens posteriores permanecem no mesmo processo."
+                description="O e-mail inicial e as mensagens posteriores permanecem no mesmo processo."
               >
                 {communications.isLoading ? (
                   <SectionSkeleton rows={5} />
                 ) : communications.isError ? (
-                  <ErrorState message="As comunicações ainda não estão disponíveis neste ambiente." />
+                  <ErrorState message="As comunicações ainda não estão disponíveis." />
                 ) : !communications.data?.length ? (
                   <EmptyState message="Nenhuma comunicação foi registrada para este contribuinte." />
                 ) : (
@@ -336,7 +382,7 @@ export function NotificationDossierDialog({
             <TabsContent value="email" className="space-y-4">
               <SectionCard
                 title="Mensagem informativa"
-                description="Sem link, anexo ou valor. O contribuinte de teste é orientado a acessar o CIGIS."
+                description="Sem link, anexo ou valor. O destinatário é orientado a acessar o CIGIS."
               >
                 <div className="rounded-md border border-border bg-muted/40 p-4 text-sm">
                   <p className="font-semibold">{subject}</p>
@@ -351,7 +397,7 @@ export function NotificationDossierDialog({
                 ) : (
                   <p className="mt-3 flex items-center gap-2 text-sm text-success">
                     <ShieldCheck className="size-4" aria-hidden />
-                    Conteúdo aprovado pela política determinística de homologação.
+                    Conteúdo aprovado pela política determinística de envio interno.
                   </p>
                 )}
               </SectionCard>
@@ -363,9 +409,9 @@ export function NotificationDossierDialog({
                 {recipients.isLoading ? (
                   <SectionSkeleton rows={2} />
                 ) : recipients.isError ? (
-                  <ErrorState message="A lista interna ainda não foi aplicada no backend." />
+                  <ErrorState message="A lista interna ainda não está disponível no backend." />
                 ) : !recipients.data?.length ? (
-                  <EmptyState message="Nenhum usuário interno está disponível na allowlist." />
+                  <EmptyState message="Nenhum usuário interno está disponível para receber o teste." />
                 ) : (
                   <div className="space-y-4">
                     <Select value={recipientUserId} onValueChange={setRecipientUserId}>
@@ -395,28 +441,28 @@ export function NotificationDossierDialog({
                       type="button"
                       className="w-full"
                       disabled={
-                        !selectedRecipient ||
+                        !qualityGatePassed ||
                         blockers.length > 0 ||
-                        queue.isPending ||
+                        send.isPending ||
                         summaries.isError ||
                         !taxpayer
                       }
-                      onClick={() => queue.mutate()}
+                      onClick={() => send.mutate()}
                     >
                       <Send className="size-4" aria-hidden />
-                      {queue.isPending ? "Registrando teste…" : "Colocar na fila interna de teste"}
+                      {send.isPending ? "Enviando…" : "Enviar e-mail interno"}
                     </Button>
 
-                    {queuedStatus ? (
+                    {sendResult ? (
                       <p className="flex items-center gap-2 rounded-md border border-success/30 bg-success-soft p-3 text-sm text-success">
                         <MailCheck className="size-4" aria-hidden />
-                        Teste registrado com situação: {queuedStatus}.
+                        Situação do envio: {statusLabel(sendResult.status)}.
                       </p>
                     ) : (
                       <p className="flex items-start gap-2 text-xs text-muted-foreground">
                         <Clock3 className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-                        A fila preserva auditoria e impede qualquer destinatário externo. O despacho
-                        efetivo depende da configuração do provedor de e-mail.
+                        O contato original nunca é utilizado. O sistema registra o conteúdo, o
+                        destinatário interno e o resultado do provedor.
                       </p>
                     )}
                   </div>
