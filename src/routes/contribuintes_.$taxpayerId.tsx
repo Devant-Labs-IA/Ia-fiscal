@@ -1,6 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { ArrowLeft, Building2, CircleAlert, FileSearch, ReceiptText } from "lucide-react";
+import {
+  ArrowLeft,
+  Building2,
+  CircleAlert,
+  FileSearch,
+  History,
+  MessageSquareText,
+  ReceiptText,
+} from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { useAuth } from "@/auth/AuthContext";
@@ -32,6 +40,11 @@ import {
 } from "@/lib/fiscal-labels";
 import { formatCnpj, formatCurrency, formatDate } from "@/lib/format";
 import { fiscalKeys, fiscalService } from "@/services/fiscal-service";
+import { homologationService } from "@/services/homologation-service";
+import type {
+  TaxpayerCommunicationItem,
+  TaxpayerTimelineItem,
+} from "@/types/homologation";
 import type { DebtPeriod, DivergenceReadModel, FiscalCaseReadModel } from "@/types/read-models";
 
 export const Route = createFileRoute("/contribuintes_/$taxpayerId")({
@@ -40,14 +53,21 @@ export const Route = createFileRoute("/contribuintes_/$taxpayerId")({
       { title: "Visão fiscal 360 — IA Fiscal" },
       {
         name: "description",
-        content: "Visão fiscal consolidada do contribuinte autorizado para a sessão.",
+        content:
+          "Visão consolidada do contribuinte, com histórico, comunicações, débitos e procedimentos autorizados.",
       },
     ],
   }),
   component: Taxpayer360Page,
 });
 
-type DetailTab = "resumo" | "debitos" | "divergencias" | "casos";
+type DetailTab =
+  | "resumo"
+  | "historico"
+  | "comunicacoes"
+  | "debitos"
+  | "divergencias"
+  | "casos";
 
 function safeDate(value: string | null): string {
   if (!value) return "—";
@@ -56,6 +76,15 @@ function safeDate(value: string | null): string {
   } catch {
     return "—";
   }
+}
+
+function safeDateTime(value: string): string {
+  if (!value || Number.isNaN(Date.parse(value))) return "—";
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+    timeZone: "America/Sao_Paulo",
+  }).format(new Date(value));
 }
 
 function formatCompetence(value: string): string {
@@ -78,6 +107,24 @@ function Taxpayer360Page() {
     queryFn: () => fiscalService.listTaxpayerSummaries(municipalityId),
     enabled: Boolean(municipalityId),
   });
+  const regimes = useQuery({
+    queryKey: ["taxpayer-360", municipalityId, taxpayerId, "regime"],
+    queryFn: () => homologationService.listTaxpayerRegimes(municipalityId, taxpayerId),
+    enabled: Boolean(municipalityId),
+    retry: false,
+  });
+  const timeline = useQuery({
+    queryKey: ["taxpayer-360", municipalityId, taxpayerId, "timeline"],
+    queryFn: () => homologationService.listTaxpayerTimeline(municipalityId, taxpayerId),
+    enabled: Boolean(municipalityId) && activeTab === "historico",
+    retry: false,
+  });
+  const communications = useQuery({
+    queryKey: ["taxpayer-360", municipalityId, taxpayerId, "communications"],
+    queryFn: () => homologationService.listTaxpayerCommunications(municipalityId, taxpayerId),
+    enabled: Boolean(municipalityId) && activeTab === "comunicacoes",
+    retry: false,
+  });
   const debts = useQuery({
     queryKey: fiscalKeys.debts(municipalityId, taxpayerId),
     queryFn: () => fiscalService.listDebtPeriods(municipalityId, taxpayerId),
@@ -94,6 +141,7 @@ function Taxpayer360Page() {
     enabled: Boolean(municipalityId) && activeTab === "casos",
   });
   const taxpayer = summaries.data?.find((item) => item.taxpayerId === taxpayerId);
+  const taxpayerRegime = regimes.data?.[0];
 
   if (summaries.isLoading) {
     return (
@@ -158,7 +206,12 @@ function Taxpayer360Page() {
               <span className="tabular-nums">{formatTaxId(taxpayer.taxId)}</span>
             </p>
           </div>
-          <StatusBadge status={taxpayer.taxpayerStatus} />
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline">
+              {taxpayerRegime?.regimeLabel ?? "Regime não informado"}
+            </Badge>
+            <StatusBadge status={taxpayer.taxpayerStatus} />
+          </div>
         </div>
       </header>
 
@@ -181,8 +234,10 @@ function Taxpayer360Page() {
         onValueChange={(value) => setActiveTab(value as DetailTab)}
         className="space-y-4"
       >
-        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:max-w-2xl sm:grid-cols-4">
+        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 lg:max-w-5xl lg:grid-cols-6">
           <TabsTrigger value="resumo">Resumo</TabsTrigger>
+          <TabsTrigger value="historico">Histórico</TabsTrigger>
+          <TabsTrigger value="comunicacoes">Comunicações</TabsTrigger>
           <TabsTrigger value="debitos">Débitos</TabsTrigger>
           <TabsTrigger value="divergencias">Divergências</TabsTrigger>
           <TabsTrigger value="casos">Procedimentos</TabsTrigger>
@@ -216,6 +271,7 @@ function Taxpayer360Page() {
             <SectionCard title="Conta corrente" description="Consolidação dos períodos fiscais.">
               <DefinitionList
                 items={[
+                  ["Regime fiscal", taxpayerRegime?.regimeLabel ?? "Não informado"],
                   ["Períodos registrados", String(taxpayer.debtPeriodCount)],
                   ["Períodos vencidos", String(taxpayer.overduePeriodCount)],
                   ["Períodos incompletos", String(taxpayer.incompleteDebtPeriodCount)],
@@ -242,6 +298,20 @@ function Taxpayer360Page() {
           </div>
         </TabsContent>
 
+        <TabsContent value="historico">
+          <TaxpayerTimelineTab
+            data={timeline.data}
+            isLoading={timeline.isLoading}
+            isError={timeline.isError}
+          />
+        </TabsContent>
+        <TabsContent value="comunicacoes">
+          <TaxpayerCommunicationsTab
+            data={communications.data}
+            isLoading={communications.isLoading}
+            isError={communications.isError}
+          />
+        </TabsContent>
         <TabsContent value="debitos">
           <DebtTab data={debts.data} isLoading={debts.isLoading} isError={debts.isError} />
         </TabsContent>
@@ -290,6 +360,116 @@ interface QueryTabProps<T> {
   data: T[] | undefined;
   isLoading: boolean;
   isError: boolean;
+}
+
+function TaxpayerTimelineTab({
+  data,
+  isLoading,
+  isError,
+}: QueryTabProps<TaxpayerTimelineItem>) {
+  return (
+    <SectionCard
+      title="Histórico completo"
+      description="Linha do tempo consolidada de eventos, notificações, casos e atendimentos."
+    >
+      {isLoading ? (
+        <SectionSkeleton rows={6} />
+      ) : isError ? (
+        <ErrorState message="O histórico ainda não está disponível neste ambiente." />
+      ) : !data?.length ? (
+        <EmptyState message="Nenhum evento foi localizado para este contribuinte." />
+      ) : (
+        <ol className="space-y-3">
+          {data.map((item, index) => (
+            <li
+              key={`${item.eventAt}-${item.itemType}-${index}`}
+              className="rounded-md border border-border p-3"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="flex items-start gap-2">
+                  <History className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+                  <div>
+                    <p className="font-medium">{item.title}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {item.summary || "Evento sem descrição adicional."}
+                    </p>
+                  </div>
+                </div>
+                <time className="text-xs text-muted-foreground" dateTime={item.eventAt}>
+                  {safeDateTime(item.eventAt)}
+                </time>
+              </div>
+              <Badge variant="outline" className="mt-2">
+                {item.itemType}
+              </Badge>
+            </li>
+          ))}
+        </ol>
+      )}
+    </SectionCard>
+  );
+}
+
+function communicationTitle(item: TaxpayerCommunicationItem): string {
+  if (item.communicationType === "notification") return "Notificação inicial";
+  if (item.direction === "inbound") return "Mensagem recebida";
+  return "Resposta ou registro da equipe";
+}
+
+function TaxpayerCommunicationsTab({
+  data,
+  isLoading,
+  isError,
+}: QueryTabProps<TaxpayerCommunicationItem>) {
+  return (
+    <SectionCard
+      title="Comunicações e conversa"
+      description="A notificação inicial e as interações posteriores ficam vinculadas ao mesmo dossiê."
+    >
+      {isLoading ? (
+        <SectionSkeleton rows={6} />
+      ) : isError ? (
+        <ErrorState message="As comunicações ainda não estão disponíveis neste ambiente." />
+      ) : !data?.length ? (
+        <EmptyState message="Nenhuma comunicação foi registrada para este contribuinte." />
+      ) : (
+        <ol className="space-y-3">
+          {data.map((item) => (
+            <li
+              key={item.communicationId}
+              className="rounded-md border border-border bg-background p-3"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="flex items-start gap-2">
+                  <MessageSquareText
+                    className="mt-0.5 size-4 shrink-0 text-primary"
+                    aria-hidden
+                  />
+                  <div>
+                    <p className="font-medium">{communicationTitle(item)}</p>
+                    <p className="mt-1 whitespace-pre-wrap text-sm">
+                      {item.summary || "Conteúdo não disponível."}
+                    </p>
+                  </div>
+                </div>
+                <time className="text-xs text-muted-foreground" dateTime={item.occurredAt}>
+                  {safeDateTime(item.occurredAt)}
+                </time>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Badge variant="secondary">
+                  {item.direction === "inbound" ? "Recebida" : "Enviada"}
+                </Badge>
+                <Badge variant="outline">
+                  {item.channelOrSource} · {item.status}
+                </Badge>
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+    </SectionCard>
+  );
 }
 
 function DebtTab({ data, isLoading, isError }: QueryTabProps<DebtPeriod>) {

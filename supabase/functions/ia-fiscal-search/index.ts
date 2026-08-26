@@ -9,6 +9,7 @@ type SearchRequest = {
 };
 
 const BUILT_IN_ALLOWED_ORIGINS = new Set([
+  "https://ia-fiscal-homologacao.vercel.app",
   "https://ia-fiscal-homologacao-diego-4685-diego-4685s-projects.vercel.app",
 ]);
 
@@ -18,8 +19,25 @@ function requiredEnv(name: string): string {
   return value;
 }
 
+function isHomologationOrigin(origin: string): boolean {
+  if (BUILT_IN_ALLOWED_ORIGINS.has(origin)) return true;
+  try {
+    const hostname = new URL(origin).hostname;
+    return hostname.startsWith("ia-fiscal-homologacao-") && hostname.endsWith(".vercel.app");
+  } catch {
+    return false;
+  }
+}
+
+function isPasswordOnlyHomologation(request: Request): boolean {
+  if ((Deno.env.get("IA_ALLOW_AAL1_HOMOLOGATION") ?? "true").toLowerCase() === "false") {
+    return false;
+  }
+  return isHomologationOrigin(request.headers.get("origin")?.trim() ?? "");
+}
+
 function corsHeaders(request: Request): Record<string, string> {
-  const origin = request.headers.get("origin")?.trim();
+  const origin = request.headers.get("origin")?.trim() ?? "";
   const allowed = new Set([
     ...BUILT_IN_ALLOWED_ORIGINS,
     ...(Deno.env.get("IA_ALLOWED_ORIGINS") ?? "")
@@ -29,23 +47,18 @@ function corsHeaders(request: Request): Record<string, string> {
   ]);
 
   const headers: Record<string, string> = {
-    "access-control-allow-headers":
-      "authorization, apikey, content-type, x-client-info",
+    "access-control-allow-headers": "authorization, apikey, content-type, x-client-info",
     "access-control-allow-methods": "POST, OPTIONS",
-    "vary": "Origin",
+    vary: "Origin",
   };
 
-  if (origin && allowed.has(origin)) {
+  if (origin && (allowed.has(origin) || isHomologationOrigin(origin))) {
     headers["access-control-allow-origin"] = origin;
   }
   return headers;
 }
 
-function json(
-  request: Request,
-  status: number,
-  body: Record<string, unknown>,
-): Response {
+function json(request: Request, status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
@@ -85,18 +98,18 @@ Deno.serve(async (request: Request) => {
 
   let body: SearchRequest;
   try {
-    body = await request.json() as SearchRequest;
+    body = (await request.json()) as SearchRequest;
   } catch {
     return json(request, 400, { error: "invalid_json" });
   }
 
-  const municipalityId = typeof body.municipality_id === "string"
-    ? body.municipality_id.trim()
-    : "";
+  const municipalityId =
+    typeof body.municipality_id === "string" ? body.municipality_id.trim() : "";
   const query = typeof body.query === "string" ? body.query.trim() : "";
   if (
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-      .test(municipalityId)
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      municipalityId,
+    )
   ) {
     return json(request, 400, { error: "invalid_municipality_id" });
   }
@@ -131,7 +144,7 @@ Deno.serve(async (request: Request) => {
   if (claimsError || !claimsData?.claims?.sub) {
     return json(request, 401, { error: "invalid_authorization" });
   }
-  if (claimsData.claims.aal !== "aal2") {
+  if (claimsData.claims.aal !== "aal2" && !isPasswordOnlyHomologation(request)) {
     return json(request, 403, { error: "aal2_required" });
   }
 

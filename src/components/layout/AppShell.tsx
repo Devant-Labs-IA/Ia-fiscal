@@ -2,6 +2,7 @@ import { Link, Navigate, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
 import { useAuth } from "@/auth/AuthContext";
+import { FiscalCopilot } from "@/components/copilot/FiscalCopilot";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { Topbar } from "@/components/layout/Topbar";
 import { OnboardingGate } from "@/components/onboarding/OnboardingGate";
@@ -69,6 +70,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <AppBreadcrumb />
           <div className="px-3 pb-12 pt-3 sm:px-6">{children}</div>
         </SidebarInset>
+        <FiscalCopilot />
       </div>
     </SidebarProvider>
   );

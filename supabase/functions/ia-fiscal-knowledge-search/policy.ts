@@ -26,7 +26,8 @@ type ParsedSearchRequest = {
   limit: number;
 };
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export async function parseKnowledgeSearchRequest(request: Request): Promise<ParsedSearchRequest> {
   const declared = request.headers.get("content-length");
@@ -50,9 +51,8 @@ export async function parseKnowledgeSearchRequest(request: Request): Promise<Par
   if (Object.keys(body).some((key) => !["municipality_id", "query", "limit"].includes(key))) {
     throw new KnowledgeSearchPolicyError("unsupported_request_field", 400);
   }
-  const municipalityId = typeof body.municipality_id === "string"
-    ? body.municipality_id.trim()
-    : "";
+  const municipalityId =
+    typeof body.municipality_id === "string" ? body.municipality_id.trim() : "";
   const query = typeof body.query === "string" ? body.query.trim() : "";
   const limit = body.limit === undefined ? 8 : body.limit;
   if (!UUID_PATTERN.test(municipalityId)) {
@@ -67,21 +67,37 @@ export async function parseKnowledgeSearchRequest(request: Request): Promise<Par
   return { municipalityId, query, limit: Number(limit) };
 }
 
+export function isKnowledgeHomologationOrigin(origin: string): boolean {
+  if (BUILT_IN_SEARCH_ALLOWED_ORIGINS.includes(origin)) return true;
+  try {
+    const hostname = new URL(origin).hostname;
+    return hostname.startsWith("ia-fiscal-homologacao-") && hostname.endsWith(".vercel.app");
+  } catch {
+    return false;
+  }
+}
+
 export function knowledgeSearchCorsHeaders(
   origin: string | null,
   configuredOrigins = "",
 ): Record<string, string> {
   const allowed = new Set([
     ...BUILT_IN_SEARCH_ALLOWED_ORIGINS,
-    ...configuredOrigins.split(",").map((value) => value.trim()).filter(Boolean),
+    ...configuredOrigins
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean),
   ]);
   const normalizedOrigin = origin?.trim() ?? "";
   const headers: Record<string, string> = {
     "access-control-allow-headers": "authorization, apikey, content-type, x-client-info",
     "access-control-allow-methods": "POST, OPTIONS",
-    "vary": "Origin",
+    vary: "Origin",
   };
-  if (normalizedOrigin && allowed.has(normalizedOrigin)) {
+  if (
+    normalizedOrigin &&
+    (allowed.has(normalizedOrigin) || isKnowledgeHomologationOrigin(normalizedOrigin))
+  ) {
     headers["access-control-allow-origin"] = normalizedOrigin;
   }
   return headers;

@@ -12,15 +12,9 @@ import {
 } from "@/components/common/SectionCard";
 import { HomologationBanner } from "@/components/layout/HomologationBanner";
 import { ExternalDeliveryReadinessPanel } from "@/components/notifications/ExternalDeliveryReadinessPanel";
+import { NotificationDossierDialog } from "@/components/notifications/NotificationDossierDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   blockReasonSummary,
   fiscalStatusLabel,
@@ -38,13 +32,13 @@ export const Route = createFileRoute("/notificacoes")({
       {
         name: "description",
         content:
-          "Consulta de destinatários, validações e bloqueios de comunicação na operação assistida.",
+          "Dossiê das notificações, com contexto fiscal, histórico, conversa e envio restrito à equipe interna.",
       },
       { property: "og:title", content: "Notificações — IA Fiscal" },
       {
         property: "og:description",
         content:
-          "Consulta de destinatários, validações e bloqueios de comunicação na operação assistida.",
+          "Dossiê das notificações, com contexto fiscal, histórico, conversa e envio restrito à equipe interna.",
       },
     ],
   }),
@@ -114,7 +108,7 @@ function RecipientCard({
       </div>
 
       <Button type="button" variant="outline" size="sm" className="mt-4" onClick={onSimulate}>
-        Visualizar simulação
+        Abrir dossiê
       </Button>
     </li>
   );
@@ -143,12 +137,12 @@ function NotificationsPage() {
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Notificações</h1>
           <Badge variant="outline" className="border-critical/40 bg-critical-soft text-critical">
             <Ban className="mr-1 size-3.5" aria-hidden />
-            Envio externo desativado
+            Contatos externos bloqueados
           </Badge>
         </div>
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-          Consulta dos candidatos a destinatário e das validações internas. Esta área não envia,
-          agenda ou autoriza comunicações.
+          Valide o contexto, consulte o histórico e envie exclusivamente para usuários internos.
+          O endereço original do contribuinte nunca é utilizado durante os testes.
         </p>
       </header>
 
@@ -174,13 +168,13 @@ function NotificationsPage() {
           <p className="mt-3 text-2xl font-semibold tabular-nums">
             {recipients.isLoading ? "—" : readyCount}
           </p>
-          <p className="text-xs text-muted-foreground">aptos somente na etapa interna</p>
+          <p className="text-xs text-muted-foreground">aptos para teste interno</p>
         </div>
       </div>
 
       <SectionCard
         title="Fila de destinatários"
-        description="Endereços permanecem mascarados; detalhes fiscais não são expostos em e-mail."
+        description="O contato original permanece mascarado. O dossiê permite escolher apenas um usuário interno ativo."
       >
         {recipients.isError ? (
           <ErrorState
@@ -206,35 +200,13 @@ function NotificationsPage() {
         )}
       </SectionCard>
 
-      <Dialog open={Boolean(simulation)} onOpenChange={(open) => !open && setSimulation(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Simulação da notificação</DialogTitle>
-            <DialogDescription>
-              Prévia local para conferência interna. Nenhuma mensagem será enviada ou agendada.
-            </DialogDescription>
-          </DialogHeader>
-          {simulation && (
-            <div className="space-y-4">
-              <div className="rounded-md border border-border bg-muted/50 p-4 text-sm">
-                <p>Olá,</p>
-                <p className="mt-3">
-                  Existe uma informação disponível para conferência no portal autenticado:{" "}
-                  {notificationPurposeLabel(simulation.proposedFor).toLocaleLowerCase("pt-BR")}.
-                </p>
-                <p className="mt-3">
-                  Acesse o ambiente oficial para consultar os detalhes. Esta prévia não inicia
-                  prazo, cobrança ou procedimento fiscal.
-                </p>
-              </div>
-              <div className="rounded-md border border-warning/40 bg-warning-soft p-3 text-sm text-warning-foreground">
-                Simulação somente leitura. O envio externo permanece bloqueado na operação
-                assistida.
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <NotificationDossierDialog
+        item={simulation}
+        open={Boolean(simulation)}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setSimulation(null);
+        }}
+      />
     </div>
   );
 }

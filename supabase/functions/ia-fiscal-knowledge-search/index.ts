@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.111.0";
 
 import {
+  isKnowledgeHomologationOrigin,
   KnowledgeSearchPolicyError,
   knowledgeSearchCorsHeaders,
   parseKnowledgeSearchRequest,
@@ -15,6 +16,13 @@ function requiredEnv(name: string): string {
   const value = Deno.env.get(name)?.trim();
   if (!value) throw new KnowledgeSearchPolicyError("search_configuration_missing", 503);
   return value;
+}
+
+function isPasswordOnlyHomologation(request: Request): boolean {
+  if ((Deno.env.get("IA_ALLOW_AAL1_HOMOLOGATION") ?? "true").toLowerCase() === "false") {
+    return false;
+  }
+  return isKnowledgeHomologationOrigin(request.headers.get("origin")?.trim() ?? "");
 }
 
 function corsHeaders(request: Request): Record<string, string> {
@@ -72,7 +80,7 @@ Deno.serve(async (request: Request) => {
     if (claimsError || !claimsData?.claims?.sub) {
       throw new KnowledgeSearchPolicyError("invalid_authorization", 401);
     }
-    if (claimsData.claims.aal !== "aal2") {
+    if (claimsData.claims.aal !== "aal2" && !isPasswordOnlyHomologation(request)) {
       throw new KnowledgeSearchPolicyError("aal2_required", 403);
     }
 
@@ -89,9 +97,10 @@ Deno.serve(async (request: Request) => {
         denied ? 403 : 422,
       );
     }
-    const result = data && typeof data === "object" && !Array.isArray(data)
-      ? data as Record<string, unknown>
-      : {};
+    const result =
+      data && typeof data === "object" && !Array.isArray(data)
+        ? (data as Record<string, unknown>)
+        : {};
     if (
       result.retrieval_mode !== SEARCH_RETRIEVAL_MODE ||
       result.lexical_language !== SEARCH_LEXICAL_LANGUAGE ||
@@ -103,33 +112,37 @@ Deno.serve(async (request: Request) => {
       ? result.blockers.filter((value): value is string => typeof value === "string").slice(0, 10)
       : [];
     const citationCount = Array.isArray(result.citations) ? result.citations.length : 0;
-    console.info(JSON.stringify({
-      event: "knowledge_search_succeeded",
-      correlation_id: correlationId,
-      municipality_id: input.municipalityId,
-      answered: result.answered === true,
-      blockers,
-      citation_count: citationCount,
-      retrieval_mode: typeof result.retrieval_mode === "string"
-        ? result.retrieval_mode
-        : "unknown",
-      semantic_status: result.semantic_status,
-      duration_ms: Math.max(0, Math.round(performance.now() - startedAt)),
-    }));
+    console.info(
+      JSON.stringify({
+        event: "knowledge_search_succeeded",
+        correlation_id: correlationId,
+        municipality_id: input.municipalityId,
+        answered: result.answered === true,
+        blockers,
+        citation_count: citationCount,
+        retrieval_mode:
+          typeof result.retrieval_mode === "string" ? result.retrieval_mode : "unknown",
+        semantic_status: result.semantic_status,
+        duration_ms: Math.max(0, Math.round(performance.now() - startedAt)),
+      }),
+    );
     return json(request, 200, {
       data,
       correlation_id: correlationId,
       contract_version: SEARCH_CONTRACT_VERSION,
     });
   } catch (error) {
-    const policyError = error instanceof KnowledgeSearchPolicyError
-      ? error
-      : new KnowledgeSearchPolicyError("knowledge_search_failed", 500);
-    console.info(JSON.stringify({
-      event: "knowledge_search_failed",
-      correlation_id: correlationId,
-      error_code: policyError.code,
-    }));
+    const policyError =
+      error instanceof KnowledgeSearchPolicyError
+        ? error
+        : new KnowledgeSearchPolicyError("knowledge_search_failed", 500);
+    console.info(
+      JSON.stringify({
+        event: "knowledge_search_failed",
+        correlation_id: correlationId,
+        error_code: policyError.code,
+      }),
+    );
     return json(request, policyError.status, {
       error: policyError.code,
       correlation_id: correlationId,

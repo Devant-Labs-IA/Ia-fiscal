@@ -27,11 +27,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { fiscalKeys, fiscalService } from "@/services/fiscal-service";
+import { formatDateTime } from "@/lib/format";
 import {
   preparePortalQuestionSubmission,
   type PortalQuestionSubmission,
 } from "@/routes/-portal-submission";
+import { fiscalKeys, fiscalService } from "@/services/fiscal-service";
 
 export const Route = createFileRoute("/portal")({
   head: () => ({
@@ -39,12 +40,71 @@ export const Route = createFileRoute("/portal")({
       { title: "Portal protegido — IA Fiscal" },
       {
         name: "description",
-        content: "Consulta protegida dos próprios casos e canal de perguntas à fiscalização.",
+        content:
+          "Consulta protegida dos próprios casos, histórico de conversa e canal de perguntas à fiscalização.",
       },
     ],
   }),
   component: PortalPage,
 });
+
+function portalSenderLabel(senderType: string): string {
+  if (senderType === "taxpayer") return "Contribuinte";
+  if (senderType === "accountant") return "Contabilidade";
+  if (senderType === "fiscal") return "Equipe fiscal";
+  return "Sistema";
+}
+
+function safeDateTime(value: string): string {
+  return Number.isNaN(Date.parse(value)) ? "Data não informada" : formatDateTime(value);
+}
+
+function PortalConversation({
+  municipalityId,
+  caseId,
+}: {
+  municipalityId: string;
+  caseId: string;
+}) {
+  const [conversationOpen, setConversationOpen] = useState(false);
+  const messages = useQuery({
+    queryKey: fiscalKeys.caseMessages(municipalityId, caseId),
+    queryFn: () => fiscalService.listCaseMessages(municipalityId, caseId),
+    enabled: conversationOpen && Boolean(municipalityId && caseId),
+  });
+
+  return (
+    <details
+      className="mt-4 rounded-md border border-primary/20 bg-primary-soft/30"
+      onToggle={(event) => setConversationOpen(event.currentTarget.open)}
+    >
+      <summary className="cursor-pointer px-3 py-2.5 text-sm font-medium text-primary">
+        Ver notificação e histórico da conversa
+      </summary>
+      <div className="border-t border-primary/20 px-3 py-3">
+        {messages.isLoading ? (
+          <SectionSkeleton rows={3} />
+        ) : messages.isError ? (
+          <ErrorState message="Não foi possível carregar a conversa deste processo." />
+        ) : !messages.data?.length ? (
+          <EmptyState message="Nenhuma mensagem está disponível neste processo." />
+        ) : (
+          <ol className="space-y-3">
+            {messages.data.map((message) => (
+              <li key={message.id} className="rounded-md border border-border bg-background p-3">
+                <div className="flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
+                  <span>{portalSenderLabel(message.senderType)}</span>
+                  <time dateTime={message.createdAt}>{safeDateTime(message.createdAt)}</time>
+                </div>
+                <p className="mt-1 whitespace-pre-wrap text-sm">{message.body}</p>
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
+    </details>
+  );
+}
 
 function PortalPage() {
   const auth = useAuth();
@@ -76,7 +136,12 @@ function PortalPage() {
       }
       setBody("");
       setConfirmationOpen(false);
-      await queryClient.invalidateQueries({ queryKey: fiscalKeys.portal(municipalityId) });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: fiscalKeys.portal(municipalityId) }),
+        queryClient.invalidateQueries({
+          queryKey: fiscalKeys.caseMessages(municipalityId, submission.caseId),
+        }),
+      ]);
       toast.success("Pergunta registrada", {
         description:
           "A equipe fiscal fará a análise. Não há resposta automática nem efeito jurídico.",
@@ -120,8 +185,9 @@ function PortalPage() {
           Meus atendimentos fiscais
         </h1>
         <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-          Consulte somente os casos vinculados ao seu usuário. Este canal é informativo e não
-          substitui DTE, processo formal ou atendimento oficial.
+          Consulte somente os casos vinculados ao seu usuário, desde a notificação inicial até as
+          mensagens posteriores. Este canal é informativo e não substitui DTE, processo formal ou
+          atendimento oficial.
         </p>
       </header>
 
@@ -164,6 +230,7 @@ function PortalPage() {
                     ) : null}
                   </div>
                 </div>
+                <PortalConversation municipalityId={municipalityId} caseId={item.caseId} />
               </SectionCard>
             ))}
           </div>
