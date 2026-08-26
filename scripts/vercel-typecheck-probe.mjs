@@ -15,16 +15,34 @@ const minimumLine = Number.parseInt(process.env.GAUNTLET_TYPE_LINE_MIN ?? "1", 1
 const maximumLine = Number.parseInt(process.env.GAUNTLET_TYPE_LINE_MAX ?? "999999", 10);
 const expression = new RegExp(process.env.GAUNTLET_TYPE_PROBE ?? "src/", "i");
 
+function parseDiagnostic(line) {
+  const parenthesized = /^(.*?)\((\d+),(\d+)\):\s*error TS\d+:/.exec(line);
+  if (parenthesized) {
+    return {
+      fileName: parenthesized[1],
+      lineNumber: Number.parseInt(parenthesized[2], 10),
+    };
+  }
+
+  const colonSeparated = /^(.*?):(\d+):(\d+)\s*-\s*error TS\d+:/.exec(line);
+  if (colonSeparated) {
+    return {
+      fileName: colonSeparated[1],
+      lineNumber: Number.parseInt(colonSeparated[2], 10),
+    };
+  }
+
+  return null;
+}
+
 const matchedLines = fileProbe
   ? lines.filter((line) => {
-      const match = /^(.*)\((\d+),(\d+)\): error TS\d+:/.exec(line);
-      if (!match) return false;
-      const [, fileName, rawLine] = match;
-      const lineNumber = Number.parseInt(rawLine, 10);
+      const diagnostic = parseDiagnostic(line);
+      if (!diagnostic) return false;
       return (
-        fileName === fileProbe &&
-        lineNumber >= minimumLine &&
-        lineNumber <= maximumLine
+        diagnostic.fileName === fileProbe &&
+        diagnostic.lineNumber >= minimumLine &&
+        diagnostic.lineNumber <= maximumLine
       );
     })
   : lines.filter((line) => expression.test(line));
@@ -44,4 +62,4 @@ if (matchedLines.length > 0) {
   process.exit(1);
 }
 
-console.log(`TypeScript probe found no matching diagnostics.`);
+console.log("TypeScript probe found no matching diagnostics.");
