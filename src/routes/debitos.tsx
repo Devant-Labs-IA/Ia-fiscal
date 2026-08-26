@@ -33,6 +33,7 @@ import {
 import { debtClassificationRuleDetails, fiscalStatusLabel } from "@/lib/fiscal-labels";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { fiscalKeys, fiscalService } from "@/services/fiscal-service";
+import { homologationService } from "@/services/homologation-service";
 
 export const Route = createFileRoute("/debitos")({
   head: () => ({
@@ -40,12 +41,14 @@ export const Route = createFileRoute("/debitos")({
       { title: "Débitos — IA Fiscal" },
       {
         name: "description",
-        content: "Consolidação de períodos de débito autorizados para a sessão atual.",
+        content:
+          "Consolidação de períodos de débito e regimes fiscais autorizados para a sessão atual.",
       },
       { property: "og:title", content: "Débitos — IA Fiscal" },
       {
         property: "og:description",
-        content: "Consolidação de períodos de débito autorizados para a sessão atual.",
+        content:
+          "Consolidação de períodos de débito e regimes fiscais autorizados para a sessão atual.",
       },
     ],
   }),
@@ -81,10 +84,20 @@ function DebtsPage() {
     queryFn: () => fiscalService.listTaxpayerSummaries(municipalityId),
     enabled: Boolean(municipalityId),
   });
+  const regimes = useQuery({
+    queryKey: ["municipality", municipalityId, "taxpayer-regimes"],
+    queryFn: () => homologationService.listTaxpayerRegimes(municipalityId),
+    enabled: Boolean(municipalityId),
+    retry: false,
+  });
 
   const taxpayerById = useMemo(
     () => new Map((taxpayers.data ?? []).map((item) => [item.taxpayerId, item])),
     [taxpayers.data],
+  );
+  const regimeByTaxpayerId = useMemo(
+    () => new Map((regimes.data ?? []).map((item) => [item.taxpayerId, item])),
+    [regimes.data],
   );
   const statuses = useMemo(
     () => Array.from(new Set((debts.data ?? []).map((item) => item.status))).sort(),
@@ -94,15 +107,17 @@ function DebtsPage() {
     const term = query.trim().toLocaleLowerCase("pt-BR");
     return (debts.data ?? []).filter((item) => {
       const taxpayer = taxpayerById.get(item.taxpayerId);
+      const regime = regimeByTaxpayerId.get(item.taxpayerId);
       const matchesStatus = status === "todos" || item.status === status;
       const matchesTerm =
         term.length === 0 ||
         taxpayer?.legalName.toLocaleLowerCase("pt-BR").includes(term) ||
         taxpayer?.municipalRegistration.toLocaleLowerCase("pt-BR").includes(term) ||
+        regime?.regimeLabel.toLocaleLowerCase("pt-BR").includes(term) ||
         formatCompetence(item.competence).includes(term);
       return matchesStatus && Boolean(matchesTerm);
     });
-  }, [debts.data, query, status, taxpayerById]);
+  }, [debts.data, query, regimeByTaxpayerId, status, taxpayerById]);
 
   const totals = (debts.data ?? []).reduce(
     (result, item) => ({
@@ -122,8 +137,8 @@ function DebtsPage() {
       <header>
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Débitos</h1>
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-          Extrato consolidado por contribuinte e competência. Esta tela é somente leitura e não gera
-          cobrança, guia ou comunicação.
+          Extrato consolidado por contribuinte, competência e regime fiscal. Esta tela é somente
+          leitura e não gera cobrança, guia ou comunicação.
         </p>
       </header>
 
@@ -146,7 +161,7 @@ function DebtsPage() {
 
       <SectionCard
         title="Períodos de débito"
-        description="Valores calculados pelo read model vigente na data de referência."
+        description="O regime orienta qual consulta deverá ser executada quando a API do CIGIS estiver conectada."
         action={
           <Badge variant="secondary" className="tabular-nums">
             {filtered.length} período{filtered.length === 1 ? "" : "s"}
@@ -162,7 +177,7 @@ function DebtsPage() {
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Contribuinte, inscrição ou competência"
+              placeholder="Contribuinte, inscrição, regime ou competência"
               aria-label="Pesquisar débito"
               className="pl-8"
             />
@@ -182,6 +197,13 @@ function DebtsPage() {
           </Select>
         </div>
 
+        {regimes.isError ? (
+          <p className="mb-4 rounded-md border border-warning/40 bg-warning-soft px-3 py-2 text-xs text-warning-foreground">
+            A classificação por regime ainda não foi aplicada no backend. Os débitos permanecem
+            disponíveis, mas aparecem como “Regime não informado”.
+          </p>
+        ) : null}
+
         {queryLoading ? (
           <SectionSkeleton rows={6} />
         ) : queryFailed ? (
@@ -200,6 +222,7 @@ function DebtsPage() {
                 <TableRow>
                   <TableHead>Contribuinte</TableHead>
                   <TableHead>Competência</TableHead>
+                  <TableHead>Regime</TableHead>
                   <TableHead>Situação</TableHead>
                   <TableHead>Primeiro vencimento</TableHead>
                   <TableHead className="text-right">Constituído</TableHead>
@@ -211,6 +234,7 @@ function DebtsPage() {
               <TableBody>
                 {filtered.map((item) => {
                   const taxpayer = taxpayerById.get(item.taxpayerId);
+                  const regime = regimeByTaxpayerId.get(item.taxpayerId);
                   const rule = debtClassificationRuleDetails(item.ruleVersion);
                   return (
                     <TableRow key={`${item.taxpayerId}-${item.competence}-${item.ruleVersion}`}>
@@ -229,6 +253,11 @@ function DebtsPage() {
                       </TableCell>
                       <TableCell className="font-medium tabular-nums">
                         {formatCompetence(item.competence)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {regime?.regimeLabel ?? "Regime não informado"}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <StatusBadge status={item.status} />
