@@ -1,0 +1,93 @@
+name: Gauntlet — homologação realista
+
+on:
+  push:
+    branches:
+      - feat/homologacao-realista-gauntlet
+    paths:
+      - scripts/gauntlet_homologacao.py
+      - .github/workflows/gauntlet-homologacao.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gauntlet-homologacao-realista
+  cancel-in-progress: true
+
+jobs:
+  execute-review-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout da branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Aplicar missão do executor
+        run: python scripts/gauntlet_homologacao.py
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências bloqueadas
+        run: npm ci
+
+      - name: Formatar arquivos alterados
+        shell: bash
+        run: |
+          mapfile -t files < <(
+            git diff --name-only --diff-filter=ACM |
+              grep -E '\.(ts|tsx|md|json|ya?ml)$' || true
+          )
+          if ((${#files[@]})); then
+            npx prettier --write "${files[@]}"
+          fi
+          git diff --check
+
+      - name: Revisor — lint
+        run: npm run lint
+
+      - name: Revisor — TypeScript
+        run: npm run typecheck
+
+      - name: Revisor — testes
+        run: npm test
+
+      - name: Revisor — build
+        env:
+          VITE_APP_ENV: assisted_operation
+          VITE_DATA_MODE: mock
+          VITE_ALLOW_DEMO: "true"
+          VITE_SUPABASE_URL: https://qvgenxcrdrqyiyozxtdt.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_Frt254fLpExL7A52zWNCnw_ZXLP7k33
+          VITE_MUNICIPALITY_LABEL: Cordeirópolis/SP
+          VITE_MUNICIPALITY_IBGE: "3512407"
+          VITE_APP_TIMEZONE: America/Sao_Paulo
+        run: npm run build
+
+      - name: Publicar resultado verificado na branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            README.md \
+            docs/adr/0005-homologation-realistic-copilot.md \
+            src \
+            supabase/config.toml \
+            supabase/functions \
+            supabase/migrations/20260826143000_homologation_realistic_flow.sql
+          if git diff --cached --quiet; then
+            echo "Nenhuma alteração gerada."
+            exit 0
+          fi
+          git commit -m "feat(homologacao): liberar testes realistas e copiloto read-only"
+          git pull --rebase origin feat/homologacao-realista-gauntlet
+          git push origin HEAD:feat/homologacao-realista-gauntlet
