@@ -2,6 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "npm ci",
-  "buildCommand": "GAUNTLET_TYPE_PROBE='src/(types|lib|services)/' node scripts/vercel-typecheck-probe.mjs",
+  "buildCommand": "GAUNTLET_TYPE_PROBE='src/services/homologation-service.ts' node scripts/vercel-typecheck-probe.mjs",
   "outputDirectory": "dist"
 }
