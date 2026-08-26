@@ -1,7 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": null,
   "installCommand": "npm ci",
-  "buildCommand": "npm run format:check && mkdir -p dist && printf 'format-pass' > dist/index.html",
+  "buildCommand": "npm run format && npm run lint && npm run typecheck && npm test && npm run build",
   "outputDirectory": "dist"
 }
