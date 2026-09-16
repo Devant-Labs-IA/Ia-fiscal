@@ -1,16 +1,17 @@
-name: Deploy internal-test backend
+name: Deploy assisted-operation backend
 
 on:
   workflow_dispatch:
   push:
     branches:
       - main
-      - feat/homologacao-realista-gauntlet
+      - fix/padronizar-sigis-e-backend
     paths:
       - "supabase/migrations/**"
       - "supabase/functions/ia-fiscal-copilot/**"
       - "supabase/functions/ia-fiscal-email-dispatch/**"
       - "supabase/functions/ia-fiscal-email-webhook/**"
+      - "supabase/functions/ia-fiscal-sigis-gateway/**"
       - "supabase/functions/ia-fiscal-cigis-gateway/**"
       - "supabase/config.toml"
       - ".github/workflows/deploy-internal-test-backend.yml"
@@ -19,7 +20,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: deploy-internal-test-backend
+  group: deploy-assisted-operation-backend
   cancel-in-progress: false
 
 env:
@@ -112,5 +113,8 @@ jobs:
       - name: Deploy signed email webhook
         run: supabase functions deploy ia-fiscal-email-webhook --project-ref "$SUPABASE_PROJECT_ID" --use-api --no-verify-jwt
 
-      - name: Deploy CIGIS gateway
+      - name: Deploy SIGIS gateway
+        run: supabase functions deploy ia-fiscal-sigis-gateway --project-ref "$SUPABASE_PROJECT_ID" --use-api
+
+      - name: Deploy compatibility alias
         run: supabase functions deploy ia-fiscal-cigis-gateway --project-ref "$SUPABASE_PROJECT_ID" --use-api
