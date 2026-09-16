@@ -10,7 +10,6 @@ import {
   SectionCard,
   SectionSkeleton,
 } from "@/components/common/SectionCard";
-import { HomologationBanner } from "@/components/layout/HomologationBanner";
 import { ExternalDeliveryReadinessPanel } from "@/components/notifications/ExternalDeliveryReadinessPanel";
 import { NotificationDossierDialog } from "@/components/notifications/NotificationDossierDialog";
 import { Badge } from "@/components/ui/badge";
@@ -130,8 +129,6 @@ function NotificationsPage() {
 
   return (
     <div className="space-y-5 py-4">
-      <HomologationBanner />
-
       <header>
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Notificações</h1>
@@ -142,7 +139,7 @@ function NotificationsPage() {
         </div>
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
           Valide o contexto, consulte o histórico e envie exclusivamente para usuários internos.
-          O endereço original do contribuinte nunca é utilizado durante os testes.
+          O endereço original do contribuinte nunca é utilizado neste fluxo.
         </p>
       </header>
 
@@ -168,7 +165,7 @@ function NotificationsPage() {
           <p className="mt-3 text-2xl font-semibold tabular-nums">
             {recipients.isLoading ? "—" : readyCount}
           </p>
-          <p className="text-xs text-muted-foreground">aptos para teste interno</p>
+          <p className="text-xs text-muted-foreground">aptos para envio interno</p>
         </div>
       </div>
 
