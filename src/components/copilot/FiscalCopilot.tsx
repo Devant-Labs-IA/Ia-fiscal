@@ -31,6 +31,10 @@ const PORTAL_EXAMPLES = [
   "Explique em linguagem simples o que preciso conferir.",
 ];
 
+function productText(value: string): string {
+  return value.replaceAll("CIGIS", "SIGIS").replaceAll("cigis", "sigis");
+}
+
 export function FiscalCopilot() {
   const auth = useAuth();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
@@ -166,14 +170,16 @@ export function FiscalCopilot() {
                 {ask.data.mode === "ai" ? "Síntese por IA" : "Síntese determinística"}
               </Badge>
             </div>
-            <p className="whitespace-pre-wrap text-sm leading-relaxed">{ask.data.answer}</p>
+            <p className="whitespace-pre-wrap text-sm leading-relaxed">
+              {productText(ask.data.answer)}
+            </p>
 
             {ask.data.dataPoints.length > 0 ? (
               <div>
                 <h3 className="text-sm font-semibold">Dados consultados</h3>
                 <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
                   {ask.data.dataPoints.map((point) => (
-                    <li key={point}>• {point}</li>
+                    <li key={point}>• {productText(point)}</li>
                   ))}
                 </ul>
               </div>
@@ -191,8 +197,10 @@ export function FiscalCopilot() {
                       key={`${source.reference}-${index}`}
                       className="rounded-md bg-muted/40 px-3 py-2 text-xs"
                     >
-                      <span className="block font-medium">{source.title}</span>
-                      <span className="text-muted-foreground">{source.reference}</span>
+                      <span className="block font-medium">{productText(source.title)}</span>
+                      <span className="text-muted-foreground">
+                        {productText(source.reference)}
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -204,7 +212,7 @@ export function FiscalCopilot() {
                 <h3 className="text-sm font-semibold text-warning-foreground">Limitações</h3>
                 <ul className="mt-1 space-y-1 text-xs text-warning-foreground">
                   {ask.data.limitations.map((limitation) => (
-                    <li key={limitation}>• {limitation}</li>
+                    <li key={limitation}>• {productText(limitation)}</li>
                   ))}
                 </ul>
               </div>

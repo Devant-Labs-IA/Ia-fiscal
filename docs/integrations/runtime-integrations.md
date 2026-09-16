@@ -1,27 +1,36 @@
-# Configuração das integrações — e-mail, OpenAI e CIGIS
+# Configuração das integrações — e-mail, OpenAI e SIGIS
 
 ## 1. E-mail interno
 
-Implementação preparada com Resend por API, sem SMTP no frontend.
+Implementação preparada com Resend por API, sem SMTP ou segredo no frontend.
+
+### Informações do domínio fornecido pelo SIGIS
+
+A equipe SIGIS deve fornecer:
+
+- domínio ou subdomínio remetente;
+- endereço `From` aprovado;
+- subdomínio de recebimento de respostas;
+- responsável por publicar os registros DNS.
 
 ### Secrets obrigatórios
 
 ```text
 RESEND_API_KEY
-EMAIL_FROM=IA Fiscal <avisos@dominio-verificado.com.br>
+EMAIL_FROM=IA Fiscal <avisos@dominio-fornecido-pelo-sigis.com.br>
 ```
 
 ### Para receber respostas por e-mail
 
 ```text
 RESEND_WEBHOOK_SECRET
-EMAIL_INBOUND_DOMAIN=respostas.dominio-verificado.com.br
+EMAIL_INBOUND_DOMAIN=respostas.dominio-fornecido-pelo-sigis.com.br
 ```
 
 Opcional:
 
 ```text
-EMAIL_REPLY_TO=atendimento@dominio-verificado.com.br
+EMAIL_REPLY_TO=atendimento@dominio-fornecido-pelo-sigis.com.br
 ```
 
 ### Regras aplicadas
@@ -37,17 +46,19 @@ EMAIL_REPLY_TO=atendimento@dominio-verificado.com.br
 
 ### Configuração no Resend
 
-1. verificar o domínio remetente;
-2. criar a API key com escopo mínimo de envio;
-3. habilitar o domínio de recebimento, quando forem testadas respostas;
-4. cadastrar o webhook apontando para:
+1. adicionar o domínio fornecido pelo SIGIS;
+2. publicar no DNS todos os registros exibidos pelo provedor;
+3. aguardar a validação do domínio;
+4. criar a API key com escopo mínimo de envio;
+5. habilitar o domínio de recebimento, quando forem testadas respostas;
+6. cadastrar o webhook apontando para:
 
 ```text
 https://qvgenxcrdrqyiyozxtdt.supabase.co/functions/v1/ia-fiscal-email-webhook
 ```
 
-5. habilitar eventos `email.sent`, `email.delivered`, `email.bounced`, `email.failed` e `email.received`;
-6. cadastrar o signing secret como `RESEND_WEBHOOK_SECRET` no Supabase.
+7. habilitar eventos `email.sent`, `email.delivered`, `email.bounced`, `email.failed` e `email.received`;
+8. cadastrar o signing secret como `RESEND_WEBHOOK_SECRET` no Supabase.
 
 ## 2. OpenAI
 
@@ -74,35 +85,44 @@ OPENAI_PROJECT_ID=proj_...
 - mensagens e documentos são tratados como dados não confiáveis;
 - resposta informativa, sem veredito fiscal.
 
-## 3. CIGIS
+## 3. SIGIS
 
-Configurações e contrato estão em `docs/integrations/cigis-api-v1.md`.
+Configurações e contrato estão em `docs/integrations/sigis-api-v1.md`.
 
 Obrigatório:
 
 ```text
-CIGIS_BASE_URL
+SIGIS_BASE_URL
+SIGIS_API_PREFIX=/api/v1
 ```
 
 E um método de autenticação:
 
 ```text
-CIGIS_TOKEN_URL
-CIGIS_CLIENT_ID
-CIGIS_CLIENT_SECRET
-CIGIS_SCOPE
+SIGIS_TOKEN_URL
+SIGIS_CLIENT_ID
+SIGIS_CLIENT_SECRET
+SIGIS_SCOPE
 ```
 
 ou:
 
 ```text
-CIGIS_API_KEY
-CIGIS_API_KEY_HEADER=x-api-key
+SIGIS_API_KEY
+SIGIS_API_KEY_HEADER=x-api-key
+```
+
+Para a sessão aberta dentro do SIGIS:
+
+```text
+SIGIS_SESSION_ISSUER
+SIGIS_SESSION_AUDIENCE=ia-fiscal
+SIGIS_JWKS_URL
 ```
 
 ## 4. Deploy do backend
 
-O workflow `.github/workflows/deploy-internal-test-backend.yml` valida aplicação, aplica migrações e publica as Edge Functions.
+O workflow `.github/workflows/deploy-internal-test-backend.yml` valida a aplicação, aplica migrações e publica as Edge Functions.
 
 Secrets exigidos no environment `internal-test` do GitHub:
 
@@ -115,11 +135,12 @@ O workflow não grava secrets no repositório. A ausência de qualquer secret in
 
 ## 5. Ordem operacional
 
-1. cadastrar `SUPABASE_ACCESS_TOKEN` e `SUPABASE_DB_PASSWORD` no GitHub;
-2. executar o workflow de backend;
+1. aplicar as migrações no Supabase;
+2. publicar `ia-fiscal-sigis-gateway`, Copiloto e funções de e-mail;
 3. cadastrar os secrets de e-mail e OpenAI no Supabase;
-4. testar envio para Diego ou Narciso;
-5. habilitar domínio de recebimento e webhook;
-6. receber a URL e credencial de teste do CIGIS;
-7. executar os casos de pagamento, débito e isolamento de CNPJ;
-8. somente depois avaliar envio para contribuintes reais.
+4. receber o domínio fornecido pelo SIGIS e validar o DNS;
+5. testar envio para Diego ou Narciso;
+6. habilitar domínio de recebimento e webhook;
+7. receber URL, credencial e sessão assinada do SIGIS;
+8. executar os casos de pagamento, débito e isolamento de CNPJ;
+9. somente depois avaliar envio para contribuintes reais.

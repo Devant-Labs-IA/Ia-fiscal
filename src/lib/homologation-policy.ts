@@ -1,4 +1,4 @@
-export const DEFAULT_INTERNAL_EMAIL_SUBJECT = "Aviso informativo para conferência no CIGIS";
+export const DEFAULT_INTERNAL_EMAIL_SUBJECT = "Aviso informativo para conferência no SIGIS";
 
 export function buildDefaultInternalEmailBody(): string {
   return [
@@ -6,7 +6,7 @@ export function buildDefaultInternalEmailBody(): string {
     "",
     "Identificamos informações fiscais que precisam ser conferidas no ambiente autenticado.",
     "",
-    "Acesse normalmente o CIGIS e consulte a área de débitos e divergências. Caso precise de esclarecimentos, utilize o menu Atendimento Online.",
+    "Acesse normalmente o SIGIS e consulte a área de débitos e divergências. Caso precise de esclarecimentos, utilize o menu Atendimento Online.",
     "",
     "Esta mensagem é exclusivamente informativa. A análise e qualquer decisão permanecem sob responsabilidade da fiscalização competente.",
   ].join("\n");
@@ -17,13 +17,13 @@ export function internalEmailBlockers(subject: string, body: string): string[] {
   const blockers: string[] = [];
 
   if (/(https?:\/\/|www\.|href\s*=|<a(?:\s|>))/i.test(content)) {
-    blockers.push("A mensagem de teste não pode conter links.");
+    blockers.push("A mensagem interna não pode conter links.");
   }
   if (/(?:r\$|\bbrl\b|(?:^|\s)\d{1,3}(?:\.\d{3})*,\d{2}(?:\s|$))/i.test(content)) {
-    blockers.push("A mensagem de teste não pode conter valores monetários.");
+    blockers.push("A mensagem interna não pode conter valores monetários.");
   }
   if (/\b(anexo|anexos|anexa|anexado|attachment|attachments)\b/i.test(content)) {
-    blockers.push("A mensagem de teste não pode mencionar ou incluir anexos.");
+    blockers.push("A mensagem interna não pode mencionar ou incluir anexos.");
   }
   if (subject.trim().length < 5 || subject.trim().length > 180) {
     blockers.push("O assunto precisa ter entre 5 e 180 caracteres.");
@@ -35,7 +35,7 @@ export function internalEmailBlockers(subject: string, body: string): string[] {
   return blockers;
 }
 
-// Compatibilidade temporária com testes e imports da primeira versão do fluxo.
+// Compatibilidade de código com a primeira versão do fluxo, sem impacto na interface.
 export const DEFAULT_HOMOLOGATION_EMAIL_SUBJECT = DEFAULT_INTERNAL_EMAIL_SUBJECT;
 export const buildDefaultHomologationEmailBody = buildDefaultInternalEmailBody;
 export const homologationEmailBlockers = internalEmailBlockers;

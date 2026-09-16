@@ -6,11 +6,11 @@ import {
   homologationEmailBlockers,
 } from "@/lib/homologation-policy";
 
-describe("homologation email policy", () => {
-  it("accepts the approved internal-test template", () => {
+describe("internal email policy", () => {
+  it("accepts the approved internal message template", () => {
     expect(
       homologationEmailBlockers(
-        "Aviso informativo para conferência no CIGIS",
+        "Aviso informativo para conferência no SIGIS",
         buildDefaultHomologationEmailBody(),
       ),
     ).toEqual([]);
