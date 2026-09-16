@@ -382,7 +382,7 @@ export function NotificationDossierDialog({
             <TabsContent value="email" className="space-y-4">
               <SectionCard
                 title="Mensagem informativa"
-                description="Sem link, anexo ou valor. O destinatário é orientado a acessar o CIGIS."
+                description="Sem link, anexo ou valor. O destinatário é orientado a acessar o SIGIS."
               >
                 <div className="rounded-md border border-border bg-muted/40 p-4 text-sm">
                   <p className="font-semibold">{subject}</p>
@@ -411,7 +411,7 @@ export function NotificationDossierDialog({
                 ) : recipients.isError ? (
                   <ErrorState message="A lista interna ainda não está disponível no backend." />
                 ) : !recipients.data?.length ? (
-                  <EmptyState message="Nenhum usuário interno está disponível para receber o teste." />
+                  <EmptyState message="Nenhum usuário interno está disponível para receber o e-mail." />
                 ) : (
                   <div className="space-y-4">
                     <Select value={recipientUserId} onValueChange={setRecipientUserId}>
