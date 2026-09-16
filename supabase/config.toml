@@ -1,4 +1,4 @@
-# Configuração versionada de desenvolvimento e testes internos.
+# Configuração versionada de desenvolvimento e operação assistida.
 # O project_id remoto não é usado aqui para promover mudanças automaticamente.
 project_id = "ia-fiscal"
 
@@ -42,6 +42,10 @@ verify_jwt = true
 # Webhook público do provedor; o handler exige assinatura Svix válida antes de processar.
 verify_jwt = false
 
+[functions.ia-fiscal-sigis-gateway]
+# Gateway canônico. Preserva o JWT e resolve o escopo autorizado antes de consultar o SIGIS.
+verify_jwt = true
+
 [functions.ia-fiscal-cigis-gateway]
-# O gateway preserva o JWT e resolve o escopo autorizado antes de consultar o CIGIS.
+# Alias técnico temporário para clientes da primeira versão; encaminha ao gateway SIGIS.
 verify_jwt = true
